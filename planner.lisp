@@ -13,7 +13,7 @@
               collect (cons o args)))))
 
 
-(defun format-exp (predicate step)
+(defun format-state-variable (predicate step)
   (format nil "~{~A~^_~}_~D" predicate step))
 
 (defun format-op (op args step)
@@ -134,10 +134,8 @@
 
 
 
-(defun smt-plan (operator-file fact-file steps)
-  (let* ((operators (load-operators operator-file))
-         (facts (load-facts fact-file))
-         (smt-statements nil)
+(defun smt-plan-encode (operators facts steps)
+  (let* ((smt-statements nil)
          (state-vars (create-state-variables (operators-predicates operators)
                                              (facts-objects facts)))
          (concrete-operators (smt-concrete-operators operators  (facts-objects facts)))
@@ -192,17 +190,9 @@
                                                                      i)))))))))
       ;; frame axioms
       (dotimes (i steps)
-        (map nil #'stmt (smt-frame-axioms state-vars concrete-operators i)))
-
-      ;; control statements
-      (stmt '(|check-sat|))
-      (stmt (list '|get-value| step-ops)))
-    (reverse smt-statements)))
-
-(defun smt-output (file operator-file fact-file steps)
-  (with-open-file (s file :direction :output :if-exists :supersede)
-    (smt-print (smt-plan operator-file fact-file steps) s)))
-
+        (map nil #'stmt (smt-frame-axioms state-vars concrete-operators i))))
+    (values (reverse smt-statements)
+            step-ops)))
 
 (defun smt-parse-assignments (assignments)
   (let ((plan))
@@ -212,14 +202,24 @@
           (push (unmangle-op (string var)) plan))))
     (sort plan (lambda (a b) (< (car a) (car b))))))
 
-(defun smt-input (file)
-  (multiple-value-bind (is-sat assignments)
-      (with-open-file (s file :direction :input)
-        (values (read s)
-                (read s)))
-    ;(print is-sat)
-    (when (eq 'sat is-sat)
-      (smt-parse-assignments assignments))))
+(defun smt-plan (operator-file facts-file
+                 &key
+                   (steps 1)
+                   (max-steps 10))
+  (let ((operators (load-operators operator-file))
+        (facts (load-facts facts-file)))
+    (labels ((rec (steps)
+               (multiple-value-bind (assignments is-sat)
+                   (multiple-value-bind (stmts vars)
+                       (smt-plan-encode operators facts steps)
+                     (smt-run stmts vars))
+                 (cond
+                   (is-sat
+                    (smt-parse-assignments assignments))
+                   ((< steps max-steps)
+                    (rec (1+ steps)))
+                   (t nil)))))
+    (rec steps))))
 
 ;; (defun smt-print-exp (sexp &optional (stream *standard-output*))
 ;;   (etypecase sexp

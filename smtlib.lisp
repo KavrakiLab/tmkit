@@ -1,3 +1,5 @@
+(in-package :tmsmt)
+
 (defun smt-subst (stmts)
   "Replace upcased CL symbols with properly-cased SMT-Lib symbols"
   (sublis '((or     .  |or|)
@@ -43,3 +45,45 @@
 
 (defun smt-and (&rest args)
   (cons 'and args))
+
+(defun smt-parse-assignments (assignments)
+  (let ((plan))
+    (dolist (x assignments)
+      (destructuring-bind (var value) x
+        (when (eq 'true value)
+          (push (unmangle-op (string var)) plan))))
+    (sort plan (lambda (a b) (< (car a) (car b))))))
+
+(defun smt-input (file)
+  (multiple-value-bind (is-sat assignments)
+      (with-open-file (s file :direction :input)
+        (values (read s)
+                (read s)))
+    ;(print is-sat)
+    (when (eq 'sat is-sat)
+      (smt-parse-assignments assignments))))
+
+(defun smt-run (statements variables
+                &key
+                  (smt-file "/tmp/tmsmt.smt2")
+                  (result-file "/tmp/tmsmt2-result"))
+  "Run the SMT solver on `statements' and return assignments to `variables'.
+Returns -- (values is-satisfiabibly (list assignments))"
+  ;; write statements
+  (with-open-file (s smt-file :direction :output :if-exists :supersede)
+    (smt-print statements s)
+    (smt-print `((|check-sat|)
+                 (|get-value| ,variables))
+               s))
+  (sb-ext:run-program "z3" (list "-smt2" smt-file)
+                      :search t :wait t
+                      :output result-file
+                      :if-output-exists :supersede)
+  ;; check-sat
+  (multiple-value-bind (is-sat assignments)
+      (with-open-file (s result-file :direction :input)
+        (values (read s)
+                (read s)))
+    (if (eq 'sat is-sat)
+        (values assignments t)
+        (values nil nil))))
