@@ -1,84 +1,5 @@
 (in-package :tmsmt)
 
-(defstruct action
-  name
-  parameters
-  precondition
-  effect)
-
-(defstruct predicate
-  name
-  arity)
-
-(defstruct operators
-  name
-  predicates
-  actions)
-
-(defstruct facts
-  name
-  domain
-  objects
-  init
-  goal)
-
-(defun load-sexp (filename)
-  (with-open-file (s filename :direction :input)
-    (read s)))
-
-(defun load-operators (filename)
-  (parse-operators (load-sexp filename)))
-
-(defun load-facts (filename)
-  (parse-facts (load-sexp filename)))
-
-(defun check-symbol (value required)
-  (unless (string= (string value) (string required))
-    (error "Symbol mismatch on ~A, required ~A" value required)))
-
-(defun parse-operators (sexp)
-  (destructuring-bind (-define (-domain name) &rest clauses)
-      sexp
-    (check-symbol -define :define)
-    (check-symbol -domain :domain)
-    (let ((ops (make-operators :name name)))
-      (dolist (clause clauses)
-        (destructuring-ecase clause
-          ((:predicates &rest predicates)
-           (setf (operators-predicates ops)
-                 (loop for p in predicates
-                    collect (destructuring-bind (name &rest arguments) p
-                              (make-predicate :name name :arity (length arguments))))))
-          ((:action name &key parameters precondition effect)
-           (push (make-action :name name
-                              :parameters parameters
-                              :precondition precondition
-                              :effect effect)
-                 (operators-actions ops)))))
-      ops)))
-
-(defun parse-facts (sexp)
-  (destructuring-bind (-define (-problem name) &rest clauses)
-      sexp
-    (check-symbol -define :define)
-    (check-symbol -problem :problem)
-    (let ((facts (make-facts :name name)))
-      (dolist (clause clauses)
-        (destructuring-ecase clause
-          ((:domain name)
-           (setf (facts-domain facts)
-                 name))
-          ((:objects &rest objs)
-           (setf (facts-objects facts)
-                 objs))
-          ((:init &rest things)
-           (setf (facts-init facts)
-                 things))
-          ((:goal goal)
-           (setf (facts-goal facts)
-                 goal))))
-      facts)))
-
 
 ;;; ENCODING,
 ;;;  - PDDL Objects are state variables
@@ -108,71 +29,11 @@
              a))))
 
 
-  ;; (format nil "~A_~{~A~^_~}_~D" op args step))
-
-(defun rewrite-exp (exp step)
-  (destructuring-case exp
-    ((and &rest rest)
-     `(and ,@(map 'list (lambda (e) (rewrite-exp e step)) rest)))
-    ((or &rest rest)
-     `(or ,@(map 'list (lambda (e) (rewrite-exp e step)) rest)))
-    ((not &rest rest)
-     `(not ,@(map 'list (lambda (e) (rewrite-exp e step)) rest)))
-    ((t &rest rest) (declare (ignore rest))
-     (format-state-variable exp step))))
-
 (defun create-state-variables (predicates objects)
   (loop for p in predicates
      append
        (loop for args in (collect-args objects (predicate-arity p))
           collect (cons (predicate-name p) args))))
-
-(defun smt-subst (stmts)
-  "Replace upcased CL symbols with properly-cased SMT-Lib symbols"
-  (sublis '((or     .  |or|)
-            (not    .  |not|)
-            (assert .  |assert|)
-            (bool   .  |Bool|)
-            (and    .  |and|))
-          stmts))
-
-(defun smt-print (stmts &optional (stream *standard-output*))
-  ;; Use the lisp printer to pretty print the expressions, then fixup
-  ;; the output with some regular expressions
-  (let* ((cl-string (with-output-to-string (s)
-                      (dolist (e (smt-subst stmts))
-                        (print e s))))
-         ;; eat CL case quotes
-         (smt-string-0 (ppcre:regex-replace-all "\\|([\\w\\-]+)\\|"
-                                                cl-string
-                                                "\\1"))
-         ;; eat string quotes
-         (smt-string-1 (ppcre:regex-replace-all "\"([\\w\\-]+)\""
-                                                smt-string-0
-                                                "\\1"))
-         ;; replace NILs with ()
-         (smt-string-2 (ppcre:regex-replace-all "([\\s\\(\\)])NIL([\\s\\(\\)])"
-                                                smt-string-1
-                                                "\\1()\\2")))
-    (princ smt-string-2 stream))
-  nil)
-
-
-
-(defun smt-assert (x)
-  (list '|assert| x))
-
-(defun smt-declare-fun (name args type)
-  (list '|declare-fun| name args type))
-
-(defun smt-not (x)
-  (list 'not x))
-
-(defun smt-or (&rest args)
-  (cons 'or args))
-
-(defun smt-and (&rest args)
-  (cons 'and args))
 
 (defstruct concrete-action
   name
@@ -205,8 +66,6 @@
 ;;                    (push (second exp) del))
 ;;             (push exp add))))
 ;;     (values add del)))
-
-
 
 (defun smt-concrete-operators (operators objects)
   (let ((result))
