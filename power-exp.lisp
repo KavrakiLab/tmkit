@@ -18,7 +18,14 @@
        collect
          (cons 'and subset))))
 
-
+(defun exp-subset-bitwise-compare (e i j n)
+  (let ((e-i (smt-mangle e n i))
+        (e-j (smt-mangle e n j)))
+    (if (= 0 n)
+        (smt-and e-i (smt-not e-j))
+        (smt-or  (smt-and e-i (smt-not e-j))
+                 (smt-and (smt-= e-i e-j)
+                          (exp-subset-bitwise-compare e i j (1- n)))))))
 
 (defun exp-power-subsets (exps k)
   "Return the subsets of the power set of `EXPS' whose conjunction is
@@ -45,16 +52,16 @@
       (dotimes (j k)
         (dolist (var vars)
           (stmt (smt-declare-fun (state-var var j) () 'bool))))
-      ;; unique subsets
-      (stmt (smt-comment "Unique Subsets"))
-      (dotimes (j-1 k)
-        (loop for j-2 from (1+ j-1) below k
-           do
-             (stmt (smt-assert (apply #'smt-or
-                                      (map 'list (lambda (var)
-                                                   (smt-not (smt-= (state-var var j-1)
-                                                                   (state-var var j-2))))
-                                           vars))))))
+
+      ;; Ordered subsets
+      (stmt (smt-comment "Ordered Subsets"))
+      (loop
+         for j-0 below (1- k)
+         for j-1 = (1+ j-0)
+         do
+           (progn (assert (< j-1 k))
+                  (stmt (smt-assert (exp-subset-bitwise-compare 'e j-0 j-1 (1- n))))))
+
       ;; Valued Subsets
       (stmt (smt-comment "Valued Subsets"))
       (dotimes (j k)

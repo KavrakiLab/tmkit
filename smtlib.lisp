@@ -4,6 +4,7 @@
   "Replace upcased CL symbols with properly-cased SMT-Lib symbols"
   (sublis '((or     .  |or|)
             (not    .  |not|)
+            (ite    .  |ite|)
             (assert .  |assert|)
             (bool   .  |Bool|)
             (and    .  |and|))
@@ -58,6 +59,9 @@
 
 (defun smt-= (&rest args)
   (cons '= args))
+
+(defun smt-ite (test then else)
+  (list 'ite test then else))
 
 (defun smt-comment (x)
   (list 'comment x))
