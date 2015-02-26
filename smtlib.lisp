@@ -14,7 +14,12 @@
   ;; the output with some regular expressions
   (let* ((cl-string (with-output-to-string (s)
                       (dolist (e (smt-subst stmts))
-                        (print e s))))
+                        (destructuring-case e
+                          ((comment x)
+                           (format s "~&;; ~A" x))
+                          ((t &rest ignore)
+                           (declare (ignore ignore))
+                           (print e s))))))
          ;; eat CL case quotes
          (smt-string-0 (ppcre:regex-replace-all "\\|([\\w\\-]+)\\|"
                                                 cl-string
@@ -34,8 +39,13 @@
 (defun smt-assert (x)
   (list '|assert| x))
 
+(defun smt-ident (thing)
+  (etypecase thing
+    (string thing)
+    (list (smt-mangle-list thing))))
+
 (defun smt-declare-fun (name args type)
-  (list '|declare-fun| name args type))
+  (list '|declare-fun| (smt-ident name) args type))
 
 (defun smt-not (x)
   (list 'not x))
@@ -46,47 +56,11 @@
 (defun smt-and (&rest args)
   (cons 'and args))
 
-(defun smt-parse-assignments (assignments)
-  (let ((plan))
-    (dolist (x assignments)
-      (destructuring-bind (var value) x
-        (when (eq 'true value)
-          (push (unmangle-op (string var)) plan))))
-    (sort plan (lambda (a b) (< (car a) (car b))))))
+(defun smt-= (&rest args)
+  (cons '= args))
 
-(defun smt-input (file)
-  (multiple-value-bind (is-sat assignments)
-      (with-open-file (s file :direction :input)
-        (values (read s)
-                (read s)))
-    ;(print is-sat)
-    (when (eq 'sat is-sat)
-      (smt-parse-assignments assignments))))
-
-(defun smt-run (statements variables
-                &key
-                  (smt-file "/tmp/tmsmt.smt2")
-                  (result-file "/tmp/tmsmt2-result"))
-  "Run the SMT solver on `statements' and return assignments to `variables'.
-Returns -- (values is-satisfiabibly (list assignments))"
-  ;; write statements
-  (with-open-file (s smt-file :direction :output :if-exists :supersede)
-    (smt-print statements s)
-    (smt-print `((|check-sat|)
-                 (|get-value| ,variables))
-               s))
-  (sb-ext:run-program "z3" (list "-smt2" smt-file)
-                      :search t :wait t
-                      :output result-file
-                      :if-output-exists :supersede)
-  ;; check-sat
-  (multiple-value-bind (is-sat assignments)
-      (with-open-file (s result-file :direction :input)
-        (values (read s)
-                (read s)))
-    (if (eq 'sat is-sat)
-        (values assignments t)
-        (values nil nil))))
+(defun smt-comment (x)
+  (list 'comment x))
 
 (defparameter +smt-separator+ "__")
 (defparameter +smt-left-paren+ "-LP-")
@@ -152,3 +126,74 @@ Returns -- (values is-satisfiabibly (list assignments))"
         (when rest
           (error "Bad identifier: ~A" mangled))
         car))))
+
+(defun smt-parse-assignments (assignments)
+  (let ((plan))
+    (dolist (x assignments)
+      (destructuring-bind (var value) x
+        (when (eq 'true value)
+          (push (unmangle-op (string var)) plan))))
+    (sort plan (lambda (a b) (< (car a) (car b))))))
+
+(defun smt-input (file)
+  (multiple-value-bind (is-sat assignments)
+      (with-open-file (s file :direction :input)
+        (values (read s)
+                (read s)))
+    ;(print is-sat)
+    (when (eq 'sat is-sat)
+      (smt-parse-assignments assignments))))
+
+(defun smt-run (statements variables
+                &key
+                  (smt-file "/tmp/tmsmt.smt2")
+                  (result-file "/tmp/tmsmt2-result"))
+  "Run the SMT solver on `statements' and return assignments to `variables'.
+Returns -- (values is-satisfiabibly (list assignments))"
+  ;; write statements
+  (with-open-file (s smt-file :direction :output :if-exists :supersede)
+    (smt-print statements s)
+    (smt-print `((|check-sat|)
+                 (|get-value| ,variables))
+               s))
+  (sb-ext:run-program "z3" (list "-smt2" smt-file)
+                      :search t :wait t
+                      :output result-file
+                      :if-output-exists :supersede)
+  ;; check-sat
+  (multiple-value-bind (is-sat assignments)
+      (with-open-file (s result-file :direction :input)
+        (values (read s)
+                (read s)))
+    (if (eq 'sat is-sat)
+        (values assignments t)
+        (values nil nil))))
+
+
+
+(defstruct smt-problem
+  statements ;; list of statements
+  variables  ;; list of variables
+  decode-function ;; VARIABLE-ASSIGNMENT => result
+  )
+
+(defun smt-problem-print (problem
+                          &key
+                            (stream *standard-output*))
+  (smt-print (smt-problem-statements problem) stream)
+  (smt-print `((|check-sat|)
+               (|get-value| ,(smt-problem-variables problem)))
+             stream))
+
+(defun smt-run-problem (problem)
+  (multiple-value-bind (assignments is-sat)
+      (smt-run (smt-problem-statements problem)
+               (smt-problem-variables problem))
+    (if is-sat
+        (let ((unmangled-variables
+               (loop for (variable value) in assignments
+                  collect (list (smt-unmangle (string variable)) value))))
+          (values (funcall (smt-problem-decode-function problem)
+                           unmangled-variables)
+                  t))
+        (values nil nil))))
