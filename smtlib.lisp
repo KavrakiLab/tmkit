@@ -87,3 +87,68 @@ Returns -- (values is-satisfiabibly (list assignments))"
     (if (eq 'sat is-sat)
         (values assignments t)
         (values nil nil))))
+
+(defparameter +smt-separator+ "__")
+(defparameter +smt-left-paren+ "-LP-")
+(defparameter +smt-right-paren+ "-RP-")
+
+(defun smt-mangle-list (list)
+  "Mangle arguments into an SMT identifier."
+  (with-output-to-string (str)
+    (labels ((rec (x)
+               (etypecase x
+                 (atom (format str "~A~A" +smt-separator+ x))
+                 (list
+                  (format str "~A~A" +smt-separator+ +smt-left-paren+)
+                  (rec-list x)
+                  (format str "~A~A" +smt-separator+ +smt-right-paren+))))
+             (rec-list (args)
+               (map nil #'rec args)))
+      (rec-list list))))
+
+(defun smt-mangle (&rest args)
+  (smt-mangle-list args))
+
+(defun smt-unmangle (mangled)
+  "Unmangle SMT identifier into a list."
+  (let ((list (ppcre:split +smt-separator+ mangled)))
+    ;; mangled identifier split into tokens
+    (labels ((parse (x)
+               ;; parse atomic element
+               (multiple-value-bind (i n)
+                   (parse-integer x :junk-allowed t)
+                 (if (and i (= n (length x)))
+                     i
+                     x)))
+             (bad-ident ()
+               (error "Bad identifier: ~A" mangled))
+             (rec (list)
+               ;; append elements from rest onto cons
+               (when list
+                 (destructuring-bind (first . rest) list
+                   (cond
+                     ((string= first +smt-left-paren+)
+                      ;; parse sublist
+                      (multiple-value-bind (car-1 rest-1)
+                          (rec rest)
+                        ;; check we got right parent
+                        (unless (string= (car rest-1) +smt-right-paren+)
+                          (bad-ident))
+                        ;; parse remainder
+                        (multiple-value-bind (cdr-2 rest-2)
+                            (rec (cdr rest-1))
+                          ;; result
+                          (values (cons car-1 cdr-2)
+                                  rest-2))))
+                     ((string= first +smt-right-paren+)
+                      (values nil list))
+                     (t (multiple-value-bind (cdr rest)
+                            (rec rest)
+                          (values (cons (parse first)
+                                        cdr)
+                                  rest))))))))
+      (multiple-value-bind (car rest)
+          (rec (cdr list))
+        (when rest
+          (error "Bad identifier: ~A" mangled))
+        car))))
