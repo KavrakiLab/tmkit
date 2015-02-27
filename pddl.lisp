@@ -2,21 +2,27 @@
 
 
 (defstruct action
+  "A PDDL action"
   name
   parameters
   precondition
-  effect)
+  uncontrollable
+  effect
+  )
 
 (defstruct predicate
+  "A PDDL predicate"
   name
   arity)
 
 (defstruct operators
+  "A PDDL set of operators"
   name
   predicates
   actions)
 
 (defstruct facts
+  "A PDDL set of facts"
   name
   domain
   objects
@@ -24,9 +30,11 @@
   goal)
 
 (defun load-operators (filename)
+  "Load operators from `FILENAME'."
   (parse-operators (load-sexp filename)))
 
 (defun load-facts (filename)
+  "Load facts from `FILENAME'."
   (parse-facts (load-sexp filename)))
 
 (defun parse-operators (sexp)
@@ -42,9 +50,10 @@
                  (loop for p in predicates
                     collect (destructuring-bind (name &rest arguments) p
                               (make-predicate :name name :arity (length arguments))))))
-          ((:action name &key parameters precondition effect)
+          ((:action name &key parameters uncontrollable precondition effect)
            (push (make-action :name name
                               :parameters parameters
+                              :uncontrollable uncontrollable
                               :precondition precondition
                               :effect effect)
                  (operators-actions ops)))))

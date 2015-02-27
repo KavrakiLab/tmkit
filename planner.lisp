@@ -67,18 +67,18 @@
 ;;             (push exp add))))
 ;;     (values add del)))
 
-(defun smt-concrete-operators (operators objects)
+(defun smt-concrete-actions (actions objects)
   (let ((result))
-    (dolist (operator (operators-actions operators))
+    (dolist (action (operators-actions actions))
       (dolist (args (collect-args objects
-                                  (length (action-parameters operator))))
-        (let ((arg-alist (exp-args-alist (action-parameters operator)
+                                  (length (action-parameters action))))
+        (let ((arg-alist (exp-args-alist (action-parameters action)
                                          args)))
           (push (make-concrete-action
-                 :name (action-name operator)
+                 :name (action-name action)
                  :actual-arguments args
-                 :precondition (sublis arg-alist (action-precondition operator))
-                 :effect (sublis arg-alist (action-effect operator)))
+                 :precondition (sublis arg-alist (action-precondition action))
+                 :effect (sublis arg-alist (action-effect action)))
                 result))))
     result))
 
@@ -89,9 +89,9 @@
   ;; exclusion axioms
   ;; frame axioms
 
-(defun concrete-action-modifies-varable-p (operator variable)
+(defun concrete-action-modifies-varable-p (action variable)
   (let ((not-variable (list 'not variable)))
-    (destructuring-bind (-and &rest things) (concrete-action-effect operator)
+    (destructuring-bind (-and &rest things) (concrete-action-effect action)
       (check-symbol -and 'and)
       (labels ((rec (rest)
                  (when rest
@@ -102,8 +102,8 @@
                          (rec (cdr rest)))))))
         (rec things)))))
 
-(defun concrete-action-modified-variables (operator)
-  (destructuring-bind (-and &rest things) (concrete-action-effect operator)
+(defun concrete-action-modified-variables (action)
+  (destructuring-bind (-and &rest things) (concrete-action-effect action)
     (check-symbol -and 'and)
     (loop for exp in things
        collect
@@ -112,11 +112,11 @@
            ((t &rest rest) (declare (ignore rest))
             exp)))))
 
-(defun smt-frame-axioms (state-vars concrete-operators step)
+(defun smt-frame-axioms (state-vars concrete-actions step)
   ;(print concrete-operators)
   (let ((hash (make-hash-table :test #'equal))) ;; hash: variable => (list modifiying-operators)
     ;; note modified variables
-    (dolist (op concrete-operators)
+    (dolist (op concrete-actions)
       (dolist (v (concrete-action-modified-variables op))
         (push op (gethash v hash))))
     ;; collect axioms
@@ -138,7 +138,7 @@
   (let* ((smt-statements nil)
          (state-vars (create-state-variables (operators-predicates operators)
                                              (facts-objects facts)))
-         (concrete-operators (smt-concrete-operators operators  (facts-objects facts)))
+         (concrete-actions (smt-concrete-actions operators  (facts-objects facts)))
          (step-ops))
     (labels ((stmt (x)
                (push x smt-statements))
@@ -152,7 +152,7 @@
 
       ;; per-step action variables
       (dotimes (i  steps)
-        (dolist (op concrete-operators)
+        (dolist (op concrete-actions)
           (let ((v (format-concrete-action op i)))
             (push v step-ops)
             (declare-step v ))))
@@ -169,7 +169,7 @@
         (stmt (smt-assert (rewrite-exp goal steps))))
       ;; operator encodings
       (dotimes (i steps)
-        (dolist (op concrete-operators)
+        (dolist (op concrete-actions)
           (stmt (smt-assert `(or (not ,(format-op (concrete-action-name op)
                                                   (concrete-action-actual-arguments op)
                                                   i))
@@ -179,18 +179,18 @@
 
       ;; exclusion axioms
       (dotimes (i steps)
-        (dolist (op concrete-operators)
+        (dolist (op concrete-actions)
           (stmt (smt-assert `(=> ,(format-op (concrete-action-name op)
                                              (concrete-action-actual-arguments op)
                                              i)
-                                 (and ,@(loop for other-op in concrete-operators
+                                 (and ,@(loop for other-op in concrete-actions
                                            unless (eq op other-op)
                                            collect `(not ,(format-op (concrete-action-name other-op)
                                                                      (concrete-action-actual-arguments other-op)
                                                                      i)))))))))
       ;; frame axioms
       (dotimes (i steps)
-        (map nil #'stmt (smt-frame-axioms state-vars concrete-operators i))))
+        (map nil #'stmt (smt-frame-axioms state-vars concrete-actions i))))
     (values (reverse smt-statements)
             step-ops)))
 
@@ -220,6 +220,17 @@
                     (rec (1+ steps)))
                    (t nil)))))
     (rec steps))))
+
+
+(defun smt-plan-automaton (operator-file facts-file)
+  ;; 1. Generate Plan
+  ;; 2. Identify states with uncontrollable actions
+  ;; 3. If uncontrollable effect is outside automata states,
+  ;;    recursively solve from effect state back to automaton
+  ;;    3.a If no recursive solution, restart with constraint to avoid
+  ;;    the uncontrollable precondition state.
+  ;; 4. When no deviating uncontrollable effects, return the automaton
+)
 
 ;; (defun smt-print-exp (sexp &optional (stream *standard-output*))
 ;;   (etypecase sexp
