@@ -131,23 +131,6 @@
           (error "Bad identifier: ~A" mangled))
         car))))
 
-(defun smt-parse-assignments (assignments)
-  (let ((plan))
-    (dolist (x assignments)
-      (destructuring-bind (var value) x
-        (when (eq 'true value)
-          (push (unmangle-op (string var)) plan))))
-    (sort plan (lambda (a b) (< (car a) (car b))))))
-
-(defun smt-input (file)
-  (multiple-value-bind (is-sat assignments)
-      (with-open-file (s file :direction :input)
-        (values (read s)
-                (read s)))
-    ;(print is-sat)
-    (when (eq 'sat is-sat)
-      (smt-parse-assignments assignments))))
-
 (defun smt-run (statements variables
                 &key
                   (smt-file "/tmp/tmsmt.smt2")

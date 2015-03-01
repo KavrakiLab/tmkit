@@ -31,11 +31,15 @@
 
 (defun load-operators (filename)
   "Load operators from `FILENAME'."
-  (parse-operators (load-sexp filename)))
+  (typecase filename
+    (operators filename)
+    ((or string pathname) (parse-operators (load-sexp filename)))))
 
 (defun load-facts (filename)
   "Load facts from `FILENAME'."
-  (parse-facts (load-sexp filename)))
+  (etypecase filename
+    (facts filename)
+    ((or string pathname) (parse-facts (load-sexp filename)))))
 
 (defun parse-operators (sexp)
   (destructuring-bind (-define (-domain name) &rest clauses)

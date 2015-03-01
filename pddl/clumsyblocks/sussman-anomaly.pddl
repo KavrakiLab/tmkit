@@ -1,6 +1,0 @@
-(define (problem sussman-anomaly)
-  (:domain blocks)
-  (:objects a b c)
-  (:init (on c a) (ontable a) (ontable b)
-	 (clear c) (clear b) (handempty))
-  (:goal (and (on b c) (on a b))))

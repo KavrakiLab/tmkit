@@ -11,9 +11,8 @@
     (error "Symbol mismatch on ~A, required ~A" value required)))
 
 (declaim (inline fold))
-(defun fold (function initial-value sequence)
-  (sycamore::fold function initial-value sequence))
-
+(defun fold (function initial-value sequence &rest more-sequences)
+  (apply #'sycamore::fold function initial-value sequence more-sequences))
 
 (defmacro or-compare-2 (compare-exp-1 compare-exp-2)
   "Short-circuit evaluatation of arguments, returning the first one that is nonzero."
@@ -48,8 +47,22 @@
          (string (helper a b))))
       (string (helper a b)))))
 
+(defun bit-vector-compare (a b)
+  "Compare bitvectors `A' and `B'."
+  (declare (type simple-bit-vector a b)
+           (optimize (speed 3) (safety 0)))
+  (let* ((n-a (length a))
+         (n-b (length b)))
+    (or-compare (fixnum-compare n-a n-b)
+                (let ((i (mismatch a b)))
+                  (if i
+                      (let ((x (aref a i))
+                            (y (aref b i)))
+                        (- x y))
+                      0)))))
 
 (defun fixnum-compare (a b)
+  "Compare two fixnums"
   (declare (type fixnum a b))
   (cond ((< a b) -1)
         ((> a b) 1)

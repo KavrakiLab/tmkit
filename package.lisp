@@ -1,3 +1,3 @@
 (defpackage :tmsmt
-  (:use :cl :alexandria)
+  (:use :cl :alexandria :sycamore)
   )
