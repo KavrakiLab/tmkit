@@ -45,7 +45,8 @@
   effect)
 
 (defstruct concrete-state
-  (bits (make-array 0 :element-type 'bit)))
+  (bits (make-array 0 :element-type 'bit))
+  exp)
 
 (defun concrete-state-compare (a b)
   (let* ((a-bits (concrete-state-bits a))
@@ -70,6 +71,9 @@
     (assert i)
     i))
 
+(defun state-vars-ref (state-vars i)
+  (nth i state-vars))
+
 (defun state-vars-size (state-vars)
   (length state-vars))
 
@@ -81,7 +85,10 @@
     (dolist (var false-bits)
       (setf (aref bits (state-vars-index state-vars var))
             0))
-    (make-concrete-state :bits bits)))
+    (make-concrete-state :bits bits
+                         :exp `(and ,@true-bits
+                                    ,@(loop for var in false-bits
+                                         collect `(not ,var))))))
 
 (defun concrete-state-translate-exp (exp state-vars)
   "Return a lambda expression that evaluates `EXP'."
@@ -128,7 +135,15 @@
                       (destructure-concrete-effect exp)
                     `(setf (aref ,new-bits ,(state-vars-index state-vars var))
                            ,(if sign 1 0)))))
-         (make-concrete-state :bits ,new-bits)))))
+         (make-concrete-state :bits ,new-bits
+                              ;; TODO: this could be better
+                              :exp (list 'and
+                                         ,@(loop
+                                              for i below (state-vars-size state-vars)
+                                              for v = (state-vars-ref state-vars i)
+                                              collect `(if (zerop (aref ,new-bits ,i))
+                                                           (list 'not ',v)
+                                                           ',v))))))))
 
 (defun concrete-state-compile-effect (effect state-vars)
   "Return a compiled lambda expression that creates a new state with `EFFECT' set."
@@ -217,7 +232,7 @@
 
 
 (defun smt-plan-encode (state-vars concrete-actions
-                        initial-true initial-false
+                        initial-state
                         goal
                         steps)
   (let* ((smt-statements nil)
@@ -240,10 +255,7 @@
             (declare-step v ))))
 
       ;; initial state
-      (dolist (p initial-true)
-        (stmt (smt-assert (format-state-variable p 0))))
-      (dolist (p initial-false)
-        (stmt (smt-assert (smt-not (format-state-variable p 0)))))
+      (stmt (smt-assert (rewrite-exp initial-state 0)))
       ;; goal state
       (stmt (smt-assert (rewrite-exp goal steps)))
       ;; operator encodings
@@ -287,6 +299,7 @@
                     concrete-actions
                     initial-true
                     initial-false
+                    initial-state
                     goal
                     (steps 1)
                     (max-steps 10))
@@ -299,15 +312,19 @@
          (concrete-actions (or concrete-actions
                                (smt-concrete-actions (operators-actions operators)
                                                       (facts-objects facts))))
-         (initial-true (or initial-true (facts-init facts)))
-         (initial-false (or initial-false
-                            (set-difference  state-vars initial-true :test #'equal)))
+         (initial-true (unless initial-state (or initial-true (facts-init facts))))
+         (initial-false (unless initial-state (or initial-false
+                                                  (set-difference  state-vars initial-true :test #'equal))))
+         (initial-state (or initial-state
+                            `(and ,@initial-true
+                                  ,@(loop for v in initial-false collect `(not ,v)))))
+
          (goal (or goal (facts-goal facts))))
     (labels ((rec (steps)
                (multiple-value-bind (assignments is-sat)
                    (multiple-value-bind (stmts vars)
                        (smt-plan-encode state-vars concrete-actions
-                                        initial-true initial-false
+                                        initial-state
                                         goal
                                         steps)
                      (smt-run stmts vars))
@@ -321,9 +338,15 @@
 
 
 (defun plan-automaton (&key operators facts)
+  ;; 1. Generate Plan
+  ;; 2. Identify states with uncontrollable actions
+  ;; 3. If uncontrollable effect is outside automata states,
+  ;;    recursively solve from effect state back to automaton
+  ;;    3.a If no recursive solution, restart with constraint to avoid
+  ;;    the uncontrollable precondition state.
+  ;; 4. When no deviating uncontrollable effects, return the automaton
   (let* ((operators (load-operators operators))
          (facts (load-facts facts))
-         (smt-statements nil)
          (state-vars (create-state-variables (operators-predicates operators)
                                               (facts-objects facts)))
          (controllable-actions (loop for a in (operators-actions operators)
@@ -344,46 +367,85 @@
                                             (let ((key (cons (string (concrete-action-name action))
                                                              (map 'list #'string
                                                                   (concrete-action-actual-arguments action)))))
-
-                                              (print key)
                                               (setf (gethash key hash)
                                                     (concrete-state-compile-effect (concrete-action-effect action)
                                                                                    state-vars))
                                               hash))
                                           (make-hash-table :test #'equal)
-                                          concrete-controllable))
-         (step-ops))
-    ;(labels ((rec (start automata-states automata-edges)
-
-    ;; 0. Generate Initial Plan
-    (labels ((add-plan (states edges start plan))
-             (controllable-effect (state action)
+                                          concrete-controllable)))
+    (labels ((controllable-effect (state action)
+               ;; find the successor concrete state
                (funcall (gethash action controllable-effects-hash)
                         state))
              (plan-states (start plan)
-               (loop for a in plan
-                  for s = (controllable-effect start a) then (controllable-effect s a)
-                    collect s)))
-      (let ((plan-0 (smt-plan :state-vars state-vars :concrete-actions concrete-controllable
-                              :initial-true (facts-init facts) :goal (facts-goal facts)))
-            (concrete-start (concrete-state-create (facts-init facts)
-                                                   (set-difference state-vars (facts-init facts) :test #'equal)
-                                                   state-vars)))
-        (values plan-0 concrete-start
-                (map 'list (lambda (s) (concrete-state-decode s state-vars))
-                     (plan-states concrete-start plan-0)))
-      ;(values plan-0 concrete-start)
-      )
-
-  ;; 1. Generate Plan
-  ;; 2. Identify states with uncontrollable actions
-  ;; 3. If uncontrollable effect is outside automata states,
-  ;;    recursively solve from effect state back to automaton
-  ;;    3.a If no recursive solution, restart with constraint to avoid
-  ;;    the uncontrollable precondition state.
-  ;; 4. When no deviating uncontrollable effects, return the automaton
-
+               ;; collect list of concrete states in the plan
+               (cons start
+                     (loop for a in plan
+                        for s = (controllable-effect start a) then (controllable-effect s a)
+                        collect s)))
+             (add-edge (edges s0 a s1)
+               (cons (list s0 a s1) edges))
+             (merge-plan (states edges plan-actions plan-states)
+               ;; add concrete states and edges to the plan automaton
+               (assert (not (tree-set-member-p states (car plan-states))))
+               (setq states (tree-set-insert states (car plan-states)))
+               (loop
+                  for a in plan-actions
+                  for rest-states on plan-states
+                  for s0 = (first rest-states)
+                  for s1 = (second rest-states)
+                  do (setq states (tree-set-insert states s1)
+                           edges (add-edge edges s0 a s1)))
+               (values states edges))
+             (fix-plan (states edges plan-states)
+               ;; TODO: recursively fix the plan
+               (dolist (s0 plan-states)
+                 (loop
+                    for u-pre in uncontrollable-preconditions
+                    for u-eff in uncontrollable-effects
+                    for u-a in concrete-uncontrollable
+                    when (funcall u-pre s0)
+                    do
+                      (let ((s1 (funcall u-eff s0)))
+                        (setq edges (add-edge edges
+                                              s0
+                                              (cons (concrete-action-name u-a)
+                                                    (concrete-action-actual-arguments u-a))
+                                              s1))
+                        (unless (tree-set-member-p states s1)
+                          (multiple-value-setq (states edges)
+                            (rec-plan states edges s1))))))
+               (values states edges))
+             (rec-plan (states edges start &optional goal)
+               (let* ((goal-exp (or goal
+                                    (cons 'or
+                                          (map-tree-set 'list #'concrete-state-exp states))))
+                      (start-exp (concrete-state-exp start))
+                      (plan-actions (smt-plan :state-vars state-vars :concrete-actions concrete-controllable
+                                              :initial-state start-exp :goal goal-exp))
+                      (plan-states (plan-states start plan-actions)))
+                 (multiple-value-bind (states edges)
+                     (merge-plan states edges plan-actions plan-states)
+                   (fix-plan states edges plan-states)))))
+      (let ((start (concrete-state-create (facts-init facts)
+                                          (set-difference state-vars (facts-init facts) :test #'equal)
+                                          state-vars)))
+        (multiple-value-bind (states edges)
+            (rec-plan (make-tree-set #'concrete-state-compare)
+                      nil
+                      start
+                      (facts-goal facts))
+          ;; TODO: collect accept states
+          (values states edges start nil)))
     )))
+
+(defun plan-automata-dot (edges start goal)
+  (let ((edge-list (map 'list (lambda (e) (list (concrete-state-exp (first e))
+                                                (second e)
+                                                (concrete-state-exp (third e))))
+                                 edges))
+        (start-exp  (concrete-state-exp start)))
+    (mg::fa-pdf (mg:make-fa edge-list start-exp goal))))
 
 ;; (defun smt-print-exp (sexp &optional (stream *standard-output*))
 ;;   (etypecase sexp
