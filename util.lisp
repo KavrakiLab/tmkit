@@ -113,3 +113,7 @@
        (atom 1)
        (list (or-compare (gsymbol-compare (car a) (car b))
                          (gsymbol-compare (cdr a) (cdr b))))))))
+
+
+(defun strcat (&rest args)
+  (apply #'concatenate 'string (map 'list #'string args)))

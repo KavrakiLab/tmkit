@@ -445,7 +445,7 @@
                                                 (concrete-state-exp (third e))))
                                  edges))
         (start-exp  (concrete-state-exp start)))
-    (mg::fa-pdf (mg:make-fa edge-list start-exp goal))))
+    (mg::fa-dot (mg:make-fa edge-list start-exp goal) :output "/tmp/dot.pdf" :rankdir "TB" )))
 
 ;; (defun smt-print-exp (sexp &optional (stream *standard-output*))
 ;;   (etypecase sexp

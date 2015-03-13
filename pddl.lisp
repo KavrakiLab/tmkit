@@ -84,3 +84,21 @@
            (setf (facts-goal facts)
                  goal))))
       facts)))
+
+
+
+(defun pddl-print (exp &optional (stream *standard-output*))
+  ;; Use the lisp printer to pretty print the expressions, then fixup
+  ;; the output with some regular expressions
+  (let* ((cl-string (with-output-to-string (s)
+                      (print exp s)))
+         ;; eat CL case quotes
+         (string-0 (ppcre:regex-replace-all "\\|([\\w\\-]+)\\|"
+                                                cl-string
+                                                "\\1"))
+         ;; eat string quotes
+         (string-1 (ppcre:regex-replace-all "\"([\\w\\-]+)\""
+                                                string-0
+                                                "\\1")))
+    (princ string-1 stream))
+  nil)
