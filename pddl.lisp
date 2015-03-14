@@ -99,6 +99,11 @@
          ;; eat string quotes
          (string-1 (ppcre:regex-replace-all "\"([\\w\\-]+)\""
                                                 string-0
-                                                "\\1")))
-    (princ string-1 stream))
+                                                "\\1"))
+         ;; replace NILs with ()
+         (string-2 (ppcre:regex-replace-all "([\\s\\(\\)])NIL([\\s\\(\\)])"
+                                            string-1
+                                            "\\1()\\2")))
+    (princ (string-downcase (substitute #\- #\_ string-2))
+           stream))
   nil)

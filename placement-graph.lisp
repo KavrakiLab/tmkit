@@ -32,20 +32,33 @@
 (defun placement-graph-facts (edges
                               &key
                                 (robot-start "B__0")
-                                location-alist ; (list (label . location))
+                                location-alist ; (list (label . locations))
                                 object-alist   ; (list (object . start))
                                 goal-location
                                 )
-  `(define (problem scene)
-       (:domain graph)
-     (:objects ,@(map 'list #'car object-alist)
-     (:init (hand-empty)
-            (strcat "ROBOT-AT-" robot-start)
-            ,@(loop for (object . surface) in object-alist
-                 nconc
-                   (list
-                    (list (strcat "FULL-" surface))
-                    (list (strcat "AT-" surface) object)))))))
+  (let ((objs (map 'list #'car object-alist)))
+    `(define (problem scene)
+         (:domain graph)
+       (:objects ,@objs)
+       (:init (hand-empty)
+              ,(list (strcat "ROBOT-ON-" robot-start))
+              ,@(loop for (object . surface) in object-alist
+                   nconc
+                     (list
+                      (list (strcat "FULL-" surface))
+                      (list (strcat "ON-" surface) object))))
+       ;; (:goal (and ,@(loop for object in objs
+       ;;                  for location in (cdr (assoc goal-location location-alist))
+       ;;                  collect
+       ;;                    (list (strcat "ON-" location) object))))
+
+       (:goal (and ,@(loop for object in objs
+                        collect
+                          `(or ,@(loop for location in (cdr (assoc goal-location location-alist))
+                                    collect
+                                      (list (strcat "ON-" location) object))))))
+      )
+     ))
 
 
 (defun placement-graph-domain (edges)
@@ -61,57 +74,61 @@
             (push a
                   (gethash b block-map nil)))))
     ;; create actions
-    (labels ((pred-robot-at (base)
-               (list (strcat "ROBOT-AT-" base)))
+    (labels ((pred-robot-on (base)
+               (list (strcat "ROBOT-ON-" base)))
              (pred-full (s)
                (list (strcat "FULL-" s)))
-             (pred-at-x (surface obj)
-               (list (strcat "AT-" surface) obj))
+             (pred-on-x (surface obj)
+               (list (strcat "ON-" surface) obj))
              (pred-holding (obj)
                (list 'holding obj))
              (preds-blocked-empty (surface)
                (loop for s in (gethash surface block-map)
                   collect  `(not ,(pred-full s))))
              (add-predicate (pred)
-               (setf (gethash pred predicates) t)))
+               (setf (gethash pred predicates) t))
+             (transit-action (src dst)
+               `(:action ,(strcat "TRANSIT-" src "-" dst)
+                         :parameters ()
+                         :precondition ,(pred-robot-on src)
+                         :effect (and (not ,(pred-robot-on src))
+                                      ,(pred-robot-on dst)))))
       ;; predicates
       (add-predicate (pred-holding '?obj))
       (add-predicate '(hand-empty))
       (dolist (e edges)
         (destructuring-case e
           ((:base src dst)
-           (add-predicate (pred-robot-at dst))
-           (add-predicate (pred-robot-at src)))
+           (add-predicate (pred-robot-on dst))
+           (add-predicate (pred-robot-on src)))
           ((:surface base surface)
            (add-predicate (pred-full surface))
-           (add-predicate (pred-at-x surface '?obj))
-           (add-predicate (pred-robot-at base)))))
+           (add-predicate (pred-on-x surface '?obj))
+           (add-predicate (pred-robot-on base)))))
         ;; actions
         (setq actions
               (loop for e in edges
                  nconc
                    (destructuring-case e
-                     ((:base src dst)
-                      `((:action ,(strcat "TRANSIT-" src "-" dst)
-                                 :precondition ,(pred-robot-at src)
-                                 :effect (and (not ,(pred-robot-at src))
-                                              ,(pred-robot-at dst)))))
+                     ((:base a b)
+                      (list (transit-action a b)
+                            (transit-action b a)))
                      ((:surface base surface)
                       `((:action ,(strcat "PICK-" base "-" surface)
                                  :parameters (?obj)
-                                 :precondition (and ,(pred-robot-at base)
+                                 :precondition (and ,(pred-robot-on base)
                                                     ,(pred-full surface) ;; this precondition is redundant
-                                                    ,(pred-at-x surface '?obj)
+                                                    ,(pred-on-x surface '?obj)
                                                     (hand-empty)
                                                     ,@(preds-blocked-empty surface))
                                  :effect (and (not ,(pred-full surface))
-                                              (not ,(pred-at-x surface '?obj))
+                                              (not ,(pred-on-x surface '?obj))
                                               (not (hand-empty))
                                               ,(pred-holding '?obj))
                                  )
                         (:action ,(strcat "PLACE-" base "-" surface)
                                  :parameters (?obj)
-                                 :precondition (and ,(pred-robot-at base)
+                                 :precondition (and ,(pred-robot-on base)
                                                     (not ,(pred-full surface))
                                                     ,(pred-holding '?obj)
                                                     (not (hand-empty))  ;; redundant precondition
@@ -119,7 +136,9 @@
                                  :effect (and ,(pred-full surface)
                                               (hand-empty)
                                               (not ,(pred-holding '?obj))
-                                              ,(pred-at-x surface '?obj))))))))
+                                              ,(pred-on-x surface '?obj)))))
+
+                     )))
         `(define (domain graph)
              (:predicates ,@(hash-table-keys predicates))
            ,@actions)
