@@ -1,39 +1,60 @@
 (in-package :tmsmt)
 
-(defun smt-subst (stmts)
-  "Replace upcased CL symbols with properly-cased SMT-Lib symbols"
-  (sublis '((or     .  |or|)
-            (not    .  |not|)
-            (ite    .  |ite|)
-            (assert .  |assert|)
-            (bool   .  |Bool|)
-            (and    .  |and|))
-          stmts))
+;; (defun smt-subst (stmt)
+;;   "Replace upcased CL symbols with properly-cased SMT-Lib symbols"
+;;   (sublis '((or     .  |or|)
+;;             (not    .  |not|)
+;;             (ite    .  |ite|)
+;;             (assert .  |assert|)
+;;             (bool   .  |Bool|)
+;;             (and    .  |and|)
+;;             (nil    .  "()"))
+;;           stmts))
+
+;(defun smt-subst-atom (stmt)
+
+(defun smt-subst (s)
+  (etypecase s
+    (cons (destructuring-bind (op &rest args) s
+              (cons (smt-subst op)
+                    (loop for s in args
+                       collect (smt-subst s)))))
+    (null "()")
+    (symbol
+     (case s
+       (or        '|or|)
+       (not       '|not|)
+       (ite       '|ite|)
+       (assert    '|assert|)
+       (bool      '|Bool|)
+       (and       '|and|)
+       (otherwise s)))
+    (string s)
+    (number s)))
+
+
+(defun smt-print-1 (stmt &optional (stream *standard-output*))
+  (destructuring-case stmt
+    ((comment x)
+     (format stream "~&;; ~A" x))
+    ((t &rest ignore)
+     (declare (ignore ignore))
+     (write (smt-subst stmt)
+            :escape nil
+            :gensym nil
+            :pretty nil
+            :length nil
+            :level nil
+            :lines nil
+            :stream stream))))
 
 (defun smt-print (stmts &optional (stream *standard-output*))
-  ;; Use the lisp printer to pretty print the expressions, then fixup
-  ;; the output with some regular expressions
-  (let* ((cl-string (with-output-to-string (s)
-                      (dolist (e (smt-subst stmts))
-                        (destructuring-case e
-                          ((comment x)
-                           (format s "~&;; ~A" x))
-                          ((t &rest ignore)
-                           (declare (ignore ignore))
-                           (print e s))))))
-         ;; eat CL case quotes
-         (smt-string-0 (ppcre:regex-replace-all "\\|([\\w\\-]+)\\|"
-                                                cl-string
-                                                "\\1"))
-         ;; eat string quotes
-         (smt-string-1 (ppcre:regex-replace-all "\"([\\w\\-]+)\""
-                                                smt-string-0
-                                                "\\1"))
-         ;; replace NILs with ()
-         (smt-string-2 (ppcre:regex-replace-all "([\\s\\(\\)])NIL([\\s\\(\\)])"
-                                                smt-string-1
-                                                "\\1()\\2")))
-    (princ smt-string-2 stream))
+  (let ((str
+         (with-output-to-string (stream)
+           (dolist (s stmts)
+             (smt-print-1 s stream)
+             (terpri stream)))))
+    (write-sequence str stream))
   nil)
 
 

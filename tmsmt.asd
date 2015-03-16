@@ -6,4 +6,5 @@
                (:file "smtlib" :depends-on ("util"))
                (:file "expression" :depends-on ("util"))
                (:file "pddl" :depends-on ("util"))
+               (:file "placement-graph" :depends-on ("pddl"))
                (:file "planner" :depends-on ("util" "expression" "pddl" "smtlib"))))

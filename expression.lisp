@@ -1,6 +1,7 @@
 (in-package :tmsmt)
 
 (defun apply-rewrite-exp (function exp)
+  (declare (type function function))
   (etypecase exp
     (atom (funcall function exp))
     (list

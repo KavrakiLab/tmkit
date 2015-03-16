@@ -117,3 +117,14 @@
 
 (defun strcat (&rest args)
   (apply #'concatenate 'string (map 'list #'string args)))
+
+
+(defun eat-quotes (string)
+  ;; TODO: match quote type
+  (ppcre:regex-replace-all "[\\|\"]([\\w\\-]+)[\\|\"]"
+                           string
+                           "\\1"))
+(defun nil->parens (string)
+  (ppcre:regex-replace-all "([\\s\\(\\)])NIL([\\s\\(\\)])"
+                           string
+                           "\\1()\\2"))
