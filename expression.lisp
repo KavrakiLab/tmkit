@@ -40,3 +40,6 @@
           (exp-variables exp set))
         (sycamore:make-tree-set #'exp-variable-compare)
         exps))
+
+(defun exp-variables-list (exp)
+  (tree-set-list (exp-variables exp)))
