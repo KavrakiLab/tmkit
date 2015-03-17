@@ -143,3 +143,96 @@
              (:predicates ,@(hash-table-keys predicates))
            ,@actions)
         )))
+
+
+(defun placement-graph-domain-2 (edges)
+  (let ((block-map (make-hash-table :test #'equal))
+        (predicates (make-hash-table :test #'equal))
+        (locations (make-hash-table :test #'equal))
+        (actions))
+    ;; collect blocking nodes
+    (loop for e in edges
+       do
+         (destructuring-case e
+           ;; TODO: does a block b or does b block a?
+           ((:block a b)
+            (push a
+                  (gethash b block-map nil)))))
+    ;; collect locations nodes
+    (loop for e in edges
+       do
+         (destructuring-case e
+           ((:surface base surface)
+            (declare (ignore base))
+            (setf (gethash surface locations)
+                  t))))
+    ;; create actions
+    (labels ((pred-full (s)
+               (list (strcat "FULL-" s)))
+             (pred-on-x (surface obj)
+               (list (strcat "ON-" surface) obj))
+             (preds-blocked-empty (surface)
+               (loop for s in (gethash surface block-map)
+                  collect  `(not ,(pred-full s))))
+             (add-predicate (pred)
+               (setf (gethash pred predicates) t)))
+      ;; predicates
+      (dolist (e edges)
+        (destructuring-case e
+          ((:surface base surface)
+           (declare (ignore base))
+           (add-predicate (pred-full surface))
+           (add-predicate (pred-on-x surface '?obj)))))
+        ;; actions
+      (print (hash-table-keys locations))
+      (setq actions
+            (loop for loc-1 in (hash-table-keys locations)
+               append (loop for loc-2 in (hash-table-keys locations)
+                         unless (equal loc-1 loc-2)
+                         collect
+                           `(:action ,(strcat "transfer-" loc-1 "-" loc-2)
+                                     :parameters (?obj)
+                                     :precondition (and ,(pred-full loc-1) ;; this precondition is redundant
+                                                        ,(pred-on-x loc-1 '?obj)
+                                                        (not ,(pred-full loc-2))
+                                                        ,@(preds-blocked-empty loc-1)
+                                                        ,@(preds-blocked-empty loc-2))
+                                     :effect (and (not ,(pred-full loc-1))
+                                                  (not ,(pred-on-x loc-1 '?obj))
+                                                  ,(pred-full loc-2)
+                                                  ,(pred-on-x loc-2 '?obj))))))
+        `(define (domain graph)
+             (:predicates ,@(hash-table-keys predicates))
+           ,@actions)
+        )))
+
+(defun placement-graph-facts-2 (edges
+                              &key
+                                (robot-start "B__0")
+                                location-alist ; (list (label . locations))
+                                object-alist   ; (list (object . start))
+                                goal-location
+                                )
+  (let ((objs (map 'list #'car object-alist)))
+    `(define (problem scene)
+         (:domain graph)
+       (:objects ,@objs)
+       (:init ;(hand-empty)
+              ;,(list (strcat "ROBOT-ON-" robot-start))
+              ,@(loop for (object . surface) in object-alist
+                   nconc
+                     (list
+                      (list (strcat "FULL-" surface))
+                      (list (strcat "ON-" surface) object))))
+       ;; (:goal (and ,@(loop for object in objs
+       ;;                  for location in (cdr (assoc goal-location location-alist))
+       ;;                  collect
+       ;;                    (list (strcat "ON-" location) object))))
+
+       (:goal (and ,@(loop for object in objs
+                        collect
+                          `(or ,@(loop for location in (cdr (assoc goal-location location-alist))
+                                    collect
+                                      (list (strcat "ON-" location) object))))))
+      )
+     ))
