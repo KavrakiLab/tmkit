@@ -14,14 +14,14 @@
 
 
 (defun format-state-variable (predicate step)
-  (format nil "~{~A~^_~}_~D" predicate step))
+  (smt-mangle-list `(,@predicate ,step)))
 
 (defun format-op (op args step)
-  (format nil "~A_~{~A~^_~}_~D" op args step))
+  (smt-mangle-list `(,op ,@args ,step)))
 
 (defun unmangle-op (mangled)
-  (let ((list (ppcre:split "_" mangled)))
-    (cons (parse-integer (lastcar list))
+  (let ((list (smt-unmangle mangled)))
+    (cons (lastcar list)
           (loop for x on list
              for a = (car x)
              when (cdr x)
