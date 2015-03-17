@@ -69,6 +69,11 @@
 (defun smt-declare-fun (name args type)
   (list '|declare-fun| (smt-ident name) args type))
 
+(defun smt-define-fun (name args type body)
+  (list* '|define-fun| (smt-ident name) args type
+         body))
+
+
 (defun smt-not (x)
   (list 'not x))
 

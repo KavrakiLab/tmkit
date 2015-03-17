@@ -230,7 +230,6 @@
                                        collect (format-concrete-action op step))))))))
 
 
-
 (defun smt-plan-encode (state-vars concrete-actions
                         initial-state
                         goal
@@ -243,11 +242,13 @@
                (stmt (smt-declare-fun  x () 'bool))))
       ;; per-step state variables
       ;; create the per-step state
+      (stmt (smt-comment "State Variables"))
       (dotimes (i (1+ steps))
         (dolist (v state-vars)
           (declare-step (format-state-variable v i))))
 
       ;; per-step action variables
+      (stmt (smt-comment "Action Variables"))
       (dotimes (i steps)
         (dolist (op concrete-actions)
           (let ((v (format-concrete-action op i)))
@@ -255,10 +256,13 @@
             (declare-step v ))))
 
       ;; initial state
+      (stmt (smt-comment "Initial State"))
       (stmt (smt-assert (rewrite-exp initial-state 0)))
       ;; goal state
+      (stmt (smt-comment "Goal State"))
       (stmt (smt-assert (rewrite-exp goal steps)))
       ;; operator encodings
+      (stmt (smt-comment "Operators"))
       (dotimes (i steps)
         (dolist (op concrete-actions)
           (stmt (smt-assert `(or (not ,(format-op (concrete-action-name op)
@@ -269,17 +273,71 @@
 
 
       ;; exclusion axioms
+      (stmt (smt-comment "Exclusion Axioms"))
+      (let ((ops (loop for i from 0 below (length concrete-actions)
+                    collect (format nil "o~D" i ))))
+        (stmt (smt-define-fun "exclude-1"
+                              (loop for o in ops
+                                 collect (list o 'bool))
+                              'bool
+                              (list  `(=> ,(car ops)
+                                          (and ,@(loop for b in (cdr ops)
+                                                    collect (list 'not b)))))))
+        (stmt (smt-define-fun "exclude-step"
+                              (loop for o in ops
+                                 collect (list o 'bool))
+                              'bool
+                              (list  `(and ,@(loop for op-a in ops
+                                                collect `("exclude-1" ,op-a ,@(remove op-a ops))))))))
+
       (dotimes (i steps)
-        (dolist (op concrete-actions)
-          (stmt (smt-assert `(=> ,(format-op (concrete-action-name op)
-                                             (concrete-action-actual-arguments op)
-                                             i)
-                                 (and ,@(loop for other-op in concrete-actions
-                                           unless (eq op other-op)
-                                           collect `(not ,(format-op (concrete-action-name other-op)
-                                                                     (concrete-action-actual-arguments other-op)
-                                                                     i)))))))))
+        (let ((ops (loop for op in concrete-actions
+                      collect (format-op (concrete-action-name op)
+                                         (concrete-action-actual-arguments op)
+                                         i))))
+          (stmt (smt-assert `("exclude-step" ,@ops)))))
+
+      ;; (dotimes (i steps)
+      ;;   (let ((ops (loop for op in concrete-actions
+      ;;                 collect (format-op (concrete-action-name op)
+      ;;                                    (concrete-action-actual-arguments op)
+      ;;                                    i))))
+      ;;     (dolist (op-a ops)
+      ;;       (stmt (smt-assert `("exclude-1" ,op-a ,@(remove op-a ops)))))))
+
+      ;; (dotimes (i steps)
+      ;;   (loop for ops on concrete-actions
+      ;;      for op0 = (car ops)
+      ;;      do (dolist (op1 (cdr ops))
+      ;;           (stmt (smt-assert `(or (not ,(format-op (concrete-action-name op0)
+      ;;                                                   (concrete-action-actual-arguments op0) i))
+      ;;                                  (not ,(format-op (concrete-action-name op1)
+      ;;                                                   (concrete-action-actual-arguments op1)
+      ;;                                                   i))))))))
+
+      ;; (dolist (op concrete-actions)
+      ;;   (stmt
+      ;;    (smt-assert
+      ;;     `(=> ,(format-op (concrete-action-name op)
+      ;;                      (concrete-action-actual-arguments op)
+      ;;                      i)
+      ;;          (and ,@(loop for other-op in concrete-actions
+      ;;                    unless (eq op other-op)
+      ;;                    collect `(not ,(format-op (concrete-action-name other-op)
+      ;;                                              (concrete-action-actual-arguments other-op)
+      ;;                                              i)))))))))
+      ;; (dotimes (i steps)
+      ;;   (loop for ops on concrete-actions
+      ;;      for op0 = (car ops)
+      ;;      do (dolist (op1 (cdr ops))
+      ;;           (stmt (smt-assert `(or (not ,(format-op (concrete-action-name op0)
+      ;;                                                   (concrete-action-actual-arguments op0) i))
+      ;;                                  (not ,(format-op (concrete-action-name op1)
+      ;;                                                   (concrete-action-actual-arguments op1)
+      ;;                                                   i))))))))
+
       ;; frame axioms
+      (stmt (smt-comment "Frame Axioms"))
       (dotimes (i steps)
         (map nil #'stmt (smt-frame-axioms state-vars concrete-actions i))))
     (values (reverse smt-statements)
@@ -320,6 +378,10 @@
                                   ,@(loop for v in initial-false collect `(not ,v)))))
 
          (goal (or goal (facts-goal facts))))
+    ;; (format t "~&ground actions: ~D" (length concrete-actions))
+    ;; (format t "~&ground states: ~D" (length state-vars))
+    ;; ))
+
     (labels ((rec (steps)
                (multiple-value-bind (assignments is-sat)
                    (multiple-value-bind (stmts vars)
