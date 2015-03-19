@@ -1,10 +1,10 @@
 (define (problem asdf)
   (:domain itmp)
-  (:objects cup0 - cup cup1 - cup
+  (:objects cup0 cup1 - cup
             dripper0 - dripper
-            french-roast - ingredient decaf - ingredient
-            bowl0 - bowl bowl1 - bowl
-            x - location y - location z - location )
+            french-roast decaf - ingredient
+            bowl0 bowl1 - bowl
+            x y z - location )
   (:init (at cup0 x) (occupied x)
          (at cup1 y) (occupied y)
          (at dripper0 z) (occupied z)

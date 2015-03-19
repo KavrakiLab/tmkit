@@ -1,9 +1,12 @@
 (define (domain itmp)
   (:requirements :typing)
-  (:types location
-          cup pitcher bowl - object
+  (:types cup
+          pitcher
+          bowl - object
           dripper - cup
-          ingredient)
+          ingredient
+          location
+          )
   (:predicates (at ?obj - object ?loc - location )
                (occupied ?loc - location)
                (contains ?obj - object ?ingredient)

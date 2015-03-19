@@ -128,3 +128,6 @@
   (ppcre:regex-replace-all "([\\s\\(\\)])NIL([\\s\\(\\)])"
                            string
                            "\\1()\\2"))
+
+(defun hash-table-contains (key hash-table)
+  (nth-value 1 (gethash key hash-table)))
