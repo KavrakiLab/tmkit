@@ -33,8 +33,8 @@
   (let ((vars))
     (dolist (p predicates)
       ;; apply p to all valid arguments
-      (dolist (args (collect-args objects (predicate-arity p)))
-        (push (cons (predicate-name p) args)
+      (dolist (args (collect-args objects (pddl-predicate-arity p)))
+        (push (cons (pddl-predicate-name p) args)
               vars)))
     vars))
 
@@ -168,14 +168,14 @@
   (let ((result))
     (dolist (action actions)
       (dolist (args (collect-args objects
-                                  (length (action-parameters action))))
-        (let ((arg-alist (exp-args-alist (action-parameters action)
+                                  (length (pddl-action-parameters action))))
+        (let ((arg-alist (exp-args-alist (pddl-action-parameters action)
                                          args)))
           (push (make-concrete-action
-                 :name (action-name action)
+                 :name (pddl-action-name action)
                  :actual-arguments args
-                 :precondition (sublis arg-alist (action-precondition action))
-                 :effect (sublis arg-alist (action-effect action)))
+                 :precondition (sublis arg-alist (pddl-action-precondition action))
+                 :effect (sublis arg-alist (pddl-action-effect action)))
                 result))))
     result))
 
@@ -356,25 +356,30 @@
                       (load-operators operators)))
          (facts (when facts (load-facts facts)))
          (state-vars (or state-vars
-                         (create-state-variables (operators-predicates operators)
-                                                 (facts-objects facts))))
+                         (create-state-variables (pddl-operators-predicates operators)
+                                                 (pddl-facts-objects facts))))
          (concrete-actions (or concrete-actions
-                               (smt-concrete-actions (operators-actions operators)
-                                                      (facts-objects facts))))
-         (initial-true (unless initial-state (or initial-true (facts-init facts))))
+                               (smt-concrete-actions (pddl-operators-actions operators)
+                                                      (pddl-facts-objects facts))))
+         (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
          (initial-false (unless initial-state (or initial-false
                                                   (set-difference  state-vars initial-true :test #'equal))))
          (initial-state (or initial-state
                             `(and ,@initial-true
                                   ,@(loop for v in initial-false collect `(not ,v)))))
 
-         (goal (or goal (facts-goal facts))))
-    (format t "~&ground actions: ~D" (length concrete-actions))
-    (format t "~&ground states: ~D" (length state-vars))
+         (goal (or goal (pddl-facts-goal facts)))
+         (n-op (length concrete-actions))
+         (n-var (length state-vars)))
+    (format t "~&ground actions: ~D" n-op)
+    (format t "~&ground states: ~D" n-var)
     ;; ))
 
     (labels ((rec (steps)
-               (format t "~&Trying for ~D steps" steps)
+               (format t "~&Trying for ~D steps (~D vars)"
+                       steps
+                       (+ (* steps n-op)
+                          (* (1+ steps) n-var)))
                (multiple-value-bind (assignments is-sat)
                    (multiple-value-bind (stmts vars)
                        (smt-plan-encode state-vars concrete-actions
@@ -401,14 +406,14 @@
   ;; 4. When no deviating uncontrollable effects, return the automaton
   (let* ((operators (load-operators operators))
          (facts (load-facts facts))
-         (state-vars (create-state-variables (operators-predicates operators)
-                                              (facts-objects facts)))
-         (controllable-actions (loop for a in (operators-actions operators)
-                                   unless (action-uncontrollable a) collect a))
-         (uncontrollable-actions (loop for a in (operators-actions operators)
-                                     when (action-uncontrollable a) collect a))
-         (concrete-controllable (smt-concrete-actions controllable-actions (facts-objects facts)))
-         (concrete-uncontrollable (smt-concrete-actions uncontrollable-actions (facts-objects facts)))
+         (state-vars (create-state-variables (pddl-operators-predicates operators)
+                                              (pddl-facts-objects facts)))
+         (controllable-actions (loop for a in (pddl-operators-actions operators)
+                                   unless (pddl-action-uncontrollable a) collect a))
+         (uncontrollable-actions (loop for a in (pddl-operators-actions operators)
+                                     when (pddl-action-uncontrollable a) collect a))
+         (concrete-controllable (smt-concrete-actions controllable-actions (pddl-facts-objects facts)))
+         (concrete-uncontrollable (smt-concrete-actions uncontrollable-actions (pddl-facts-objects facts)))
          (uncontrollable-preconditions
           (loop for a in concrete-uncontrollable
              collect (concrete-state-compile-exp (concrete-action-precondition a)
@@ -481,14 +486,14 @@
                  (multiple-value-bind (states edges)
                      (merge-plan states edges plan-actions plan-states)
                    (fix-plan states edges plan-states)))))
-      (let ((start (concrete-state-create (facts-init facts)
-                                          (set-difference state-vars (facts-init facts) :test #'equal)
+      (let ((start (concrete-state-create (pddl-facts-init facts)
+                                          (set-difference state-vars (pddl-facts-init facts) :test #'equal)
                                           state-vars)))
         (multiple-value-bind (states edges)
             (rec-plan (make-tree-set #'concrete-state-compare)
                       nil
                       start
-                      (facts-goal facts))
+                      (pddl-facts-goal facts))
           ;; TODO: collect accept states
           (values states edges start nil)))
     )))

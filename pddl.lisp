@@ -1,7 +1,7 @@
 (in-package :tmsmt)
 
 
-(defstruct action
+(defstruct pddl-action
   "A PDDL action"
   name
   parameters
@@ -10,18 +10,18 @@
   effect
   )
 
-(defstruct predicate
+(defstruct pddl-predicate
   "A PDDL predicate"
   name
   arity)
 
-(defstruct operators
+(defstruct pddl-operators
   "A PDDL set of operators"
   name
   predicates
   actions)
 
-(defstruct facts
+(defstruct pddl-facts
   "A PDDL set of facts"
   name
   domain
@@ -32,13 +32,13 @@
 (defun load-operators (filename)
   "Load operators from `FILENAME'."
   (typecase filename
-    (operators filename)
+    (pddl-operators filename)
     ((or string pathname) (parse-operators (load-sexp filename)))))
 
 (defun load-facts (filename)
   "Load facts from `FILENAME'."
   (etypecase filename
-    (facts filename)
+    (pddl-facts filename)
     ((or string pathname) (parse-facts (load-sexp filename)))))
 
 (defun parse-operators (sexp)
@@ -46,21 +46,21 @@
       sexp
     (check-symbol -define :define)
     (check-symbol -domain :domain)
-    (let ((ops (make-operators :name name)))
+    (let ((ops (make-pddl-operators :name name)))
       (dolist (clause clauses)
         (destructuring-ecase clause
           ((:predicates &rest predicates)
-           (setf (operators-predicates ops)
+           (setf (pddl-operators-predicates ops)
                  (loop for p in predicates
                     collect (destructuring-bind (name &rest arguments) p
-                              (make-predicate :name name :arity (length arguments))))))
+                              (make-pddl-predicate :name name :arity (length arguments))))))
           ((:action name &key parameters uncontrollable precondition effect)
-           (push (make-action :name name
+           (push (make-pddl-action :name name
                               :parameters parameters
                               :uncontrollable uncontrollable
                               :precondition precondition
                               :effect effect)
-                 (operators-actions ops)))))
+                 (pddl-operators-actions ops)))))
       ops)))
 
 (defun parse-facts (sexp)
@@ -68,20 +68,20 @@
       sexp
     (check-symbol -define :define)
     (check-symbol -problem :problem)
-    (let ((facts (make-facts :name name)))
+    (let ((facts (make-pddl-facts :name name)))
       (dolist (clause clauses)
         (destructuring-ecase clause
           ((:domain name)
-           (setf (facts-domain facts)
+           (setf (pddl-facts-domain facts)
                  name))
           ((:objects &rest objs)
-           (setf (facts-objects facts)
+           (setf (pddl-facts-objects facts)
                  objs))
           ((:init &rest things)
-           (setf (facts-init facts)
+           (setf (pddl-facts-init facts)
                  things))
           ((:goal goal)
-           (setf (facts-goal facts)
+           (setf (pddl-facts-goal facts)
                  goal))))
       facts)))
 
