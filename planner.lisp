@@ -214,28 +214,26 @@
 
 (defun smt-frame-axioms-exp (state-vars concrete-actions i j)
   ;(print concrete-operators)
-  (let ((hash (make-hash-table :test #'equal))) ;; hash: variable => (list modifiying-operators)
+  (let ((hash (make-hash-table :test #'equal))  ;; hash: variable => (list modifiying-operators)
+        (empty-set (make-tree-set #'gsymbol-compare)))
     ;; note modified variables
     (dolist (op concrete-actions)
-      (dolist (v (concrete-action-modified-variables op))
-        (push op (gethash v hash))))
+      (let ((fmt-op (format-concrete-action op i)))
+        (dolist (v (concrete-action-modified-variables op))
+          (setf (gethash v hash)
+                (tree-set-insert (gethash v hash empty-set)
+                                 fmt-op)))))
     ;; collect axioms
-
-    ;(loop for var in state-vars
-       ;do (print (gethash var hash)))
     (apply #'smt-and
            (loop for var in state-vars
+              for var-i = (format-state-variable var i)
+              for var-j = (format-state-variable var j)
+              for eq = (smt-= var-i var-j)
+              for actions = (tree-set-list (gethash var hash empty-set))
               collect
-                (let ((var-i (format-state-variable var i))
-                      (var-j (format-state-variable var j))
-                      (actions (loop for op in (gethash var hash)
-                                  collect (format-concrete-action op i))))
-                  (if actions
-                      (smt-or `(= ,var-i ,var-j)
-                              (apply #'smt-or actions))
-                      `(= ,var-i ,var-j)))))))
-
-
+                (if actions
+                    (smt-or eq (apply #'smt-or actions))
+                    eq)))))
 
 (defun smt-frame-axioms (state-vars concrete-actions step)
   (smt-assert (smt-frame-axioms-exp state-vars concrete-actions step (1+ step))))
