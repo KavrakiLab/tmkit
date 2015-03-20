@@ -4,12 +4,14 @@
 ;;; ENCODING,
 ;;;  - PDDL Objects are state variables
 
-(defun collect-args (objects arity)
-  (if (zerop arity)
+(defun collect-args (typed-list type-map)
+  (if (null typed-list)
       (list nil)
-      (loop for o in objects
+      (loop
+         with type =  (pddl-typed-type (car typed-list))
+         for o in (tree-set-list (tree-map-find type-map type))
          nconc
-           (loop for args in (collect-args objects (1- arity))
+           (loop for args in (collect-args (cdr typed-list) type-map)
               collect (cons o args)))))
 
 
@@ -28,12 +30,13 @@
              collect
              a))))
 
-(defun create-state-variables (predicates objects)
+(defun create-state-variables (predicates type-map)
   "Create all state variables from `PREDICATES' applied to `OBJECTS'"
   (let ((vars))
     (dolist (p predicates)
       ;; apply p to all valid arguments
-      (dolist (args (collect-args objects (pddl-predicate-arity p)))
+      (dolist (args (collect-args (pddl-predicate-arguments p)
+                                  type-map))
         (push (cons (pddl-predicate-name p) args)
               vars)))
     vars))
@@ -162,13 +165,13 @@
   (loop
      for d in dummy-args
      for a in actual-args
-     collect (cons d a)))
+     collect (cons (pddl-typed-name d) a)))
 
-(defun smt-concrete-actions (actions objects)
+(defun smt-concrete-actions (actions type-map)
   (let ((result))
     (dolist (action actions)
-      (dolist (args (collect-args objects
-                                  (length (pddl-action-parameters action))))
+      (dolist (args (collect-args (pddl-action-parameters action)
+                                  type-map))
         (let ((arg-alist (exp-args-alist (pddl-action-parameters action)
                                          args)))
           (push (make-concrete-action
@@ -223,12 +226,16 @@
     (apply #'smt-and
            (loop for var in state-vars
               collect
-                (smt-or (list '=
-                              (format-state-variable var i)
-                              (format-state-variable var j))
-                        (apply #'smt-or
-                               (loop for op in (gethash var hash)
-                                  collect (format-concrete-action op i))))))))
+                (let ((var-i (format-state-variable var i))
+                      (var-j (format-state-variable var j))
+                      (actions (loop for op in (gethash var hash)
+                                  collect (format-concrete-action op i))))
+                  (if actions
+                      (smt-or `(= ,var-i ,var-j)
+                              (apply #'smt-or actions))
+                      `(= ,var-i ,var-j)))))))
+
+
 
 (defun smt-frame-axioms (state-vars concrete-actions step)
   (smt-assert (smt-frame-axioms-exp state-vars concrete-actions step (1+ step))))
@@ -355,12 +362,14 @@
   (let* ((operators (when operators
                       (load-operators operators)))
          (facts (when facts (load-facts facts)))
+         (type-map (compute-type-map (pddl-operators-types operators)
+                                     (pddl-facts-objects facts)))
          (state-vars (or state-vars
                          (create-state-variables (pddl-operators-predicates operators)
-                                                 (pddl-facts-objects facts))))
+                                                 type-map)))
          (concrete-actions (or concrete-actions
                                (smt-concrete-actions (pddl-operators-actions operators)
-                                                      (pddl-facts-objects facts))))
+                                                      type-map)))
          (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
          (initial-false (unless initial-state (or initial-false
                                                   (set-difference  state-vars initial-true :test #'equal))))
@@ -373,8 +382,6 @@
          (n-var (length state-vars)))
     (format t "~&ground actions: ~D" n-op)
     (format t "~&ground states: ~D" n-var)
-    ;; ))
-
     (labels ((rec (steps)
                (format t "~&Trying for ~D steps (~D vars)"
                        steps
@@ -394,7 +401,6 @@
                         (rec (1+ steps)))
                        (t nil)))))
       (rec steps))))
-
 
 (defun plan-automaton (&key operators facts)
   ;; 1. Generate Plan

@@ -21,9 +21,9 @@
                                           (Cup3 . S__77)
                                           (cup4 . S__46)
                                           (cup5 . S__43)
-                                          (cup6 . S__47)
+                                          (cup6 . S__76)
                                           (cup7 . S__62)
-                                          (cup8 . S__69)
+                                          (cup8 . S__67)
                                           (cup9 . S__63)
                                           )
                           ;:object-alist '((Cup1 . S__82))
@@ -37,3 +37,6 @@
             :facts "/home/ntd/git/tmsmt/pddl/placement-graph/scene-0.pddl"
             :steps 3
             :max-steps 3))
+
+(smt-plan :operators "/home/ntd/git/tmsmt/pddl/itmp/itmp-0.pddl"
+          :facts "/home/ntd/git/tmsmt/pddl/itmp/scene-0.pddl")
