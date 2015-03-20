@@ -131,3 +131,12 @@
 
 (defun hash-table-contains (key hash-table)
   (nth-value 1 (gethash key hash-table)))
+
+
+(defun fixpoint (function initial-value &optional (test #'eql))
+  "Compute the fixpoint of FUNCTION starting from INITIAL-VALUE."
+  (declare (type function function test))
+  (let ((new-value (funcall function initial-value)))
+    (if (funcall test initial-value new-value)
+        initial-value
+        (fixpoint function new-value test))))

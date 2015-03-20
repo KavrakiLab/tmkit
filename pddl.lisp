@@ -90,34 +90,33 @@
 
 (defun compute-type-map (types objects)
   "Find hash-table mapping type to all objects of that type (directly or subtype)"
-  (let ((hash (make-hash-table :test #'equal))
+  (let ((type-map (make-tree-map #'gsymbol-compare))
         (empty-set (make-tree-set #'gsymbol-compare)))
     ;; Add each object to its direct type and t (the top-level type)
     (let ((t-set empty-set))
       (loop for x in objects
          for object-name = (pddl-typed-name x)
          for object-type = (pddl-typed-type x)
-         for d-set = (gethash object-type hash empty-set)
+         for d-set = (tree-map-find type-map object-type empty-set)
          do
-           (setf (gethash object-type hash)
-                 (tree-set-insert d-set object-name))
-           (setq t-set (tree-set-insert t-set object-name)))
-      (setf (gethash t hash) t-set))
+           (setq type-map (tree-map-insert type-map object-type
+                                           (tree-set-insert d-set object-name))
+                 t-set (tree-set-insert t-set object-name)))
+      (setq type-map (tree-map-insert type-map t t-set)))
     ;; Add subtypes sets to their supertype set
     ;; continue until reaching the fixpoint
-    (loop
-       for fixpoint = t
-       do (loop for x in types
-             for type = (pddl-typed-name x)
-             for supertype = (pddl-typed-type x)
-             for type-set = (gethash type hash empty-set)
-             for supertype-set = (gethash supertype hash empty-set)
-             unless (tree-set-subset-p type-set supertype-set)
-             do (setf (gethash supertype hash)
-                      (tree-set-union type-set supertype-set))
-               (setq fixpoint nil))
-       until fixpoint)
-    hash))
+    (fixpoint (lambda (type-map)
+                (fold (lambda (type-map typedef)
+                        (let* ((type (pddl-typed-name typedef))
+                               (supertype (pddl-typed-type typedef))
+                               (type-set (tree-map-find type-map type empty-set))
+                               (supertype-set (tree-map-find type-map supertype  empty-set)))
+                          (if (tree-set-subset-p type-set supertype-set)
+                              type-map
+                              (tree-map-insert type-map supertype
+                                               (tree-set-union type-set supertype-set)))))
+                      type-map types))
+              type-map #'eq)))
 
 (defun parse-predicate (sexp)
   (destructuring-bind (name &rest arg-list) sexp
@@ -180,7 +179,7 @@
                  name))
           ((:objects &rest objs)
            (setf (pddl-facts-objects facts)
-                 objs))
+                 (parse-typed-list objs)))
           ((:init &rest things)
            (setf (pddl-facts-init facts)
                  things))

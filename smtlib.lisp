@@ -100,7 +100,7 @@
   (with-output-to-string (str)
     (labels ((rec (x)
                (etypecase x
-                 (atom (format str "~A~A" +smt-separator+ x))
+                 ((or string symbol number) (format str "~A~A" +smt-separator+ x))
                  (list
                   (format str "~A~A" +smt-separator+ +smt-left-paren+)
                   (rec-list x)
