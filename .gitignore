@@ -1,1 +1,8 @@
 /pddl/placement-graph/*.cnf
+/CMakeCache.txt
+/CTestTestfile.cmake
+/Makefile
+catkin_generated
+/gtest
+/devel
+/cmake_install.cmake
