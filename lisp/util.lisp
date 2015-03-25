@@ -132,7 +132,6 @@
 (defun hash-table-contains (key hash-table)
   (nth-value 1 (gethash key hash-table)))
 
-
 (defun fixpoint (function initial-value &optional (test #'eql))
   "Compute the fixpoint of FUNCTION starting from INITIAL-VALUE."
   (declare (type function function test))
@@ -140,3 +139,26 @@
     (if (funcall test initial-value new-value)
         initial-value
         (fixpoint function new-value test))))
+
+
+(defun print-sexp (sexp symbol-substitute &optional (stream *standard-output*))
+  "Print S-Expression, performing substitution on symbols"
+  (declare (type function symbol-substitute))
+  (write-char #\( stream)
+  (loop
+     with keyword-package = (find-package :keyword)
+     for rest on sexp
+     for first = (car rest)
+     do
+       (etypecase first
+         (cons (print-sexp first symbol-substitute stream))
+         (symbol
+          (let ((first (funcall symbol-substitute first)))
+            (when (eq keyword-package (symbol-package first))
+              (write-char #\: stream))
+            (write-string (string first) stream)))
+         (string (write-string first stream))
+         (fixnum (format stream "~D" first)))
+       (when (cdr rest)
+         (write-char #\space stream)))
+  (write-char #\) stream))

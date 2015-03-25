@@ -1,52 +1,23 @@
 (in-package :tmsmt)
 
-;; (defun smt-subst (stmt)
-;;   "Replace upcased CL symbols with properly-cased SMT-Lib symbols"
-;;   (sublis '((or     .  |or|)
-;;             (not    .  |not|)
-;;             (ite    .  |ite|)
-;;             (assert .  |assert|)
-;;             (bool   .  |Bool|)
-;;             (and    .  |and|)
-;;             (nil    .  "()"))
-;;           stmts))
-
-;(defun smt-subst-atom (stmt)
-
-(defun smt-subst (s)
-  (etypecase s
-    (cons (destructuring-bind (op &rest args) s
-              (cons (smt-subst op)
-                    (loop for s in args
-                       collect (smt-subst s)))))
-    (null "()")
-    (symbol
-     (case s
-       (or        '|or|)
-       (not       '|not|)
-       (ite       '|ite|)
-       (assert    '|assert|)
-       (bool      '|Bool|)
-       (and       '|and|)
-       (otherwise s)))
-    (string s)
-    (number s)))
-
-
 (defun smt-print-1 (stmt &optional (stream *standard-output*))
   (destructuring-case stmt
     ((comment x)
      (format stream "~&;; ~A" x))
     ((t &rest ignore)
      (declare (ignore ignore))
-     (write (smt-subst stmt)
-            :escape nil
-            :gensym nil
-            :pretty nil
-            :length nil
-            :level nil
-            :lines nil
-            :stream stream))))
+     (flet ((symbol-substitute (s)
+              (if s
+                  (case s
+                    (or        '|or|)
+                    (not       '|not|)
+                    (ite       '|ite|)
+                    (assert    '|assert|)
+                    (bool      '|Bool|)
+                    (and       '|and|)
+                    (otherwise s))
+                  '|()|)))
+     (print-sexp stmt #'symbol-substitute stream)))))
 
 (defun smt-print (stmts &optional (stream *standard-output*))
   (let ((str
