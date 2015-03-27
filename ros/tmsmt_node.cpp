@@ -120,6 +120,8 @@ int main(int argc, char **argv)
         const robot_state::JointModelGroup* joint_model_group = start_state.getJointModelGroup(req.group_name);
         {
             std::vector<double> joint_values(7, 0.0);
+
+            joint_values[0] = -0.5;
             start_state.setJointGroupPositions(joint_model_group, joint_values);
         }
         req.start_state.joint_state.name =  start_state.getVariableNames();
@@ -138,8 +140,8 @@ int main(int argc, char **argv)
     {
         std::vector<double> joint_values(7, 0.0);
         joint_values[0] = 0.5;
-        joint_values[3] = 0.1;
-        joint_values[5] = 0.1;
+        joint_values[3] = 0.5;
+        joint_values[5] = 0.5;
         goal_state.setJointGroupPositions(joint_model_group, joint_values);
     }
     moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state, joint_model_group);
@@ -158,7 +160,7 @@ int main(int argc, char **argv)
     }
 
     /************/
-    /** Result **/
+    /*  Result  */
     /************/
     moveit_msgs::MotionPlanResponse res_msg;
     res.getMessage(res_msg);
@@ -175,6 +177,19 @@ int main(int argc, char **argv)
          }
          printf("\n");
     }
+
+    /***************/
+    /*  Visualize  */
+    /***************/
+    ros::Publisher display_publisher = node_handle.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+    moveit_msgs::DisplayTrajectory display_trajectory;
+
+    ROS_INFO("Visualizing plan 1 (again)");
+    display_trajectory.trajectory_start = res_msg.trajectory_start;
+    display_trajectory.trajectory.push_back(res_msg.trajectory);
+    display_publisher.publish(display_trajectory);
+    /* Sleep to give Rviz time to visualize the plan. */
+    sleep(5.0);
 
     return 0;
 }
