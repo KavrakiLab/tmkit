@@ -1,0 +1,14 @@
+<launch>
+  <param name="robot_description_semantic" textfile="$(find baxter_moveit_config)/config/baxter.srdf" />
+  <param name="robot_description" textfile="$(find baxter_description)/urdf/baxter.urdf"/>
+
+  <!-- <group ns="robot_description_kinematics"> -->
+  <!--   <rosparam command="load" file="$(find baxter_moveit_config)/config/kinematics.yaml"/> -->
+  <!-- </group> -->
+
+  <node name="cnode" pkg="tmsmt" type="tmsmt_node" output="screen" respawn="false">
+    <rosparam command="load" file="$(find baxter_moveit_config)/config/kinematics.yaml"/>
+    <rosparam command="load" file="$(find baxter_moveit_config)/config/ompl_planning.yaml"/>
+  </node>
+
+</launch>

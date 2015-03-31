@@ -39,21 +39,28 @@
 
 
 
-static const char *
-srdf_filename =
-    "/home/ntd/ros_ws/src/moveit_robots/baxter/baxter_moveit_config/config/baxter.srdf";
-static const char *
-urdf_filename =
-    "/home/ntd/git/mochi/robot/baxter/baxter.urdf";
 
 int main(int argc, char **argv)
 {
     tmsmt_ros_init();
-    struct tmsmt_model *m = tmsmt_model_load(  urdf_filename, srdf_filename );
+    struct tmsmt_model *m = tmsmt_model_load(  "robot_description" );
     double start[7] = {0,0,0,0,0,0,0};
-    double goal[7] = {.8,0,0,.5,0,.5,0};
     tmsmt_model_set_start( m, "right_arm", 7, start );
-    tmsmt_model_plan_simple( m, "right_arm", 7, goal );
+
+    /* double goal[7] = {.8,0,.5,.5,0,.5,0}; */
+    /* tmsmt_model_plan_simple( m, "right_arm", 7, goal ); */
+
+    /* return 0; */
+
+    double q[4] = {0,1,0,0};
+    double v[3] = {1,0,0};
+
+    tmsmt_model_plan_ik( m, "right_arm",
+                         "base", "left_wrist",
+                         q, v,
+                         10, 10 );
+
+
     sleep(5);
     return 0;
 }

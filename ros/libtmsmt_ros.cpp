@@ -15,8 +15,10 @@
 // MoveIt!
 #include <moveit/move_group_interface/move_group.h>
 #include <moveit/planning_interface/planning_interface.h>
+#include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <moveit/kinematic_constraints/utils.h>
+// #include <moveit/kinematics_plugin_loader.h>
 #include <moveit_msgs/DisplayTrajectory.h>
 #include <moveit_msgs/PlanningScene.h>
 
@@ -42,31 +44,26 @@ tmsmt_ros_init( )
         node_handle = new ros::NodeHandle("~");
 
         display_publisher = node_handle->advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+
+        if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
+            ros::console::notifyLoggerLevelsChanged();
+        }
     }
 }
 
 static std::string planner_plugin_name = "ompl_interface/OMPLPlanner";
 
 struct tmsmt_model {
-    std::string srdf_filename;
-    std::string urdf_filename;
-    boost::shared_ptr<urdf::Model> urdf_model;
-    boost::shared_ptr<srdf::Model> srdf_model;
     robot_model::RobotModelPtr *robot_model;
+    std::string name;
     planning_scene::PlanningScenePtr *planning_scene;
-
     planning_interface::MotionPlanRequest req;
-
     boost::scoped_ptr<pluginlib::ClassLoader<planning_interface::PlannerManager> > planner_plugin_loader;
     planning_interface::PlannerManagerPtr planner_instance;
 
-    tmsmt_model( const char *urdf_filename, const char *srdf_filename ) :
-        urdf_filename(urdf_filename),
-        srdf_filename(srdf_filename),
-        urdf_model(new urdf::Model),
-        srdf_model(new srdf::Model)
-    {
-    }
+    tmsmt_model( const char *name ) :
+        name(name)
+    { }
 
     ~tmsmt_model() {
         if( robot_model ) delete robot_model;
@@ -74,20 +71,37 @@ struct tmsmt_model {
     }
 
     int
-    init() {
-        /* Load Model */
-        if (!(*urdf_model).initFile(urdf_filename)){
-            fprintf(stderr, "Failed to parse urdf file");
-            return -1;
-        }
+    init(const char *name) {
+        // /* Load Model */
+        // if (!(*urdf_model).initFile(urdf_filename)){
+        //     fprintf(stderr, "Failed to parse urdf file");
+        //     return -1;
+        // }
 
-        if( ! (*srdf_model).initFile(*urdf_model, srdf_filename) ) {
-            fprintf(stderr, "Failed to parse srdf file");
-            return -1;
-        }
+        // if( ! (*srdf_model).initFile(*urdf_model, srdf_filename) ) {
+        //     fprintf(stderr, "Failed to parse srdf file");
+        //     return -1;
+        // }
+        robot_model_loader::RobotModelLoader robot_model_loader(name, true);
+        //robot_model::RobotModelPtr kinematic_model = robot_model_loader.getModel();
 
-        robot_model = new robot_model::RobotModelPtr(new robot_model::RobotModel(urdf_model, srdf_model));
+        /* Load Kinematics Plugin */
+        // kinematics_plugin_loader::KinematicsPluginLoaderPtr
+        //     kinematics_loader( new kinematics_plugin_loader::KinematicsPluginLoader( "kdl_kinematics_plugin/KDLKinematicsPlugin",
+        //                                                                              .005,  //timeout
+        //                                                                              3,     // attempts
+        //                                                                              name,  // robot_description
+        //                                                                              .005   // search_resolution
+        //                            )
+        //         );
+        // fprintf(stderr, "Kinematics Loader Status:\n");
+        // kinematics_loader->status();
+        // robot_model_loader.loadKinematicsSolvers(kinematics_loader);
+
+
+        robot_model = new robot_model::RobotModelPtr(robot_model_loader.getModel());
         planning_scene =  new planning_scene::PlanningScenePtr (new planning_scene::PlanningScene(*robot_model));
+
 
 
         /* Load Planner Plugin */
@@ -118,12 +132,11 @@ struct tmsmt_model {
 };
 
 struct tmsmt_model *
-tmsmt_model_load( const char *urdf_filename,
-                  const char *srdf_filename )
+tmsmt_model_load( const char *name )
 {
     fprintf(stderr, "Loading model\n");
-    struct tmsmt_model *p = new tmsmt_model(urdf_filename, srdf_filename);
-    if( p->init() ) {
+    struct tmsmt_model *p = new tmsmt_model(name);
+    if( p->init(name) ) {
         delete p;
         return NULL;
     }
@@ -142,7 +155,7 @@ int
 tmsmt_model_set_start( struct tmsmt_model *p,
                        const char *group,
                        size_t n,
-                       double *start )
+                       const double *start )
 {
     /* Start */
     {
@@ -156,6 +169,7 @@ tmsmt_model_set_start( struct tmsmt_model *p,
             //joint_values[0] = -0.5;
             start_state.setJointGroupPositions(joint_model_group, joint_values);
         }
+        start_state.update();
         p->req.start_state.joint_state.name =  start_state.getVariableNames();
         {
             size_t num = p->req.start_state.joint_state.name.size();
@@ -168,36 +182,15 @@ tmsmt_model_set_start( struct tmsmt_model *p,
     }
 }
 
-
-int
-tmsmt_model_plan_simple( struct tmsmt_model *p,
-                         const char *group,
-                         size_t n,
-                         double *goal )
+static int
+run_planner( struct tmsmt_model *p )
 {
-    p->req.group_name = group;
-
-    /* Goal State */
-    robot_state::RobotState goal_state(*p->robot_model);
-    const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup(group);
-    {
-        std::vector<double> joint_values(n, 0.0);
-        std::copy ( goal, goal+n, joint_values.begin() );
-        // joint_values[0] = 0.5;
-        // joint_values[3] = 0.5;
-        // joint_values[5] = 0.5;
-        goal_state.setJointGroupPositions(joint_model_group, joint_values);
-    }
-
-    //assert( goal_state.joint_state.name.size() == goal_state.joint_state.position.size() );
-    moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state, joint_model_group);
-    p->req.goal_constraints.clear();
-    p->req.goal_constraints.push_back(joint_goal);
-
     moveit_msgs::MoveItErrorCodes err;
     planning_interface::MotionPlanResponse res;
+    fprintf(stderr,"getting context\n");
     planning_interface::PlanningContextPtr context =
         p->planner_instance->getPlanningContext(*p->planning_scene, p->req, err);
+    fprintf(stderr,"running planner\n");
     context->solve(res);
     if(res.error_code_.val != res.error_code_.SUCCESS)
     {
@@ -236,5 +229,76 @@ tmsmt_model_plan_simple( struct tmsmt_model *p,
         //sleep(5);
     }
 
+}
 
+int
+tmsmt_model_plan_simple( struct tmsmt_model *p,
+                         const char *group,
+                         size_t n,
+                         const double *goal )
+{
+    p->req.group_name = group;
+
+    /* Goal State */
+    robot_state::RobotState goal_state(*p->robot_model);
+    const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup(group);
+    {
+        std::vector<double> joint_values(n, 0.0);
+        std::copy ( goal, goal+n, joint_values.begin() );
+        // joint_values[0] = 0.5;
+        // joint_values[3] = 0.5;
+        // joint_values[5] = 0.5;
+        goal_state.setJointGroupPositions(joint_model_group, joint_values);
+    }
+
+    //assert( goal_state.joint_state.name.size() == goal_state.joint_state.position.size() );
+    moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state, joint_model_group);
+    p->req.goal_constraints.clear();
+    p->req.goal_constraints.push_back(joint_goal);
+
+    return run_planner(p);
+}
+
+int
+tmsmt_model_plan_ik( struct tmsmt_model *p,
+                     const char *group,
+                     const char *global_frame,
+                     const char *end_frame,
+                     const double *q,
+                     const double *v,
+                     double epsilon_angle,
+                     double epsilon_x )
+{
+
+    geometry_msgs::PoseStamped stamped_pose;
+    stamped_pose.header.frame_id = global_frame;
+    geometry_msgs::Pose &pose = stamped_pose.pose;
+    pose.position.x = v[0];
+    pose.position.y = v[1];
+    pose.position.z = v[2];
+    pose.orientation.x = q[0];
+    pose.orientation.y = q[1];
+    pose.orientation.z = q[2];
+    pose.orientation.w = q[3];
+
+    p->req.group_name = group;
+
+    robot_state::RobotState goal_state(*p->robot_model);
+    const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup(group);
+    goal_state.setFromIK(joint_model_group,pose);
+
+    moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state, joint_model_group);
+    p->req.goal_constraints.clear();
+    p->req.goal_constraints.push_back(joint_goal);
+
+    // fprintf(stderr,"constructing pose goal\n");
+    // moveit_msgs::Constraints pose_goal =
+    //     kinematic_constraints::constructGoalConstraints(end_frame, stamped_pose,
+    //                                                     epsilon_x, epsilon_angle);
+    // fprintf(stderr,"adding pose goal...\n");
+    // p->req.goal_constraints.push_back(pose_goal);
+    // fprintf(stderr,"...added\n");
+
+
+    return run_planner(p);
 }
