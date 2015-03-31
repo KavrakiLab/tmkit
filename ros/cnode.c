@@ -52,11 +52,13 @@ int main(int argc, char **argv)
 
     /* return 0; */
 
-    double q[4] = {0,1,0,0};
-    double v[3] = {1,0,0};
+    double E[7] = { 0.423811, 0.566025, -0.423811, 0.566025,  0.363087, -1.278295, 0.320976};
+
+    double *q = E;
+    double *v = E + 4;
 
     tmsmt_model_plan_ik( m, "right_arm",
-                         "base", "left_wrist",
+                         "base", "right_gripper",
                          q, v,
                          10, 10 );
 

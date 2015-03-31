@@ -51,65 +51,31 @@
 #include <moveit_msgs/DisplayTrajectory.h>
 #include <moveit_msgs/PlanningScene.h>
 
+#include "tmsmt.hpp"
 
+
+struct container {
+    robot_model_loader::RobotModelLoader robot_model_loader;
+    robot_model::RobotModelPtr robot_model;
+    planning_scene::PlanningScenePtr planning_scene;
+    planning_interface::PlannerManagerPtr planner_instance;
+
+    container ( ros::NodeHandle &node_handle, const char *name ) :
+        robot_model_loader(name, true),
+        robot_model( robot_model_loader.getModel() ),
+        planning_scene (new planning_scene::PlanningScene(robot_model)),
+        planner_instance( load_planner(node_handle, robot_model) )
+    {
+    }
+};
 
 int main(int argc, char **argv)
 {
     ros::init (argc, argv, "move_group_tutorial");
-    // ros::AsyncSpinner spinner(1);
-    // spinner.start();
     ros::NodeHandle node_handle("~");
 
-    /********************/
-    /* Load Robot Model */
-    /********************/
-    const std::string srdf_filename =
-        "/home/ntd/ros_ws/src/moveit_robots/baxter/baxter_moveit_config/config/baxter.srdf";
-    const std::string urdf_filename =
-        "/home/ntd/git/mochi/robot/baxter/baxter.urdf";
+    container cont(node_handle, "robot_description");
 
-    boost::shared_ptr<urdf::Model> urdf_model(new urdf::Model);
-    if (!(*urdf_model).initFile(urdf_filename)){
-        fprintf(stderr, "Failed to parse urdf file");
-        return -1;
-    }
-
-    boost::shared_ptr<srdf::Model> srdf_model(new srdf::Model);
-    if( ! (*srdf_model).initFile(*urdf_model, srdf_filename) ) {
-        fprintf(stderr, "Failed to parse srdf file");
-        return -1;
-    }
-
-    robot_model_loader::RobotModelLoader robot_model_loader("robot_description", true);
-    robot_model::RobotModelPtr robot_model(robot_model_loader.getModel());
-    planning_scene::PlanningScenePtr planning_scene (new planning_scene::PlanningScene(robot_model));
-
-    /***********************/
-    /* Load Planner Plugin */
-    /***********************/
-    boost::scoped_ptr<pluginlib::ClassLoader<planning_interface::PlannerManager> > planner_plugin_loader;
-    planning_interface::PlannerManagerPtr planner_instance;
-    std::string planner_plugin_name = "ompl_interface/OMPLPlanner";
-
-    try {
-        planner_plugin_loader.reset(new pluginlib::ClassLoader<planning_interface::PlannerManager>("moveit_core", "planning_interface::PlannerManager"));
-    } catch(pluginlib::PluginlibException& ex) {
-        ROS_FATAL_STREAM("Exception while creating planning plugin loader " << ex.what());
-    }
-
-    try {
-        planner_instance.reset(planner_plugin_loader->createUnmanagedInstance(planner_plugin_name));
-        if (!planner_instance->initialize(robot_model, node_handle.getNamespace()))
-            ROS_FATAL_STREAM("Could not initialize planner instance");
-        ROS_INFO_STREAM("Using planning interface '" << planner_instance->getDescription() << "'");
-    } catch(pluginlib::PluginlibException& ex) {
-        const std::vector<std::string> &classes = planner_plugin_loader->getDeclaredClasses();
-        std::stringstream ss;
-        for (std::size_t i = 0 ; i < classes.size() ; ++i)
-            ss << classes[i] << " ";
-        ROS_ERROR_STREAM("Exception while loading planner '" << planner_plugin_name << "': " << ex.what() << std::endl
-                         << "Available plugins: " << ss.str());
-    }
 
     /***********************/
     /* Create Request      */
@@ -118,7 +84,7 @@ int main(int argc, char **argv)
     req.group_name = "right_arm";
     /* Start State */
     {
-        robot_state::RobotState start_state(robot_model);
+        robot_state::RobotState start_state(cont.robot_model);
         sensor_msgs::JointState start_joint_state;
         const robot_state::JointModelGroup* joint_model_group = start_state.getJointModelGroup(req.group_name);
         {
@@ -187,7 +153,7 @@ int main(int argc, char **argv)
 
     req.group_name = "right_arm";
 
-    robot_state::RobotState goal_state(robot_model);
+    robot_state::RobotState goal_state(cont.robot_model);
     const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup("right_arm");
     bool got_ik = goal_state.setFromIK(joint_model_group,pose);
     fprintf(stderr, "IK: %s\n", got_ik ? "yes" : "no" );
@@ -210,7 +176,7 @@ int main(int argc, char **argv)
     /**********/
     moveit_msgs::MoveItErrorCodes err;
     planning_interface::MotionPlanResponse res;
-    planning_interface::PlanningContextPtr context = planner_instance->getPlanningContext(planning_scene, req, err);
+    planning_interface::PlanningContextPtr context = cont.planner_instance->getPlanningContext(cont.planning_scene, req, err);
     context->solve(res);
     if(res.error_code_.val != res.error_code_.SUCCESS)
     {

@@ -118,7 +118,7 @@ target_link_libraries(tmsmt_ros
   ${catkin_LIBRARIES}
 )
 
-add_executable(tmsmt_node ros/tmsmt_node.cpp)
+add_executable(tmsmt_node ros/tmsmt_node.cpp ros/lib2.cpp)
 target_link_libraries(tmsmt_node
   ${catkin_LIBRARIES}
 )

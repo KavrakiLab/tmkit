@@ -45,9 +45,9 @@ tmsmt_ros_init( )
 
         display_publisher = node_handle->advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
 
-        if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
-            ros::console::notifyLoggerLevelsChanged();
-        }
+        // if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
+        //     ros::console::notifyLoggerLevelsChanged();
+        // }
     }
 }
 
@@ -72,33 +72,7 @@ struct tmsmt_model {
 
     int
     init(const char *name) {
-        // /* Load Model */
-        // if (!(*urdf_model).initFile(urdf_filename)){
-        //     fprintf(stderr, "Failed to parse urdf file");
-        //     return -1;
-        // }
-
-        // if( ! (*srdf_model).initFile(*urdf_model, srdf_filename) ) {
-        //     fprintf(stderr, "Failed to parse srdf file");
-        //     return -1;
-        // }
         robot_model_loader::RobotModelLoader robot_model_loader(name, true);
-        //robot_model::RobotModelPtr kinematic_model = robot_model_loader.getModel();
-
-        /* Load Kinematics Plugin */
-        // kinematics_plugin_loader::KinematicsPluginLoaderPtr
-        //     kinematics_loader( new kinematics_plugin_loader::KinematicsPluginLoader( "kdl_kinematics_plugin/KDLKinematicsPlugin",
-        //                                                                              .005,  //timeout
-        //                                                                              3,     // attempts
-        //                                                                              name,  // robot_description
-        //                                                                              .005   // search_resolution
-        //                            )
-        //         );
-        // fprintf(stderr, "Kinematics Loader Status:\n");
-        // kinematics_loader->status();
-        // robot_model_loader.loadKinematicsSolvers(kinematics_loader);
-
-
         robot_model = new robot_model::RobotModelPtr(robot_model_loader.getModel());
         planning_scene =  new planning_scene::PlanningScenePtr (new planning_scene::PlanningScene(*robot_model));
 
@@ -285,7 +259,12 @@ tmsmt_model_plan_ik( struct tmsmt_model *p,
 
     robot_state::RobotState goal_state(*p->robot_model);
     const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup(group);
-    goal_state.setFromIK(joint_model_group,pose);
+    bool got_ik = goal_state.setFromIK(joint_model_group,pose);
+
+    fprintf(stderr, "IK: %s\n", got_ik ? "yes" : "no" );
+
+    if( ! got_ik ) return -1;
+
 
     moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state, joint_model_group);
     p->req.goal_constraints.clear();
