@@ -50,8 +50,10 @@ int main(int argc, char **argv)
 {
     tmsmt_ros_init();
     struct tmsmt_model *m = tmsmt_model_load(  urdf_filename, srdf_filename );
-    double start[7] = {-.5,0,0,0,0,0,0};
-    double goal[7] = {.5,0,0,.5,0,.5,0};
-    tmsmt_model_plan_simple( m, "right_arm", 7, start, goal );
+    double start[7] = {0,0,0,0,0,0,0};
+    double goal[7] = {.8,0,0,.5,0,.5,0};
+    tmsmt_model_set_start( m, "right_arm", 7, start );
+    tmsmt_model_plan_simple( m, "right_arm", 7, goal );
+    sleep(5);
     return 0;
 }

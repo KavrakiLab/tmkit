@@ -25,6 +25,7 @@
 // ros::AsyncSpinner spinner(1);
 // spinner.start();
 static ros::NodeHandle *node_handle = NULL;
+static ros::Publisher display_publisher;
 
 TMSMT_API void
 tmsmt_ros_init( )
@@ -39,6 +40,8 @@ tmsmt_ros_init( )
         ros::init (c,y,name2);
 
         node_handle = new ros::NodeHandle("~");
+
+        display_publisher = node_handle->advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
     }
 }
 
@@ -136,13 +139,11 @@ tmsmt_model_destroy( struct tmsmt_model *p )
 }
 
 int
-tmsmt_model_plan_simple( struct tmsmt_model *p,
-                         const char *group,
-                         size_t n,
-                         double *start,
-                         double *goal )
+tmsmt_model_set_start( struct tmsmt_model *p,
+                       const char *group,
+                       size_t n,
+                       double *start )
 {
-    p->req.group_name = group;
     /* Start */
     {
         robot_state::RobotState start_state(*p->robot_model);
@@ -165,6 +166,16 @@ tmsmt_model_plan_simple( struct tmsmt_model *p,
         }
         assert( p->req.start_state.joint_state.name.size() == p->req.start_state.joint_state.position.size() );
     }
+}
+
+
+int
+tmsmt_model_plan_simple( struct tmsmt_model *p,
+                         const char *group,
+                         size_t n,
+                         double *goal )
+{
+    p->req.group_name = group;
 
     /* Goal State */
     robot_state::RobotState goal_state(*p->robot_model);
@@ -213,5 +224,17 @@ tmsmt_model_plan_simple( struct tmsmt_model *p,
          }
          printf("\n");
     }
+
+
+    {
+        moveit_msgs::DisplayTrajectory display_trajectory;
+
+        ROS_INFO("Visualizing plan 1 (again)");
+        display_trajectory.trajectory_start = res_msg.trajectory_start;
+        display_trajectory.trajectory.push_back(res_msg.trajectory);
+        display_publisher.publish(display_trajectory);
+        //sleep(5);
+    }
+
 
 }

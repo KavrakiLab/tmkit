@@ -21,10 +21,15 @@ void
 tmsmt_model_destroy( struct tmsmt_model *);
 
 int
+tmsmt_model_set_start( struct tmsmt_model *p,
+                       const char *group,
+                       size_t n,
+                       double *goal );
+
+int
 tmsmt_model_plan_simple( struct tmsmt_model *p,
                          const char *group,
                          size_t n,
-                         double *start,
                          double *goal );
 
 
