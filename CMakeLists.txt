@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(tmsmt)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-    add_definitions(-std=gnu++0x)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
 
 ## Find catkin macros and libraries
@@ -109,20 +109,23 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(tmsmt
-#   src/${PROJECT_NAME}/tmsmt.cpp
-# )
+add_library(tmsmt_ros
+  ros/libtmsmt_ros.cpp
+)
 
-## Declare a cpp executable
+target_link_libraries(tmsmt_ros
+  ${catkin_LIBRARIES}
+)
+
 add_executable(tmsmt_node ros/tmsmt_node.cpp)
-
-## Add cmake target dependencies of the executable/library
-## as an example, message headers may need to be generated before nodes
-# add_dependencies(tmsmt_node tmsmt_generate_messages_cpp)
-
-## Specify libraries to link a library or executable target against
 target_link_libraries(tmsmt_node
   ${catkin_LIBRARIES}
+)
+
+
+add_executable(cnode ros/cnode.c)
+target_link_libraries(cnode
+  tmsmt_ros
 )
 
 #############
