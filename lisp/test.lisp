@@ -6,7 +6,7 @@
 (smt-plan :operators "/home/ntd/git/tmsmt/pddl/placement-graph/graph-0.pddl"
           :facts "/home/ntd/git/tmsmt/pddl/placement-graph/scene-0.pddl"
           :steps 3
-          :max-steps 3)
+          :max-steps 8)
 
 (with-output-to-file (s "/home/ntd/git/tmsmt/pddl/placement-graph/graph-quad.pddl" :if-exists :supersede)
   (pddl-print
@@ -38,5 +38,6 @@
             :steps 3
             :max-steps 3))
 
-(smt-plan :operators "/home/ntd/git/tmsmt/pddl/itmp/itmp-0.pddl"
-          :facts "/home/ntd/git/tmsmt/pddl/itmp/scene-0.pddl")
+(sb-sprof:with-profiling  (:loop t :report :flat :max-samples 500)
+  (smt-plan :operators "/home/ntd/git/tmsmt/pddl/itmp/itmp-0.pddl"
+            :facts "/home/ntd/git/tmsmt/pddl/itmp/scene-0.pddl"))

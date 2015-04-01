@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2015, Rice University
+ *  Copyright (c) 2012, Willow Garage, Inc.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of the copyright holder(s) nor the names of its
+ *   * Neither the name of Willow Garage nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -31,38 +31,30 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
+#include "cros.h"
+#include <stdlib.h>
 
-/* Author: Sachin Chitta */
-
-#include <stdio.h>
-#include "tmsmt.h"
-
-
-
+#include "c_container.h"
 
 int main(int argc, char **argv)
 {
-    tmsmt_ros_init();
-    struct tmsmt_model *m = tmsmt_model_load(  "robot_description" );
-    double start[7] = {0,0,0,0,0,0,0};
-    tmsmt_model_set_start( m, "right_arm", 7, start );
+    cros_init (argc, argv, "move_group_tutorial");
+    struct cros_node_handle *nh = cros_node_handle_create("~");
 
-    /* double goal[7] = {.8,0,.5,.5,0,.5,0}; */
-    /* tmsmt_model_plan_simple( m, "right_arm", 7, goal ); */
+    char *ns = cros_node_handle_get_namespace_dup(nh);
+    struct container *cont = container_create(ns, "robot_description");
+    free(ns);
 
-    /* return 0; */
+    double q0[7] = {0};
+    container_set_start(cont, "right_arm", 7, q0 );
 
-    double E[7] = { 0.423811, 0.566025, -0.423811, 0.566025,  0.363087, -1.278295, 0.320976};
+    double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
+    double v[3] = {0.363087, -1.278295, 0.320976 + .02};
+    container_set_ws_goal(cont, "right_arm", q, v );
 
-    double *q = E;
-    double *v = E + 4;
+    container_plan(cont);
 
-    tmsmt_model_plan_ik( m, "right_arm",
-                         "base", "right_gripper",
-                         q, v,
-                         10, 10 );
+    container_destroy(cont);
 
-
-    sleep(5);
     return 0;
 }

@@ -155,3 +155,55 @@ int container::set_ws_goal( const char *name, const double quat[4], const double
 
 
 }
+
+int container::plan( )
+{
+
+    /**********/
+    /*  PLAN  */
+    /**********/
+    moveit_msgs::MoveItErrorCodes err;
+    planning_interface::MotionPlanResponse res;
+    planning_interface::PlanningContextPtr context =
+        this->planner_instance->getPlanningContext(this->planning_scene, this->req, err);
+    context->solve(res);
+    if(res.error_code_.val != res.error_code_.SUCCESS)
+    {
+        //TODO: Why is this 0 instead of SUCCESS?
+        fprintf(stderr, "Planning failed: %d\n", res.error_code_.val );
+        //return 0;
+    }
+
+
+    /************/
+    /*  Result  */
+    /************/
+    moveit_msgs::MotionPlanResponse res_msg;
+    res.getMessage(res_msg);
+    for( auto itr = res_msg.trajectory.joint_trajectory.points.begin();
+         itr != res_msg.trajectory.joint_trajectory.points.end();
+         itr++ )
+    {
+         printf("foo: ");
+         for( auto j = itr->positions.begin();
+              j != itr->positions.end();
+              j++ )
+         {
+             printf("%f\t", *j );
+         }
+         printf("\n");
+    }
+
+    // /***************/
+    // /*  Visualize  */
+    // /***************/
+    // ros::Publisher display_publisher = node_handle.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+    // moveit_msgs::DisplayTrajectory display_trajectory;
+
+    // ROS_INFO("Visualizing plan 1 (again)");
+    // display_trajectory.trajectory_start = res_msg.trajectory_start;
+    // display_trajectory.trajectory.push_back(res_msg.trajectory);
+    // display_publisher.publish(display_trajectory);
+    // /* Sleep to give Rviz time to visualize the plan. */
+    // sleep(5.0);
+}

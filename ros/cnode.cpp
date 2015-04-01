@@ -31,42 +31,30 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
-#include <ros/ros.h>
+#include "cros.hpp"
+#include <stdlib.h>
 
 #include "moveit_container.hpp"
 
 int main(int argc, char **argv)
 {
-    ros::init (argc, argv, "move_group_tutorial");
-    ros::NodeHandle node_handle("~");
-    container cont(node_handle.getNamespace(), "robot_description");
+    cros_init (argc, argv, "move_group_tutorial");
+    struct cros_node_handle *nh = cros_node_handle_create("~");
 
+    char *ns = cros_node_handle_get_namespace_dup(nh);
+    container *cont = container_create(ns, "robot_description");
+    free(ns);
 
     double q0[7] = {0};
-    cont.set_start( "right_arm", 7, q0 );
+    container_set_start(cont, "right_arm", 7, q0 );
 
-    /* Joint Goal */
-
-    // robot_state::RobotState goal_state(robot_model);
-    // const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup(req.group_name);
-    // {
-    //     std::vector<double> joint_values(7, 0.0);
-    //     joint_values[0] = 0.5;
-    //     joint_values[3] = 0.5;
-    //     joint_values[5] = 0.5;
-    //     goal_state.setJointGroupPositions(joint_model_group, joint_values);
-    // }
-    // moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state, joint_model_group);
-    // req.goal_constraints.clear();
-    // req.goal_constraints.push_back(joint_goal);
-
-
-    /* Workspace Goal */
     double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
     double v[3] = {0.363087, -1.278295, 0.320976 + .02};
-    cont.set_ws_goal("right_arm", q, v );
+    container_set_ws_goal(cont, "right_arm", q, v );
 
-    cont.plan();
+    container_plan(cont);
+
+    container_destroy(cont);
 
     return 0;
 }
