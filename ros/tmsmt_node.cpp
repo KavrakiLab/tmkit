@@ -54,72 +54,19 @@
 #include "tmsmt.hpp"
 
 
-struct container {
-    robot_model_loader::RobotModelLoader robot_model_loader;
-    robot_model::RobotModelPtr robot_model;
-    planning_scene::PlanningScenePtr planning_scene;
-    planning_interface::PlannerManagerPtr planner_instance;
-
-    container ( ros::NodeHandle &node_handle, const char *name ) :
-        robot_model_loader(name, true),
-        robot_model( robot_model_loader.getModel() ),
-        planning_scene (new planning_scene::PlanningScene(robot_model)),
-        planner_instance( load_planner(node_handle, robot_model) )
-    {
-    }
-};
 
 int main(int argc, char **argv)
 {
     ros::init (argc, argv, "move_group_tutorial");
     ros::NodeHandle node_handle("~");
-
-    container cont(node_handle, "robot_description");
+    container cont(node_handle.getNamespace(), "robot_description");
 
 
     /***********************/
     /* Create Request      */
     /***********************/
-    planning_interface::MotionPlanRequest req;
-    req.group_name = "right_arm";
-    /* Start State */
-    {
-        robot_state::RobotState start_state(cont.robot_model);
-        sensor_msgs::JointState start_joint_state;
-        const robot_state::JointModelGroup* joint_model_group = start_state.getJointModelGroup(req.group_name);
-        {
-            std::vector<double> joint_values(7, 0.0);
-
-            joint_values[0] = -0.0;
-            start_state.setJointGroupPositions(joint_model_group, joint_values);
-        }
-        req.start_state.joint_state.name =  start_state.getVariableNames();
-        {
-            size_t n = req.start_state.joint_state.name.size();
-            double *p = start_state.getVariablePositions();
-            req.start_state.joint_state.position.resize( n );
-            std::copy ( p, p+n,
-                        req.start_state.joint_state.position.begin() );
-        }
-        const std::vector<std::string> &link_names = joint_model_group->getLinkModelNames();
-        std::string end_link =  link_names[ link_names.size()-1];
-        fprintf(stderr, "Link: %s\n", end_link.c_str() );
-        const Eigen::Affine3d estart_tf = start_state.getFrameTransform(end_link);
-
-        tf::Transform start_pose;
-        tf::poseEigenToTF(estart_tf, start_pose);
-        tf::Quaternion start_q = start_pose.getRotation();
-        tf::Vector3 start_v = start_pose.getOrigin();
-        fprintf(stderr,"%f %f %f %f,  %f %f %f\n",
-                start_q.x(),
-                start_q.y(),
-                start_q.z(),
-                start_q.w(),
-                start_v.x(),
-                start_v.y(),
-                start_v.z() );
-
-    }
+    double q0[7] = {0};
+    cont.set_start( "right_arm", 7, q0 );
 
     /* Joint Goal */
 
@@ -138,37 +85,10 @@ int main(int argc, char **argv)
 
 
     /* Workspace Goal */
-    geometry_msgs::PoseStamped stamped_pose;
-    stamped_pose.header.frame_id = "base";
-    geometry_msgs::Pose &pose = stamped_pose.pose;
-    double E[7] = { 0.423811, 0.566025, -0.423811, 0.566025,  0.363087, -1.278295, 0.320976};
 
-    pose.orientation.x = E[0];
-    pose.orientation.y = E[1];
-    pose.orientation.z = E[2];
-    pose.orientation.w = E[3];
-    pose.position.x = E[4];
-    pose.position.y = E[5];
-    pose.position.z = E[6] + .02;
-
-    req.group_name = "right_arm";
-
-    robot_state::RobotState goal_state(cont.robot_model);
-    const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup("right_arm");
-    bool got_ik = goal_state.setFromIK(joint_model_group,pose);
-    fprintf(stderr, "IK: %s\n", got_ik ? "yes" : "no" );
-
-    if( ! got_ik ) return -1;
-
-
-    moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state,
-                                                                                          joint_model_group);
-    req.goal_constraints.clear();
-    req.goal_constraints.push_back(joint_goal);
-    double *x = goal_state.getVariablePositions();
-    for( size_t i = 0; i < goal_state.getVariableNames().size(); i++ ) {
-        fprintf(stderr, "goal %lu: %f\n", i, x[i] );
-    }
+    double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
+    double v[3] = {0.363087, -1.278295, 0.320976 + .02};
+    cont.set_ws_goal("right_arm", q, v );
 
 
     /**********/
@@ -176,7 +96,7 @@ int main(int argc, char **argv)
     /**********/
     moveit_msgs::MoveItErrorCodes err;
     planning_interface::MotionPlanResponse res;
-    planning_interface::PlanningContextPtr context = cont.planner_instance->getPlanningContext(cont.planning_scene, req, err);
+    planning_interface::PlanningContextPtr context = cont.planner_instance->getPlanningContext(cont.planning_scene, cont.req, err);
     context->solve(res);
     if(res.error_code_.val != res.error_code_.SUCCESS)
     {
@@ -205,18 +125,19 @@ int main(int argc, char **argv)
          printf("\n");
     }
 
-    /***************/
-    /*  Visualize  */
-    /***************/
-    ros::Publisher display_publisher = node_handle.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
-    moveit_msgs::DisplayTrajectory display_trajectory;
+    // /***************/
+    // /*  Visualize  */
+    // /***************/
+    // ros::Publisher display_publisher = node_handle.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+    // moveit_msgs::DisplayTrajectory display_trajectory;
 
-    ROS_INFO("Visualizing plan 1 (again)");
-    display_trajectory.trajectory_start = res_msg.trajectory_start;
-    display_trajectory.trajectory.push_back(res_msg.trajectory);
-    display_publisher.publish(display_trajectory);
-    /* Sleep to give Rviz time to visualize the plan. */
-    sleep(5.0);
+    // ROS_INFO("Visualizing plan 1 (again)");
+    // display_trajectory.trajectory_start = res_msg.trajectory_start;
+    // display_trajectory.trajectory.push_back(res_msg.trajectory);
+    // display_publisher.publish(display_trajectory);
+    // /* Sleep to give Rviz time to visualize the plan. */
+    // sleep(5.0);
 
     return 0;
+
 }

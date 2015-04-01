@@ -118,16 +118,24 @@ target_link_libraries(tmsmt_ros
   ${catkin_LIBRARIES}
 )
 
+add_library(cros
+  ros/cros.cpp
+)
+target_link_libraries(cros
+  ${catkin_LIBRARIES}
+)
+
 add_executable(tmsmt_node ros/tmsmt_node.cpp ros/lib2.cpp)
 target_link_libraries(tmsmt_node
+  cros
   ${catkin_LIBRARIES}
 )
 
 
-add_executable(cnode ros/cnode.c)
-target_link_libraries(cnode
-  tmsmt_ros
-)
+# add_executable(cnode ros/cnode.c)
+# target_link_libraries(cnode
+#   tmsmt_ros
+# )
 
 #############
 ## Install ##
