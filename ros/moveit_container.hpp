@@ -1,8 +1,6 @@
 #ifndef MOVEIT_CONTAINER_H
 #define MOVEIT_CONTAINER_H
 
-#include "c_container.h"
-
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/move_group_interface/move_group.h>
 #include <moveit/planning_interface/planning_interface.h>
@@ -20,11 +18,6 @@ struct container {
     planning_interface::MotionPlanRequest req;
 
     container ( const std::string &ns, const char *name );
-
-    int set_start( const char *name, size_t n, const double *q );
-    int set_ws_goal( const char *name, const double quat[4], const double vec[3] );
-
-    int plan( void );
 };
 
 #endif

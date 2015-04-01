@@ -23,6 +23,11 @@ container_set_ws_goal( struct container * c, const char *name, const double quat
 int
 container_plan( struct container * c );
 
+
+int
+container_group_fk( struct container * c, const char *group, double q[4], double v[3]  );
+
+
 #ifdef __cplusplus
 }
 #endif

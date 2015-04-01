@@ -134,11 +134,11 @@ target_link_libraries(cmoveit
   ${catkin_LIBRARIES}
 )
 
-add_executable(tmsmt_node ros/tmsmt_node.cpp ros/moveit_container.cpp)
-target_link_libraries(tmsmt_node
-  cros
-  ${catkin_LIBRARIES}
-)
+# add_executable(tmsmt_node ros/tmsmt_node.cpp ros/moveit_container.cpp)
+# target_link_libraries(tmsmt_node
+#   cros
+#   ${catkin_LIBRARIES}
+# )
 
 add_executable(cnode ros/cnode.c)
 target_link_libraries(cnode
