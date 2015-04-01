@@ -6,6 +6,13 @@
 #include "c_container.h"
 #include "moveit_container.hpp"
 
+static void
+robot_state_zero( robot_state::RobotState *state )
+{
+    double *x = state->getVariablePositions();
+    size_t n = state->getVariableNames().size();
+    memset(x, 0, n * sizeof(x[0]) );
+}
 
 struct container *
 container_create( const char *name_space, const char *robot_description )
@@ -26,12 +33,7 @@ container_set_start( struct container * c, const char *group, size_t n, const do
     c->req.group_name = "right_arm";
     robot_state::RobotState start_state(c->robot_model);
     /* Zero positions because somebody's not inititializing their shit */
-    {
-        double *x = start_state.getVariablePositions();
-        for( size_t i = 0; i < start_state.getVariableNames().size(); i++ ) {
-            x[i] = 0;
-        }
-    }
+    robot_state_zero( &start_state);
 
     sensor_msgs::JointState start_joint_state;
 
@@ -85,7 +87,6 @@ container_set_start( struct container * c, const char *group, size_t n, const do
 int
 container_set_ws_goal( struct container * c, const char *name, const double quat[4], const double vec[3] )
 {
-
     geometry_msgs::PoseStamped stamped_pose;
     stamped_pose.header.frame_id = "base";
     geometry_msgs::Pose &pose = stamped_pose.pose;
@@ -99,14 +100,8 @@ container_set_ws_goal( struct container * c, const char *name, const double quat
     pose.position.z = vec[2];
 
     robot_state::RobotState goal_state(c->robot_model);
-
     /* Zero positions because somebody's not inititializing their shit */
-    {
-        double *x = goal_state.getVariablePositions();
-        for( size_t i = 0; i < goal_state.getVariableNames().size(); i++ ) {
-            x[i] = 0;
-        }
-    }
+    robot_state_zero( &goal_state);
 
     const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup("right_arm");
     bool got_ik = goal_state.setFromIK(joint_model_group,pose);
@@ -125,8 +120,6 @@ container_set_ws_goal( struct container * c, const char *name, const double quat
             fprintf(stderr, "goal %lu: %f\n", i, x[i] );
         }
     }
-
-
 }
 
 
@@ -185,8 +178,50 @@ container_plan( struct container * c )
 
 
 // int
-// container_group_fk( struct container * c, const char *group, double q[4], double v[3]  )
+// container_group_fk( struct container * c, const char *group, size_t n, const double *q,
+//                     double r[4], double v[3]  )
 // {
+//     robot_state::RobotState start_state(c->robot_model);
+//     /* Zero positions because somebody's not inititializing their shit */
+//     {
+//         double *x = start_state.getVariablePositions();
+//         for( size_t i = 0; i < start_state.getVariableNames().size(); i++ ) {
+//             x[i] = 0;
+//         }
+//     }
+
+//     sensor_msgs::JointState start_joint_state;
+
+
+//     const robot_state::JointModelGroup* joint_model_group = start_state.getJointModelGroup(c->req.group_name);
+
 //     const robot_state::JointModelGroup* joint_model_group =
 //         start_state.getJointModelGroup(group);
+
+//         const std::vector<std::string> &link_names = joint_model_group->getLinkModelNames();
+//         std::string end_link =  link_names[ link_names.size()-1];
+//         fprintf(stderr, "Link: %s\n", end_link.c_str() );
+//         const Eigen::Affine3d estart_tf = start_state.getFrameTransform(end_link);
+
+//         tf::Transform start_pose;
+//         tf::poseEigenToTF(estart_tf, start_pose);
+//         tf::Quaternion start_q = start_pose.getRotation();
+//         tf::Vector3 start_v = start_pose.getOrigin();
+//         fprintf(stderr, "p_start[%lu] = {", n );
+//         for( size_t i = 0; i < n; i ++ ) {
+//             fprintf(stderr, "%f%s", q[i], (i+1==n) ? "};\n" : ", " );
+//         }
+//         fprintf(stderr,
+//                 "r_start[4] = {%f, %f, %f, %f}\n"
+//                 "v_start[3] = {%f, %f, %f}\n",
+//                 start_q.x(),
+//                 start_q.y(),
+//                 start_q.z(),
+//                 start_q.w(),
+//                 start_v.x(),
+//                 start_v.y(),
+//                 start_v.z() );
+
+//     }
+
 // }
