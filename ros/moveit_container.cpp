@@ -8,7 +8,7 @@
 #include <moveit/move_group_interface/move_group.h>
 #include <moveit/planning_scene/planning_scene.h>
 
-#include "tmsmt.hpp"
+#include "moveit_container.hpp"
 
 planning_interface::PlannerManagerPtr
 load_planner( const std::string &ns,
@@ -55,7 +55,17 @@ container::set_start( const char *name, size_t n, const double *q )
 
     this->req.group_name = "right_arm";
     robot_state::RobotState start_state(this->robot_model);
+    /* Zero positions because somebody's not inititializing their shit */
+    {
+        double *x = start_state.getVariablePositions();
+        for( size_t i = 0; i < start_state.getVariableNames().size(); i++ ) {
+            x[i] = 0;
+        }
+    }
+
     sensor_msgs::JointState start_joint_state;
+
+
     const robot_state::JointModelGroup* joint_model_group = start_state.getJointModelGroup(this->req.group_name);
     {
         std::vector<double> joint_values(n, 0.0);

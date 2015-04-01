@@ -51,7 +51,7 @@
 #include <moveit_msgs/DisplayTrajectory.h>
 #include <moveit_msgs/PlanningScene.h>
 
-#include "tmsmt.hpp"
+#include "moveit_container.hpp"
 
 
 
