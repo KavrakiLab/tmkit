@@ -34,6 +34,7 @@
 #include "cros.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "c_container.h"
 
@@ -43,9 +44,7 @@ int main(int argc, char **argv)
     cros_init (argc, argv, "move_group_tutorial");
     struct cros_node_handle *nh = cros_node_handle_create("~");
 
-    char *ns = cros_node_handle_get_namespace_dup(nh);
-    struct container *cont = container_create(ns, "robot_description");
-    free(ns);
+    struct container *cont = container_create(nh, "robot_description");
 
     const char *group = "right_arm";
     const char *link = container_group_endlink(cont, group);
@@ -54,7 +53,9 @@ int main(int argc, char **argv)
     printf("link:  %s\n", link );
 
     double q0_all[15] = {0};
-    double q0_right[7] = {.5,0,0,0,0,0,.5};
+    double q0_right[7] = {0, -.4*M_PI, 0,
+                          .5*M_PI,
+                          0, .4*M_PI, 0};
     container_merge_group( cont, group, 7, q0_right, 15, q0_all );
 
     container_set_start(cont, 15, q0_all );
@@ -64,7 +65,8 @@ int main(int argc, char **argv)
     double v[3] = {0.363087, -1.278295, 0.320976 + .02};
     container_set_ws_goal(cont, link, q, v, .01, .01 );
 
-    container_plan(cont);
+    container_plan(cont );
+    sleep(5);
 
     container_destroy(cont);
 

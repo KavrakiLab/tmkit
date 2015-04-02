@@ -6,6 +6,7 @@
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/move_group_interface/move_group.h>
 #include <moveit/planning_scene/planning_scene.h>
+#include <moveit_msgs/DisplayTrajectory.h>
 
 #include "moveit_container.hpp"
 
@@ -40,9 +41,12 @@ load_planner( const std::string &ns,
     return planner_instance;
 }
 
-container::container ( const std::string &ns, const char *name ) :
+container::container ( ros::NodeHandle &nh, const char *name ) :
     robot_model_loader(name, true),
     robot_model( robot_model_loader.getModel() ),
     planning_scene (new planning_scene::PlanningScene(robot_model)),
-    planner_instance( load_planner(ns, robot_model) )
-{ }
+    planner_instance( load_planner(nh.getNamespace(), robot_model) )
+{
+
+    display_publisher = nh.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+}

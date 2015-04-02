@@ -16,8 +16,9 @@ struct container {
     planning_scene::PlanningScenePtr planning_scene;
     planning_interface::PlannerManagerPtr planner_instance;
     planning_interface::MotionPlanRequest req;
+    ros::Publisher display_publisher;
 
-    container ( const std::string &ns, const char *name );
+    container ( ros::NodeHandle &nh, const char *name );
 };
 
 #endif

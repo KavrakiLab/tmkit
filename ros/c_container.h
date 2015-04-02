@@ -12,7 +12,7 @@ struct container;
  * Create a new motion planning container.
  */
 struct container *
-container_create( const char *name_space, const char *robot_description );
+container_create( struct cros_node_handle *nh, const char *robot_description );
 
 /**
  * Number of variables for container

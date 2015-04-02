@@ -2,7 +2,9 @@
 
 #include <Eigen/Geometry>
 #include <moveit/kinematic_constraints/utils.h>
+#include <moveit_msgs/DisplayTrajectory.h>
 
+#include "cros.hpp"
 #include "c_container.h"
 #include "moveit_container.hpp"
 
@@ -15,9 +17,9 @@ robot_state_zero( robot_state::RobotState *state )
 }
 
 struct container *
-container_create( const char *name_space, const char *robot_description )
+container_create( cros_node_handle *nh, const char *robot_description )
 {
-    return new container(name_space, robot_description);
+    return new container(nh->node_handle, robot_description);
 }
 
 void
@@ -193,18 +195,16 @@ container_plan( struct container * c )
          printf("\n");
     }
 
-    // /***************/
-    // /*  Visualize  */
-    // /***************/
-    // ros::Publisher display_publisher = node_handle.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
-    // moveit_msgs::DisplayTrajectory display_trajectory;
+    /***************/
+    /*  Visualize  */
+    /***************/
+    moveit_msgs::DisplayTrajectory display_trajectory;
 
-    // ROS_INFO("Visualizing plan 1 (again)");
-    // display_trajectory.trajectory_start = res_msg.trajectory_start;
-    // display_trajectory.trajectory.push_back(res_msg.trajectory);
-    // display_publisher.publish(display_trajectory);
-    // /* Sleep to give Rviz time to visualize the plan. */
-    // sleep(5.0);
+    ROS_INFO("Visualizing plan 1 (again)");
+    display_trajectory.trajectory_start = res_msg.trajectory_start;
+    display_trajectory.trajectory.push_back(res_msg.trajectory);
+    c->display_publisher.publish(display_trajectory);
+
 }
 
 const char *
