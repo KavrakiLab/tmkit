@@ -50,7 +50,7 @@ int main(int argc, char **argv)
 
     double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
     double v[3] = {0.363087, -1.278295, 0.320976 + .02};
-    container_set_ws_goal(cont, "right_arm", q, v );
+    container_set_ws_goal(cont, "right_arm", q, v, .01, .01 );
 
     container_plan(cont);
 

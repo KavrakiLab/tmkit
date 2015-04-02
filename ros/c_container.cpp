@@ -53,6 +53,7 @@ container_set_start( struct container * c, size_t n_all, const double *q_all )
     if( n_all != container_variable_count(c) ) return -1;
     robot_state::RobotState start_state(c->robot_model);
     start_state.setVariablePositions(q_all);
+    start_state.update(true);
 
     c->req.start_state.joint_state.name =  start_state.getVariableNames();
     {
@@ -82,8 +83,17 @@ container_set_group( struct container * c, const char *group )
     c->req.group_name = group;
 }
 
+
 int
-container_set_ws_goal( struct container * c, const char *group, const double quat[4], const double vec[3] )
+container_merge_goal_clear( struct container *c )
+{
+    c->req.goal_constraints.clear();
+    return 0;
+}
+
+int
+container_set_ws_goal( struct container * c, const char *link, const double quat[4], const double vec[3],
+                       double tol_x, double tol_angle )
 {
     geometry_msgs::PoseStamped stamped_pose;
     stamped_pose.header.frame_id = "base";
@@ -97,42 +107,50 @@ container_set_ws_goal( struct container * c, const char *group, const double qua
     pose.position.y = vec[1];
     pose.position.z = vec[2];
 
-    robot_state::RobotState goal_state(c->robot_model);
-    /* Zero positions because somebody's not inititializing their shit */
-    robot_state_zero( &goal_state);
 
-    const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup(group);
-    bool got_ik = goal_state.setFromIK(joint_model_group,pose);
-    fprintf(stderr, "IK: %s\n", got_ik ? "yes" : "no" );
+    fprintf(stderr,"constructing pose goal\n");
+    moveit_msgs::Constraints pose_goal =
+        kinematic_constraints::constructGoalConstraints(link, stamped_pose, tol_x, tol_angle );
+    fprintf(stderr,"adding pose goal...\n");
+    c->req.goal_constraints.push_back(pose_goal);
+    fprintf(stderr,"...added\n");
+    return 0;
 
-    if( ! got_ik ) return -1;
+    // robot_state::RobotState goal_state(c->robot_model);
+    // /* Zero positions because somebody's not inititializing their shit */
+    // robot_state_zero( &goal_state);
 
-    moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state,
-                                                                                          joint_model_group);
-    c->req.goal_constraints.clear();
-    c->req.goal_constraints.push_back(joint_goal);
+    // const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup(group);
+    // bool got_ik = goal_state.setFromIK(joint_model_group,pose);
+    // fprintf(stderr, "IK: %s\n", got_ik ? "yes" : "no" );
 
-    {
-        double *x = goal_state.getVariablePositions();
-        for( size_t i = 0; i < goal_state.getVariableNames().size(); i++ ) {
-            fprintf(stderr, "goal %lu: %f\n", i, x[i] );
-        }
-    }
+    // if( ! got_ik ) return -1;
 
-    {
-        double r[4],v[3];
+    // moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state,
+    //                                                                                       joint_model_group);
+    // c->req.goal_constraints.push_back(joint_goal);
 
-        container_link_fk( c, container_group_endlink( c, group ),
-                           goal_state.getVariableNames().size(),
-                           goal_state.getVariablePositions(),
-                           r, v );
+    // {
+    //     double *x = goal_state.getVariablePositions();
+    //     for( size_t i = 0; i < goal_state.getVariableNames().size(); i++ ) {
+    //         fprintf(stderr, "goal %lu: %f\n", i, x[i] );
+    //     }
+    // }
 
-        fprintf(stderr,
-                "r_goal[4] = {%f, %f, %f, %f}\n"
-                "v_goal[3] = {%f, %f, %f}\n",
-                r[0], r[1], r[2], r[3],
-                v[0], v[1], v[2] );
-    }
+    // {
+    //     double r[4],v[3];
+
+    //     container_link_fk( c, container_group_endlink( c, group ),
+    //                        goal_state.getVariableNames().size(),
+    //                        goal_state.getVariablePositions(),
+    //                        r, v );
+
+    //     fprintf(stderr,
+    //             "r_goal[4] = {%f, %f, %f, %f}\n"
+    //             "v_goal[3] = {%f, %f, %f}\n",
+    //             r[0], r[1], r[2], r[3],
+    //             v[0], v[1], v[2] );
+    // }
 
 }
 
@@ -140,7 +158,6 @@ container_set_ws_goal( struct container * c, const char *group, const double qua
 int
 container_plan( struct container * c )
 {
-
     /**********/
     /*  PLAN  */
     /**********/

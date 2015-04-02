@@ -37,7 +37,6 @@
 
 #include "c_container.h"
 
-const char *group = "right_arm";
 
 int main(int argc, char **argv)
 {
@@ -48,7 +47,11 @@ int main(int argc, char **argv)
     struct container *cont = container_create(ns, "robot_description");
     free(ns);
 
-    printf("link: %s\n", container_group_endlink(cont, group) );
+    const char *group = "right_arm";
+    const char *link = container_group_endlink(cont, group);
+
+    printf("group: %s\n", group );
+    printf("link:  %s\n", link );
 
     double q0_all[15] = {0};
     double q0_right[7] = {.5,0,0,0,0,0,.5};
@@ -59,7 +62,7 @@ int main(int argc, char **argv)
 
     double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
     double v[3] = {0.363087, -1.278295, 0.320976 + .02};
-    container_set_ws_goal(cont, group, q, v );
+    container_set_ws_goal(cont, link, q, v, .01, .01 );
 
     container_plan(cont);
 

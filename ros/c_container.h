@@ -46,11 +46,16 @@ container_set_start( struct container * c, size_t n_all, const double *q_all );
 int
 container_set_group( struct container * c, const char *group );
 
+
+int
+container_merge_goal_clear( struct container *c );
+
 /**
  * Set a workspace goal.
  */
 int
-container_set_ws_goal( struct container * c, const char *group, const double quat[4], const double vec[3] );
+container_set_ws_goal( struct container * c, const char *link, const double quat[4], const double vec[3],
+                       double tol_x, double tol_angle );
 
 /**
  * Compute a motion plan using previously set options.
