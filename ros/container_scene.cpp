@@ -58,4 +58,8 @@ const char *
 container_scene_rm( struct container * c, const char *name )
 {
 
+    moveit_msgs::CollisionObject msg;
+    msg.id = name;
+    msg.operation = msg.REMOVE;
+    c->planning_scene->processCollisionObjectMsg( msg );
 }

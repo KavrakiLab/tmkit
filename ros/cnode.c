@@ -84,12 +84,12 @@ int main(int argc, char **argv)
             double v[3] = {.4, -.4, 0};
             container_scene_add_box(cont, "box2", dim, q, v );
         }
+
+        //container_scene_rm(cont, "box1");
     }
 
     container_scene_send(cont);
-    sleep(5);
 
-    //double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
     double q1[4] = {0, 1, 0, 0 };
     //double v1[3] = {0.488372, -0.683374, 0.345540};
     double v1[3] = {0.488372, -0.383374, 0.345540};
