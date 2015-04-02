@@ -66,10 +66,28 @@ int main(int argc, char **argv)
             r0[0], r0[1], r0[2], r0[3],
             v0[0], v0[1], v0[2] );
 
-    container_merge_group( cont, group, 7, q0_right, 15, q0_all );
+    //container_merge_group( cont, group, 7, q0_right, 15, q0_all );
 
     container_set_start(cont, 15, q0_all );
     container_set_group(cont, group );
+
+    // add collision object
+    {
+        double q[4] = {0,0,0,1};
+        {
+            double dim[3] = {.05, .05, 1.5};
+            double v[3] = {.5, -.5, 0};
+            container_scene_add_box(cont, "box1", dim, q, v );
+        }
+        {
+            double dim[3] = {.05, .05, .5};
+            double v[3] = {.4, -.4, 0};
+            container_scene_add_box(cont, "box2", dim, q, v );
+        }
+    }
+
+    container_scene_send(cont);
+    sleep(5);
 
     //double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
     double q1[4] = {0, 1, 0, 0 };
@@ -78,7 +96,7 @@ int main(int argc, char **argv)
     container_set_ws_goal(cont, link, q1, v1, .01, .01 );
 
     container_plan(cont );
-    sleep(5);
+    sleep(1);
 
     container_destroy(cont);
 

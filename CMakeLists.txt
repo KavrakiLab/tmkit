@@ -129,6 +129,7 @@ target_link_libraries(cros
 add_library(cmoveit
   ros/c_container.cpp
   ros/moveit_container.cpp
+  ros/container_scene.cpp
 )
 target_link_libraries(cmoveit
   ${catkin_LIBRARIES}

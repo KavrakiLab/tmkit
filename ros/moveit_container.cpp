@@ -47,6 +47,13 @@ container::container ( ros::NodeHandle &nh, const char *name ) :
     planning_scene (new planning_scene::PlanningScene(robot_model)),
     planner_instance( load_planner(nh.getNamespace(), robot_model) )
 {
+    display_publisher = nh.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10, true);
+    scene_publisher = nh.advertise<moveit_msgs::PlanningScene>("/move_group/monitored_planning_scene", 10, true);
 
-    display_publisher = nh.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+    while(scene_publisher.getNumSubscribers() < 1)
+    {
+        printf("Waiting for scene subscriber...\n");
+        ros::WallDuration sleep_t(0.5);
+        sleep_t.sleep();
+    }
 }

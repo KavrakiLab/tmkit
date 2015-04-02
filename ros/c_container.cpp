@@ -39,7 +39,11 @@ container_merge_group( struct container *c, const char *group,
                        size_t n_group, const double *q_group,
                        size_t n_all, double *q_all )
 {
-    if( n_all != container_variable_count(c) ) return -1;
+    if( n_all != container_variable_count(c) ) {
+        fprintf(stderr, "error: Size mismatch between robot model (%lu) and provided array (%lu)\n",
+                container_variable_count(c), n_all);
+        return -1;
+    }
 
     robot_state::RobotState state(c->robot_model);
     state.setVariablePositions(q_all);
@@ -52,7 +56,11 @@ int
 container_set_start( struct container * c, size_t n_all, const double *q_all )
 {
 
-    if( n_all != container_variable_count(c) ) return -1;
+    if( n_all != container_variable_count(c) ) {
+        fprintf(stderr, "error: Size mismatch between robot model (%lu) and provided array (%lu)\n",
+                container_variable_count(c), n_all);
+        return -1;
+    }
     robot_state::RobotState start_state(c->robot_model);
     start_state.setVariablePositions(q_all);
     start_state.update(true);
@@ -255,8 +263,12 @@ container_link_fk( struct container * c, const char *link, size_t n, const doubl
     // Make robot state
     {
         double *x = state.getVariablePositions();
-        size_t n2 = state.getVariableNames().size();
-        if( n2 != n ) return -1;
+        size_t n2 = container_variable_count(c);
+        if( n2 != n ) {
+            fprintf(stderr, "error: Size mismatch between robot model (%lu) and provided array (%lu)\n",
+                    n2, n);
+            return -1;
+        }
         memcpy( x, q, n*sizeof(x[0]) );
     }
 
