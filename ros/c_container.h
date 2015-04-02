@@ -34,6 +34,9 @@ container_link_fk( struct container * c, const char *link, size_t n, const doubl
                    double r[4], double v[3]  );
 
 
+const char *
+container_group_endlink( struct container * c, const char *group );
+
 #ifdef __cplusplus
 }
 #endif

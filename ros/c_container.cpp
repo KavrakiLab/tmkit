@@ -67,7 +67,7 @@ container_set_start( struct container * c, const char *group, size_t n, const do
 }
 
 int
-container_set_ws_goal( struct container * c, const char *name, const double quat[4], const double vec[3] )
+container_set_ws_goal( struct container * c, const char *group, const double quat[4], const double vec[3] )
 {
     geometry_msgs::PoseStamped stamped_pose;
     stamped_pose.header.frame_id = "base";
@@ -85,7 +85,7 @@ container_set_ws_goal( struct container * c, const char *name, const double quat
     /* Zero positions because somebody's not inititializing their shit */
     robot_state_zero( &goal_state);
 
-    const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup("right_arm");
+    const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup(group);
     bool got_ik = goal_state.setFromIK(joint_model_group,pose);
     fprintf(stderr, "IK: %s\n", got_ik ? "yes" : "no" );
 
@@ -102,6 +102,22 @@ container_set_ws_goal( struct container * c, const char *name, const double quat
             fprintf(stderr, "goal %lu: %f\n", i, x[i] );
         }
     }
+
+    {
+        double r[4],v[3];
+
+        container_link_fk( c, container_group_endlink( c, group ),
+                           goal_state.getVariableNames().size(),
+                           goal_state.getVariablePositions(),
+                           r, v );
+
+        fprintf(stderr,
+                "r_goal[4] = {%f, %f, %f, %f}\n"
+                "v_goal[3] = {%f, %f, %f}\n",
+                r[0], r[1], r[2], r[3],
+                v[0], v[1], v[2] );
+    }
+
 }
 
 
@@ -158,20 +174,29 @@ container_plan( struct container * c )
     // sleep(5.0);
 }
 
+const char *
+container_group_endlink( struct container * c, const char *group )
+{
+    robot_state::RobotState state(c->robot_model);
+    const robot_state::JointModelGroup* joint_model_group
+        = state.getJointModelGroup(group);
+    const std::vector<std::string> &link_names = joint_model_group->getLinkModelNames();
+    const std::string & end_link =  link_names[ link_names.size()-1];
+    return end_link.c_str();
+}
 
 int
 container_group_fk( struct container * c, const char *group, size_t n, const double *q,
                     double r[4], double v[3]  )
 {
+    /* Find link for end of group */
+    const char *end_link = container_group_endlink(c, group);
+
     robot_state::RobotState state(c->robot_model);
     /* Zero positions because somebody's not inititializing their shit */
     robot_state_zero(&state);
-
-    /* Find link for end of group */
     const robot_state::JointModelGroup* joint_model_group
-        = state.getJointModelGroup(c->req.group_name);
-    const std::vector<std::string> &link_names = joint_model_group->getLinkModelNames();
-    const std::string & end_link =  link_names[ link_names.size()-1];
+        = state.getJointModelGroup(group);
 
     /* Set state */
     {
@@ -180,7 +205,7 @@ container_group_fk( struct container * c, const char *group, size_t n, const dou
         state.setJointGroupPositions(joint_model_group, joint_values);
     }
 
-    return container_link_fk( c, end_link.c_str(),
+    return container_link_fk( c, end_link,
                               state.getVariableNames().size(),
                               state.getVariablePositions(),
                               r, v );
