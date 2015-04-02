@@ -1,6 +1,6 @@
 #include <cstdlib>
 
-#include <tf_conversions/tf_eigen.h>
+#include <Eigen/Geometry>
 #include <moveit/kinematic_constraints/utils.h>
 
 #include "c_container.h"
@@ -55,33 +55,15 @@ container_set_start( struct container * c, const char *group, size_t n, const do
 
     // Print stuff
     {
-        const std::vector<std::string> &link_names = joint_model_group->getLinkModelNames();
-        std::string end_link =  link_names[ link_names.size()-1];
-        fprintf(stderr, "Link: %s\n", end_link.c_str() );
-        const Eigen::Affine3d estart_tf = start_state.getFrameTransform(end_link);
+        double r[4],v[3];
+        container_group_fk( c, group, n, q, r, v );
 
-        tf::Transform start_pose;
-        tf::poseEigenToTF(estart_tf, start_pose);
-        tf::Quaternion start_q = start_pose.getRotation();
-        tf::Vector3 start_v = start_pose.getOrigin();
-        fprintf(stderr, "p_start[%lu] = {", n );
-        for( size_t i = 0; i < n; i ++ ) {
-            fprintf(stderr, "%f%s", q[i], (i+1==n) ? "};\n" : ", " );
-        }
         fprintf(stderr,
                 "r_start[4] = {%f, %f, %f, %f}\n"
                 "v_start[3] = {%f, %f, %f}\n",
-                start_q.x(),
-                start_q.y(),
-                start_q.z(),
-                start_q.w(),
-                start_v.x(),
-                start_v.y(),
-                start_v.z() );
-
+                r[0], r[1], r[2], r[3],
+                v[0], v[1], v[2] );
     }
-
-    //return c->set_start(group,n,q);
 }
 
 int
@@ -177,51 +159,64 @@ container_plan( struct container * c )
 }
 
 
-// int
-// container_group_fk( struct container * c, const char *group, size_t n, const double *q,
-//                     double r[4], double v[3]  )
-// {
-//     robot_state::RobotState start_state(c->robot_model);
-//     /* Zero positions because somebody's not inititializing their shit */
-//     {
-//         double *x = start_state.getVariablePositions();
-//         for( size_t i = 0; i < start_state.getVariableNames().size(); i++ ) {
-//             x[i] = 0;
-//         }
-//     }
+int
+container_group_fk( struct container * c, const char *group, size_t n, const double *q,
+                    double r[4], double v[3]  )
+{
+    robot_state::RobotState state(c->robot_model);
+    /* Zero positions because somebody's not inititializing their shit */
+    robot_state_zero(&state);
 
-//     sensor_msgs::JointState start_joint_state;
+    /* Find link for end of group */
+    const robot_state::JointModelGroup* joint_model_group
+        = state.getJointModelGroup(c->req.group_name);
+    const std::vector<std::string> &link_names = joint_model_group->getLinkModelNames();
+    const std::string & end_link =  link_names[ link_names.size()-1];
+
+    /* Set state */
+    {
+        std::vector<double> joint_values(n, 0.0);
+        std::copy ( q, q+n, joint_values.begin() );
+        state.setJointGroupPositions(joint_model_group, joint_values);
+    }
+
+    return container_link_fk( c, end_link.c_str(),
+                              state.getVariableNames().size(),
+                              state.getVariablePositions(),
+                              r, v );
+
+}
 
 
-//     const robot_state::JointModelGroup* joint_model_group = start_state.getJointModelGroup(c->req.group_name);
+int
+container_link_fk( struct container * c, const char *link, size_t n, const double *q,
+                   double r[4], double v[3] )
+{
 
-//     const robot_state::JointModelGroup* joint_model_group =
-//         start_state.getJointModelGroup(group);
+    robot_state::RobotState state(c->robot_model);
+    // Make robot state
+    {
+        double *x = state.getVariablePositions();
+        size_t n2 = state.getVariableNames().size();
+        if( n2 != n ) return -1;
+        memcpy( x, q, n*sizeof(x[0]) );
+    }
 
-//         const std::vector<std::string> &link_names = joint_model_group->getLinkModelNames();
-//         std::string end_link =  link_names[ link_names.size()-1];
-//         fprintf(stderr, "Link: %s\n", end_link.c_str() );
-//         const Eigen::Affine3d estart_tf = start_state.getFrameTransform(end_link);
+    // get TF
+    const Eigen::Affine3d estart_tf = state.getFrameTransform(link);
+    {
+        const Eigen::Quaternion<double> equat( estart_tf.rotation() );
+        r[0] = equat.x();
+        r[1] = equat.y();
+        r[2] = equat.z();
+        r[3] = equat.w();
+    }
 
-//         tf::Transform start_pose;
-//         tf::poseEigenToTF(estart_tf, start_pose);
-//         tf::Quaternion start_q = start_pose.getRotation();
-//         tf::Vector3 start_v = start_pose.getOrigin();
-//         fprintf(stderr, "p_start[%lu] = {", n );
-//         for( size_t i = 0; i < n; i ++ ) {
-//             fprintf(stderr, "%f%s", q[i], (i+1==n) ? "};\n" : ", " );
-//         }
-//         fprintf(stderr,
-//                 "r_start[4] = {%f, %f, %f, %f}\n"
-//                 "v_start[3] = {%f, %f, %f}\n",
-//                 start_q.x(),
-//                 start_q.y(),
-//                 start_q.z(),
-//                 start_q.w(),
-//                 start_v.x(),
-//                 start_v.y(),
-//                 start_v.z() );
+    {
+        const auto e_start = estart_tf.translation();
+        v[0] = e_start[0];
+        v[1] = e_start[1];
+        v[2] = e_start[2];
+    }
 
-//     }
-
-// }
+}

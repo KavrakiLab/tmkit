@@ -25,7 +25,13 @@ container_plan( struct container * c );
 
 
 int
-container_group_fk( struct container * c, const char *group, double q[4], double v[3]  );
+container_group_fk( struct container * c, const char *group, size_t n, const double *q_group,
+                    double r[4], double v[3]  );
+
+
+int
+container_link_fk( struct container * c, const char *link, size_t n, const double *q_all,
+                   double r[4], double v[3]  );
 
 
 #ifdef __cplusplus
