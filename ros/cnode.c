@@ -56,14 +56,26 @@ int main(int argc, char **argv)
     double q0_right[7] = {0, -.4*M_PI, 0,
                           .5*M_PI,
                           0, .4*M_PI, 0};
+
+    double r0[4], v0[4];
+    container_group_fk( cont, group, 7, q0_right, r0, v0 );
+
+    fprintf(stderr,
+            "r_start[4] = {%f, %f, %f, %f}\n"
+            "v_start[3] = {%f, %f, %f}\n",
+            r0[0], r0[1], r0[2], r0[3],
+            v0[0], v0[1], v0[2] );
+
     container_merge_group( cont, group, 7, q0_right, 15, q0_all );
 
     container_set_start(cont, 15, q0_all );
     container_set_group(cont, group );
 
-    double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
-    double v[3] = {0.363087, -1.278295, 0.320976 + .02};
-    container_set_ws_goal(cont, link, q, v, .01, .01 );
+    //double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
+    double q1[4] = {0, 1, 0, 0 };
+    //double v1[3] = {0.488372, -0.683374, 0.345540};
+    double v1[3] = {0.488372, -0.383374, 0.345540};
+    container_set_ws_goal(cont, link, q1, v1, .01, .01 );
 
     container_plan(cont );
     sleep(5);
