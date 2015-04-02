@@ -30,7 +30,7 @@ int
 container_set_start( struct container * c, const char *group, size_t n, const double *q )
 {
 
-    c->req.group_name = "right_arm";
+    c->req.group_name = group;
     robot_state::RobotState start_state(c->robot_model);
     /* Zero positions because somebody's not inititializing their shit */
     robot_state_zero( &start_state);
