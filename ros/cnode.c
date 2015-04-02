@@ -75,15 +75,21 @@ int main(int argc, char **argv)
     {
         double q[4] = {0,0,0,1};
         {
-            double dim[3] = {.05, .05, 1.5};
+            //double dim[3] = {.05, .05, 1.5};
             double v[3] = {.5, -.5, 0};
-            container_scene_add_box(cont, "box1", dim, q, v );
+            container_scene_add_cylinder(cont, "a", .01, 1.5, q, v );
         }
         {
-            double dim[3] = {.05, .05, .5};
+            //double dim[3] = {.05, .05, .5};
             double v[3] = {.4, -.4, 0};
-            container_scene_add_box(cont, "box2", dim, q, v );
+            container_scene_add_cylinder(cont, "b", .01, .5, q, v );
         }
+        {
+            //double dim[3] = {.05, .05, .5};
+            double v[3] = {.6, -.6, .3};
+            container_scene_add_sphere(cont, "c", .05, v );
+        }
+
 
         //container_scene_rm(cont, "box1");
     }
