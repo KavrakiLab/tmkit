@@ -15,6 +15,20 @@ struct container *
 container_create( const char *name_space, const char *robot_description );
 
 /**
+ * Number of variables for container
+ */
+size_t
+container_variable_count( struct container *c );
+
+/**
+ * Merge group configuration into full configuration.
+ */
+int
+container_merge_group( struct container *c, const char *group,
+                       size_t n_group, const double *q_group,
+                       size_t n_all, double *q_all );
+
+/**
  *  Destroy a motion planning container
  */
 void
@@ -24,7 +38,13 @@ container_destroy( struct container * );
  * Set container start state.
  */
 int
-container_set_start( struct container * c, const char *group, size_t n, const double *q );
+container_set_start( struct container * c, size_t n_all, const double *q_all );
+
+/**
+ * Set group to plan for.
+ */
+int
+container_set_group( struct container * c, const char *group );
 
 /**
  * Set a workspace goal.

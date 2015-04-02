@@ -33,8 +33,11 @@
  *********************************************************************/
 #include "cros.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "c_container.h"
+
+const char *group = "right_arm";
 
 int main(int argc, char **argv)
 {
@@ -45,12 +48,18 @@ int main(int argc, char **argv)
     struct container *cont = container_create(ns, "robot_description");
     free(ns);
 
-    double q0[7] = {0};
-    container_set_start(cont, "right_arm", 7, q0 );
+    printf("link: %s\n", container_group_endlink(cont, group) );
+
+    double q0_all[15] = {0};
+    double q0_right[7] = {.5,0,0,0,0,0,.5};
+    container_merge_group( cont, group, 7, q0_right, 15, q0_all );
+
+    container_set_start(cont, 15, q0_all );
+    container_set_group(cont, group );
 
     double q[4] = {0.423811, 0.566025, -0.423811, 0.566025};
     double v[3] = {0.363087, -1.278295, 0.320976 + .02};
-    container_set_ws_goal(cont, "right_arm", q, v );
+    container_set_ws_goal(cont, group, q, v );
 
     container_plan(cont);
 

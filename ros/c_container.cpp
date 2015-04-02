@@ -26,24 +26,34 @@ container_destroy( struct container * c)
     delete c;
 }
 
+size_t
+container_variable_count( struct container *c )
+{
+    return c->robot_model->getVariableCount();
+}
+
 int
-container_set_start( struct container * c, const char *group, size_t n, const double *q )
+container_merge_group( struct container *c, const char *group,
+                       size_t n_group, const double *q_group,
+                       size_t n_all, double *q_all )
+{
+    if( n_all != container_variable_count(c) ) return -1;
+
+    robot_state::RobotState state(c->robot_model);
+    state.setVariablePositions(q_all);
+    size_t n_all_model = state.getVariableCount();
+    state.setJointGroupPositions(group, q_group);
+    memcpy(q_all, state.getVariablePositions(), n_all_model*sizeof(q_all[0]));
+}
+
+int
+container_set_start( struct container * c, size_t n_all, const double *q_all )
 {
 
-    c->req.group_name = group;
+    if( n_all != container_variable_count(c) ) return -1;
     robot_state::RobotState start_state(c->robot_model);
-    /* Zero positions because somebody's not inititializing their shit */
-    robot_state_zero( &start_state);
+    start_state.setVariablePositions(q_all);
 
-    sensor_msgs::JointState start_joint_state;
-
-
-    const robot_state::JointModelGroup* joint_model_group = start_state.getJointModelGroup(c->req.group_name);
-    {
-        std::vector<double> joint_values(n, 0.0);
-        std::copy ( q, q+n, joint_values.begin() );
-        start_state.setJointGroupPositions(joint_model_group, joint_values);
-    }
     c->req.start_state.joint_state.name =  start_state.getVariableNames();
     {
         size_t n = c->req.start_state.joint_state.name.size();
@@ -53,17 +63,23 @@ container_set_start( struct container * c, const char *group, size_t n, const do
                     c->req.start_state.joint_state.position.begin() );
     }
 
-    // Print stuff
-    {
-        double r[4],v[3];
-        container_group_fk( c, group, n, q, r, v );
+    // // Print stuff
+    // {
+    //     double r[4],v[3];
+    //     container_group_fk( c, group, n, q, r, v );
 
-        fprintf(stderr,
-                "r_start[4] = {%f, %f, %f, %f}\n"
-                "v_start[3] = {%f, %f, %f}\n",
-                r[0], r[1], r[2], r[3],
-                v[0], v[1], v[2] );
-    }
+    //     fprintf(stderr,
+    //             "r_start[4] = {%f, %f, %f, %f}\n"
+    //             "v_start[3] = {%f, %f, %f}\n",
+    //             r[0], r[1], r[2], r[3],
+    //             v[0], v[1], v[2] );
+    // }
+}
+
+int
+container_set_group( struct container * c, const char *group )
+{
+    c->req.group_name = group;
 }
 
 int
