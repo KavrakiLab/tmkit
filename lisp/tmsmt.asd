@@ -7,4 +7,6 @@
                (:file "expression" :depends-on ("util"))
                (:file "pddl" :depends-on ("util"))
                (:file "placement-graph" :depends-on ("pddl"))
-               (:file "planner" :depends-on ("util" "expression" "pddl" "smtlib"))))
+               (:file "planner" :depends-on ("util" "expression" "pddl" "smtlib"))
+               (:file "ros-lib" :depends-on ("util"))
+               (:file "ros-fun" :depends-on ("ros-lib"))))
