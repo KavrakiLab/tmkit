@@ -47,10 +47,10 @@ int main(int argc, char **argv)
     cros_init (argc, argv, "move_group_tutorial");
     struct cros_node_handle *nh = cros_node_handle_create("~");
 
-    struct container *cont = container_create(nh, "robot_description");
+    struct container *cont = tms_container_create(nh, "robot_description");
 
     const char *group = "right_arm";
-    const char *link = container_group_endlink(cont, group);
+    const char *link = tms_container_group_endlink(cont, group);
 
     printf("group: %s\n", group );
     printf("link:  %s\n", link );
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
                           0, .4*M_PI, 0};
 
     double r0[4], v0[4];
-    container_group_fk( cont, group, 7, q0_right, r0, v0 );
+    tms_container_group_fk( cont, group, 7, q0_right, r0, v0 );
 
     fprintf(stderr,
             "r_start[4] = {%f, %f, %f, %f}\n"
@@ -69,10 +69,10 @@ int main(int argc, char **argv)
             r0[0], r0[1], r0[2], r0[3],
             v0[0], v0[1], v0[2] );
 
-    //container_merge_group( cont, group, 7, q0_right, 15, q0_all );
+    //tms_container_merge_group( cont, group, 7, q0_right, 15, q0_all );
 
-    container_set_start(cont, 15, q0_all );
-    container_set_group(cont, group );
+    tms_container_set_start(cont, 15, q0_all );
+    tms_container_set_group(cont, group );
 
     // add collision object
     {
@@ -80,36 +80,36 @@ int main(int argc, char **argv)
         {
             //double dim[3] = {.05, .05, 1.5};
             double v[3] = {.5, -.5, 0};
-            container_scene_add_cylinder(cont, "a", .01, 1.5, q, v );
+            tms_container_scene_add_cylinder(cont, "a", .01, 1.5, q, v );
         }
         {
             //double dim[3] = {.05, .05, .5};
             double v[3] = {.4, -.4, 0};
-            container_scene_add_cylinder(cont, "b", .01, .5, q, v );
+            tms_container_scene_add_cylinder(cont, "b", .01, .5, q, v );
         }
         {
             //double dim[3] = {.05, .05, .5};
             double v[3] = {.6, -.6, .3};
-            container_scene_add_sphere(cont, "c", .05, v );
+            tms_container_scene_add_sphere(cont, "c", .05, v );
         }
 
 
-        //container_scene_rm(cont, "box1");
+        //tms_container_scene_rm(cont, "box1");
     }
 
-    container_scene_send(cont);
+    tms_container_scene_send(cont);
 
     double aa[4] = {0, 1, 0, .5*M_PI };
     double q1[4] = {0, 0, 0, 1 };
     aa_tf_axang2quat(aa,q1);
     //double v1[3] = {0.488372, -0.683374, 0.345540};
     double v1[3] = {0.788372, -0.383374, 0.345540};
-    container_set_ws_goal(cont, link, q1, v1, .01, .01 );
+    tms_container_set_ws_goal(cont, link, q1, v1, .01, .01 );
 
-    container_plan(cont );
+    tms_container_plan(cont );
     sleep(1);
 
-    container_destroy(cont);
+    tms_container_destroy(cont);
 
     return 0;
 }

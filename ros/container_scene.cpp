@@ -8,7 +8,7 @@
  * Publish the scene.
  */
 void
-container_scene_send( struct container * c )
+tms_container_scene_send( struct container * c )
 {
     moveit_msgs::PlanningScene msg;
     c->planning_scene->getPlanningSceneMsg(msg);
@@ -50,8 +50,8 @@ add_primitive( struct container * c, const char *name,
  * Add a box to the scene.
  */
 void
-container_scene_add_box( struct container * c, const char *name, const double dim[3],
-                   const double quat[4], const double vec[3] )
+tms_container_scene_add_box( struct container * c, const char *name, const double dim[3],
+                             const double quat[4], const double vec[3] )
 {
     shape_msgs::SolidPrimitive primitive;
     primitive.type = primitive.BOX;
@@ -65,9 +65,9 @@ container_scene_add_box( struct container * c, const char *name, const double di
  * Add a cylinder
  */
 void
-container_scene_add_cylinder( struct container * c, const char *name,
-                              double radius, double height,
-                              const double quat[4], const double vec[3] )
+tms_container_scene_add_cylinder( struct container * c, const char *name,
+                                  double radius, double height,
+                                  const double quat[4], const double vec[3] )
 {
     shape_msgs::SolidPrimitive primitive;
     primitive.type = primitive.CYLINDER;
@@ -82,7 +82,7 @@ container_scene_add_cylinder( struct container * c, const char *name,
 
 
 void
-container_scene_add_sphere( struct container * c, const char *name, double radius, const double vec[3] )
+tms_container_scene_add_sphere( struct container * c, const char *name, double radius, const double vec[3] )
 {
     shape_msgs::SolidPrimitive primitive;
     primitive.type = primitive.SPHERE;
@@ -97,7 +97,7 @@ container_scene_add_sphere( struct container * c, const char *name, double radiu
  * Remove an item from the scene.
  */
 void
-container_scene_rm( struct container * c, const char *name )
+tms_container_scene_rm( struct container * c, const char *name )
 {
 
     moveit_msgs::CollisionObject msg;

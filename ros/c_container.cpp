@@ -17,31 +17,31 @@ robot_state_zero( robot_state::RobotState *state )
 }
 
 struct container *
-container_create( cros_node_handle *nh, const char *robot_description )
+tms_container_create( cros_node_handle *nh, const char *robot_description )
 {
     return new container(nh->node_handle, robot_description);
 }
 
 void
-container_destroy( struct container * c)
+tms_container_destroy( struct container * c)
 {
     delete c;
 }
 
 size_t
-container_variable_count( struct container *c )
+tms_container_variable_count( struct container *c )
 {
     return c->robot_model->getVariableCount();
 }
 
 int
-container_merge_group( struct container *c, const char *group,
-                       size_t n_group, const double *q_group,
-                       size_t n_all, double *q_all )
+tms_container_merge_group( struct container *c, const char *group,
+                           size_t n_group, const double *q_group,
+                           size_t n_all, double *q_all )
 {
-    if( n_all != container_variable_count(c) ) {
+    if( n_all != tms_container_variable_count(c) ) {
         fprintf(stderr, "error: Size mismatch between robot model (%lu) and provided array (%lu)\n",
-                container_variable_count(c), n_all);
+                tms_container_variable_count(c), n_all);
         return -1;
     }
 
@@ -53,12 +53,12 @@ container_merge_group( struct container *c, const char *group,
 }
 
 int
-container_set_start( struct container * c, size_t n_all, const double *q_all )
+tms_container_set_start( struct container * c, size_t n_all, const double *q_all )
 {
 
-    if( n_all != container_variable_count(c) ) {
+    if( n_all != tms_container_variable_count(c) ) {
         fprintf(stderr, "error: Size mismatch between robot model (%lu) and provided array (%lu)\n",
-                container_variable_count(c), n_all);
+                tms_container_variable_count(c), n_all);
         return -1;
     }
     robot_state::RobotState start_state(c->robot_model);
@@ -77,7 +77,7 @@ container_set_start( struct container * c, size_t n_all, const double *q_all )
     // // Print stuff
     // {
     //     double r[4],v[3];
-    //     container_group_fk( c, group, n, q, r, v );
+    //     tms_container_group_fk( c, group, n, q, r, v );
 
     //     fprintf(stderr,
     //             "r_start[4] = {%f, %f, %f, %f}\n"
@@ -88,22 +88,22 @@ container_set_start( struct container * c, size_t n_all, const double *q_all )
 }
 
 int
-container_set_group( struct container * c, const char *group )
+tms_container_set_group( struct container * c, const char *group )
 {
     c->req.group_name = group;
 }
 
 
 int
-container_merge_goal_clear( struct container *c )
+tms_container_merge_goal_clear( struct container *c )
 {
     c->req.goal_constraints.clear();
     return 0;
 }
 
 int
-container_set_ws_goal( struct container * c, const char *link, const double quat[4], const double vec[3],
-                       double tol_x, double tol_angle )
+tms_container_set_ws_goal( struct container * c, const char *link, const double quat[4], const double vec[3],
+                           double tol_x, double tol_angle )
 {
     geometry_msgs::PoseStamped stamped_pose;
     stamped_pose.header.frame_id = "base";
@@ -150,7 +150,7 @@ container_set_ws_goal( struct container * c, const char *link, const double quat
     // {
     //     double r[4],v[3];
 
-    //     container_link_fk( c, container_group_endlink( c, group ),
+    //     tms_container_link_fk( c, tms_container_group_endlink( c, group ),
     //                        goal_state.getVariableNames().size(),
     //                        goal_state.getVariablePositions(),
     //                        r, v );
@@ -166,7 +166,7 @@ container_set_ws_goal( struct container * c, const char *link, const double quat
 
 
 int
-container_plan( struct container * c )
+tms_container_plan( struct container * c )
 {
     /**********/
     /*  PLAN  */
@@ -216,7 +216,7 @@ container_plan( struct container * c )
 }
 
 const char *
-container_group_endlink( struct container * c, const char *group )
+tms_container_group_endlink( struct container * c, const char *group )
 {
     robot_state::RobotState state(c->robot_model);
     const robot_state::JointModelGroup* joint_model_group
@@ -227,11 +227,11 @@ container_group_endlink( struct container * c, const char *group )
 }
 
 int
-container_group_fk( struct container * c, const char *group, size_t n, const double *q,
+tms_container_group_fk( struct container * c, const char *group, size_t n, const double *q,
                     double r[4], double v[3]  )
 {
     /* Find link for end of group */
-    const char *end_link = container_group_endlink(c, group);
+    const char *end_link = tms_container_group_endlink(c, group);
 
     robot_state::RobotState state(c->robot_model);
     /* Zero positions because somebody's not inititializing their shit */
@@ -246,7 +246,7 @@ container_group_fk( struct container * c, const char *group, size_t n, const dou
         state.setJointGroupPositions(joint_model_group, joint_values);
     }
 
-    return container_link_fk( c, end_link,
+    return tms_container_link_fk( c, end_link,
                               state.getVariableNames().size(),
                               state.getVariablePositions(),
                               r, v );
@@ -255,15 +255,15 @@ container_group_fk( struct container * c, const char *group, size_t n, const dou
 
 
 int
-container_link_fk( struct container * c, const char *link, size_t n, const double *q,
-                   double r[4], double v[3] )
+tms_container_link_fk( struct container * c, const char *link, size_t n, const double *q,
+                       double r[4], double v[3] )
 {
 
     robot_state::RobotState state(c->robot_model);
     // Make robot state
     {
         double *x = state.getVariablePositions();
-        size_t n2 = container_variable_count(c);
+        size_t n2 = tms_container_variable_count(c);
         if( n2 != n ) {
             fprintf(stderr, "error: Size mismatch between robot model (%lu) and provided array (%lu)\n",
                     n2, n);
