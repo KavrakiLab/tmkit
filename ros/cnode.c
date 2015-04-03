@@ -33,10 +33,13 @@
  *********************************************************************/
 #include "cros.h"
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <math.h>
+#include <amino.h>
 
 #include "c_container.h"
+#include "container_scene.h"
 
 
 int main(int argc, char **argv)
@@ -96,9 +99,11 @@ int main(int argc, char **argv)
 
     container_scene_send(cont);
 
-    double q1[4] = {0, 1, 0, 0 };
+    double aa[4] = {0, 1, 0, .5*M_PI };
+    double q1[4] = {0, 0, 0, 1 };
+    aa_tf_axang2quat(aa,q1);
     //double v1[3] = {0.488372, -0.683374, 0.345540};
-    double v1[3] = {0.488372, -0.383374, 0.345540};
+    double v1[3] = {0.788372, -0.383374, 0.345540};
     container_set_ws_goal(cont, link, q1, v1, .01, .01 );
 
     container_plan(cont );

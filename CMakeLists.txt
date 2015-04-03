@@ -3,6 +3,7 @@ project(tmsmt)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g")
 endif()
 
 ## Find catkin macros and libraries
@@ -109,29 +110,13 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-## Declare a cpp library
-add_library(tmsmt_ros
-  ros/libtmsmt_ros.cpp
-)
-
-target_link_libraries(tmsmt_ros
-  ${catkin_LIBRARIES}
-)
-
-add_library(cros
+add_library(tmsmt
   ros/cros.cpp
-)
-target_link_libraries(cros
-  ${catkin_LIBRARIES}
-)
-
-
-add_library(cmoveit
   ros/c_container.cpp
   ros/moveit_container.cpp
   ros/container_scene.cpp
 )
-target_link_libraries(cmoveit
+target_link_libraries(tmsmt
   ${catkin_LIBRARIES}
 )
 
@@ -143,8 +128,8 @@ target_link_libraries(cmoveit
 
 add_executable(cnode ros/cnode.c)
 target_link_libraries(cnode
-  cros
-  cmoveit
+  tmsmt
+  amino
   ${catkin_LIBRARIES}
 )
 
