@@ -110,6 +110,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+add_library(dumpsig
+  ros/dumpsig.c
+)
+
 add_library(tmsmt
   ros/cros.cpp
   ros/c_container.cpp
