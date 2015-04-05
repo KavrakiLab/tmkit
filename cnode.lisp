@@ -14,4 +14,4 @@
 
 (format t "Container loaded~%")
 
-(format t "Vars: ~A~%" (tms-container-variable-count *container*))
+(format t "Vars: ~A~%" (container-variable-count *container*))

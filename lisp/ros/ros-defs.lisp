@@ -1,8 +1,23 @@
 (in-package :tmsmt)
 
-;;;;;;;;;;;;;;;;;;;;;;;;
-;;; MOVEIT CONTAINER ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defmacro with-deferred-signals (&body body)
+  `(progn
+     (sb-thread::block-deferrable-signals)
+     (unwind-protect (progn ,@body)
+       (sb-unix::unblock-deferrable-signals))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; FOREIGN CONTAINERS ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;; Wrapper for a foreign pointer.
+;;; Used to call destructor when GC'ed
 
 (defstruct foreign-container
   pointer)
@@ -17,11 +32,16 @@ RETURNS: OBJECT"
 
 
 
-(defmacro with-deferred-signals (&body body)
-  `(progn
-     (sb-thread::block-deferrable-signals)
-     (unwind-protect (progn ,@body)
-       (sb-unix::unblock-deferrable-signals))))
+;;;;;;;;;;;;;;;;;;
+;; NODE HANDLE ;;;
+;;;;;;;;;;;;;;;;;;
+(defstruct (node-handle (:include foreign-container)
+                        (:constructor make-node-handle (pointer))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;; MOVEIT CONTAINER ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defstruct (moveit-container (:include foreign-container)
                              (:constructor make-moveit-container (pointer))))
