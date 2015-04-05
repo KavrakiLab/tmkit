@@ -95,7 +95,7 @@ tms_container_set_group( struct container * c, const char *group )
 
 
 int
-tms_container_merge_goal_clear( struct container *c )
+tms_container_goal_clear( struct container *c )
 {
     c->req.goal_constraints.clear();
     return 0;

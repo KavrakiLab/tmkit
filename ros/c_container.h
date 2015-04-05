@@ -46,9 +46,11 @@ tms_container_set_start( struct container * c, size_t n_all, const double *q_all
 int
 tms_container_set_group( struct container * c, const char *group );
 
-
+/**
+ * Clear goal constraints.
+ */
 int
-tms_container_merge_goal_clear( struct container *c );
+tms_container_goal_clear( struct container *c );
 
 /**
  * Set a workspace goal.
