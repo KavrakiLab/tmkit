@@ -26,8 +26,13 @@
 (container-set-start *container* *q-all-start*)
 (container-set-group *container* *group*)
 
-(defparameter *e-goal* (amino:quaternion-translation-2 (amino:axis-angle 0 1 0 (* .5 pi))
-                                                       (amino:vec3 0.788372  -0.383374  0.345540)))
+(container-scene-add-box *container* "table" (amino:vec3* 1 2 .01)
+                         (amino:tf nil (amino:vec3* .75 0 0)))
+
+(container-scene-send *container*)
+
+(defparameter *e-goal* (amino:tf (amino:axis-angle (amino:y-angle (* .5 pi)))
+                                 (amino:vec3* 0.788372  -0.383374  0.345540)))
 
 (container-set-ws-goal *container* *link* *e-goal*)
 
