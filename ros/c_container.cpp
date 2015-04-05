@@ -50,6 +50,7 @@ tms_container_merge_group( struct container *c, const char *group,
     size_t n_all_model = state.getVariableCount();
     state.setJointGroupPositions(group, q_group);
     memcpy(q_all, state.getVariablePositions(), n_all_model*sizeof(q_all[0]));
+    return 0;
 }
 
 int
@@ -85,12 +86,14 @@ tms_container_set_start( struct container * c, size_t n_all, const double *q_all
     //             r[0], r[1], r[2], r[3],
     //             v[0], v[1], v[2] );
     // }
+    return 0;
 }
 
 int
 tms_container_set_group( struct container * c, const char *group )
 {
     c->req.group_name = group;
+    return 0;
 }
 
 
@@ -213,6 +216,7 @@ tms_container_plan( struct container * c )
     display_trajectory.trajectory.push_back(res_msg.trajectory);
     c->display_publisher.publish(display_trajectory);
 
+    return 0;
 }
 
 const char *
@@ -253,7 +257,6 @@ tms_container_group_fk( struct container * c, const char *group, size_t n, const
 
 }
 
-
 int
 tms_container_link_fk( struct container * c, const char *link, size_t n, const double *q,
                        double r[4], double v[3] )
@@ -289,4 +292,5 @@ tms_container_link_fk( struct container * c, const char *link, size_t n, const d
         v[2] = e_start[2];
     }
 
+    return 0;
 }

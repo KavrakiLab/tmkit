@@ -48,6 +48,25 @@
   (let ((result (tms-container-goal-clear container)))
     (check-tms-result result "goal-clear")))
 
+(cffi:defcfun tms-container-set-ws-goal :int
+  (container moveit-container-t)
+  (link :string)
+  (quat amino::quaternion-t)
+  (vec amino::vector-3-t)
+  (tolerance-position :double)
+  (tolerance-angle :double))
+
+(defun container-set-ws-goal (container link tf &key
+                                                 (position-tolerance .5d-2)
+                                                 (angle-tolerance (* 1 (/ pi 180))))
+  (let ((result (tms-container-set-ws-goal container link
+                                           (amino:rotation tf)
+                                           (amino:translation tf)
+                                           position-tolerance
+                                           angle-tolerance)))
+    (check-tms-result result "set-ws-goal")))
+
+
 (cffi:defcfun tms-container-group-fk :int
   (container moveit-container-t)
   (group :string)
@@ -85,3 +104,9 @@
 (cffi:defcfun ("tms_container_group_endlink" container-group-endlink) :string
   (container moveit-container-t)
   (group :string))
+
+(cffi:defcfun tms-container-plan :int
+  (container moveit-container-t))
+
+(defun container-plan (container)
+  (tms-container-plan container))
