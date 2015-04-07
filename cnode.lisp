@@ -24,6 +24,8 @@
 (container-scene-add-box *moveit-cx* "table2" (amino:vec3* 1 2 .01)
                          (amino:tf nil (amino:vec3* .75 0 0)))
 
+;(container-scene-clear *moveit-cx*)
+
 (container-scene-send *moveit-cx*)
 
 (defparameter *e-goal* (amino:tf (amino:axis-angle (amino:y-angle (* .5 pi)))

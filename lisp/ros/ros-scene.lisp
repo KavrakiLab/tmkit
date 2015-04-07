@@ -43,3 +43,6 @@
                                     radius height
                                     (amino:rotation tf)
                                     (amino:translation tf)))
+
+(cffi:defcfun ("tms_container_scene_clear" container-scene-clear) :void
+  (container moveit-container-t))

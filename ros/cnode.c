@@ -106,7 +106,10 @@ int main(int argc, char **argv)
     double v1[3] = {0.788372, -0.383374, 0.345540};
     tms_container_set_ws_goal(cont, link, q1, v1, .01, .01 );
 
+
     tms_container_plan(cont );
+
+    tms_container_scene_clear(cont );
     sleep(1);
 
     tms_container_destroy(cont);

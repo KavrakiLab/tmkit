@@ -105,3 +105,10 @@ tms_container_scene_rm( struct container * c, const char *name )
     msg.operation = msg.REMOVE;
     c->planning_scene->processCollisionObjectMsg( msg );
 }
+
+void
+tms_container_scene_clear( struct container * c )
+{
+
+    c->planning_scene->removeAllCollisionObjects();
+}

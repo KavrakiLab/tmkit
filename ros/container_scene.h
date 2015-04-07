@@ -38,6 +38,12 @@ tms_container_scene_add_cylinder( struct container * c, const char *name,
 void
 tms_container_scene_rm( struct container * c, const char *name );
 
+/**
+ * Remove all items from the scene.
+ */
+void
+tms_container_scene_clear( struct container * c );
+
 #ifdef __cplusplus
 }
 #endif
