@@ -29,7 +29,7 @@
   (q-all :pointer))
 
 (defun container-set-start (container q-all)
-  (let ((result (amino::with-dynamic-vector-foreign (q-all n-all) q-all
+  (let ((result (amino-ffi:with-foreign-simple-vector (q-all n-all) q-all :input
                   (tms-container-set-start container n-all q-all))))
     (check-tms-result result "set-start")))
 
@@ -77,7 +77,7 @@
 
 (defun container-group-fk (container group q-group &optional tf)
   (let ((tf (if tf tf (amino:quaternion-translation nil))))
-    (let ((result (amino::with-dynamic-vector-foreign (q-group n-group) q-group
+    (let ((result (amino-ffi:with-foreign-simple-vector (q-group n-group) q-group :input
                     (tms-container-group-fk container group n-group q-group
                                             (amino::quaternion-translation-quaternion tf)
                                             (amino::quaternion-translation-translation tf)))))
@@ -94,7 +94,7 @@
 
 (defun container-link-fk (container link q-link &optional tf)
   (let ((tf (if tf tf (amino:quaternion-translation nil))))
-    (let ((result (amino::with-dynamic-vector-foreign (q-link n-link) q-link
+    (let ((result (amino-ffi:with-foreign-simple-vector (q-link n-link) q-link :input
                     (tms-container-link-fk container link n-link q-link
                                             (amino::quaternion-translation-quaternion tf)
                                             (amino::quaternion-translation-translation tf)))))
