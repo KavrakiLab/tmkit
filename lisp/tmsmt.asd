@@ -15,4 +15,5 @@
                (:file "ros/ros-cros" :depends-on ("ros/ros-defs"))
                (:file "ros/ros-container" :depends-on ("ros/ros-defs"))
                (:file "ros/ros-scene" :depends-on ("ros/ros-defs"))
+               (:file "moveit" :depends-on ("ros/ros-scene" "ros/ros-container"))
                ))

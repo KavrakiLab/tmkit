@@ -7,7 +7,7 @@
   <rosparam command="load" file="$(find baxter_moveit_config)/config/ompl_planning.yaml"/>
 
   <arg name="config" default="true"/>
-  <arg name="rviz_config" default="$(find baxter_moveit_config)/launch/moveit.rviz" />
+  <arg name="rviz_config" default="$(find tmsmt)/launch/tmsmt.rviz" />
 
   <include file="$(find baxter_moveit_config)/launch/moveit_rviz.launch">
     <arg name="config" value="$(arg config)" />
