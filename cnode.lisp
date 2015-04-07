@@ -4,7 +4,6 @@
 
 (moveit-init)
 
-
 (defparameter *group* "right_arm")
 (defparameter *link* (container-group-endlink *moveit-cx* *group*))
 
@@ -15,14 +14,22 @@
 
 (format t "~&Vars: ~A~%" (length *q-all-start*))
 
+(moveit-scene-exp-eval `(:seq (:clear)
+                              (:box "table4"
+                                    :dimension (1 2 .01)
+                                    :translation (-.80 0 0))
+                              (:box "table2"
+                                    :dimension (1 2 .01)
+                                    :translation (.80 0 0))))
+
 (container-set-start *moveit-cx* *q-all-start*)
 (container-set-group *moveit-cx* *group*)
 
-(container-scene-add-box *moveit-cx* "table" (amino:vec3* 1 2 .01)
-                         (amino:tf nil (amino:vec3* -.75 0 0)))
+;; (container-scene-add-box *moveit-cx* "table" (amino:vec3* 1 2 .01)
+;;                          (amino:tf nil (amino:vec3* -.75 0 0)))
 
-(container-scene-add-box *moveit-cx* "table2" (amino:vec3* 1 2 .01)
-                         (amino:tf nil (amino:vec3* .75 0 0)))
+;; (container-scene-add-box *moveit-cx* "table2" (amino:vec3* 1 2 .01)
+;;                          (amino:tf nil (amino:vec3* .75 0 0)))
 
 ;(container-scene-clear *moveit-cx*)
 

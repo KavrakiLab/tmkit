@@ -27,7 +27,8 @@
 
 (defun container-scene-add-sphere (container name radius position)
   (tms-container-scene-add-sphere container name
-                                  radius position))
+                                  (coerce radius 'double-float)
+                                  position))
 
 
 (cffi:defcfun tms-container-scene-add-cylinder :void
@@ -40,9 +41,14 @@
 
 (defun container-scene-add-cylinder (container name height radius tf)
   (tms-container-scene-add-cylinder container name
-                                    radius height
+                                    (coerce radius  'double-float)
+                                    (coerce height  'double-float)
                                     (amino:rotation tf)
                                     (amino:translation tf)))
 
 (cffi:defcfun ("tms_container_scene_clear" container-scene-clear) :void
   (container moveit-container-t))
+
+(cffi:defcfun ("tms_container_scene_rm" container-scene-rm) :void
+  (container moveit-container-t)
+  (name :string))
