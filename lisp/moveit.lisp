@@ -10,7 +10,9 @@
                *node-handle*)
     (format t "~&Initializing ROS and moveit model~%")
     (ros-init :name "lisp")
-    (setq *node-handle* (node-handle-create "lisp"))
+    (setq *node-handle* (node-handle-create "lisp")))
+  (unless (and (boundp '*moveit-cx*)
+               *moveit-cx*)
     (setq *moveit-cx* (container-create *node-handle*))))
 
 ;;; OBJECT ADD DSL
@@ -36,17 +38,24 @@
 
 (defun moveit-scene-exp-eval (exp &key (context *moveit-cx*))
   (destructuring-ecase exp
-    ((:box name &key dimension rotation translation)
-     (container-scene-add-box context name (aa:vec3 dimension)
-                              (aa:tf rotation translation)))
-    ((:cylinder name &key height radius rotation translation)
-     (container-scene-add-cylinder context name height radius
-                                   (aa:tf rotation translation)))
-    ((:sphere name &key radius translation)
-     (container-scene-add-sphere context name radius translation))
+    (((:box :cylinder :sphere) name &rest keyword-args)
+     (destructuring-bind (&key dimension rotation translation parent height radius)
+         keyword-args
+       (let ((absolute-tf (container-add-object context parent (aa:tf rotation translation) name)))
+         (print exp)
+         (print absolute-tf)
+         (ecase (car exp)
+           (:box
+            (container-scene-add-box context name (aa:vec3 dimension) absolute-tf))
+           (:cylinder
+            (container-scene-add-cylinder context name height radius absolute-tf))
+           (:sphere
+            (container-scene-add-sphere context name radius (amino:translation absolute-tf)))))))
     ((:rm name)
+     (container-remove-object context name)
      (container-scene-rm context name))
     ((:clear)
+     (container-remove-all-objects context)
      (container-scene-clear context))
     ((:seq &rest ops)
      (dolist (exp ops)
