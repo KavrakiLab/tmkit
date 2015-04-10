@@ -1,6 +1,14 @@
-(:box "back-table"  :dimension (1 2 .01) :translation (-.80 0 0))
-(:box "front-table" :dimension (1 2 .01) :translation (.80 -.4 0) :color (.7 0.2 .7) :alpha .5)
-(:box "block" :dimension (.1 .1 .1) :translation (0 0 .05) :parent "front-table" :color (0 0 1) :alpha .5)
+(:object "back-table" :shape :box  :dimension (1 2 .01) :translation (-.80 0 0))
+(:object "front-table" :shape :box :dimension (1 2 .01) :translation (.80 -.4 0) :color (.7 0.2 .7) :alpha .5)
+
+(:class "red"   nil :color (1 0 0) :alpha .5)
+(:class "green" nil :color (0 1 0) :alpha .5)
+(:class "blue"  nil :color (0 0 0) :alpha .5)
+
+(:class "block" nil :shape :box :dimension (.1 .1 .1))
+
+(:object "block"  :class ("block" "green") :translation (0 0 .05) :parent "front-table")
+(:object "block"  :class ("block" "green") :translation (0 0 .05) :parent "front-table")
 
 ;; Local Variables:
 ;; mode: lisp

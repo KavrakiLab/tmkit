@@ -42,28 +42,6 @@
   (setf (plan-context-tf-tree context)
         (make-tf-tree)))
 
-;;; OBJECT ADD DSL
-;;;
-;;; <E>               ::=  <ADD_OP> | <RM_OP> | <CLEAR_OP> | <SEQ_OP>
-;;; <ADD_OP>          ::= :box      'NAME' (<TF_ARG> | <DIMENSION_ARG> | <COLOR_ARG> | <ALPHA_ARG>)*
-;;;                     | :cylinder 'NAME' (<TF_ARG> | <HEIGHT_ARG> | <RADIUS_ARG> | <COLOR_ARG> | <ALHPA_ARG>)*
-;;;                     | :sphere   'NAME' (<TRANSLATION_ARG> | <RADIUS_ARG> | <COLOR_ARG> | <ALHPA_ARG>)*
-;;; <ROTATATION_ARG>  ::= :rotation 'ROTATION'
-;;; <TRANSLATION_ARG> ::= :translation 'TRANSLATION'
-;;; <TF_ARG>          ::= (<ROTATION_ARG> | <TRANSLATION_ARG>)*
-;;; <RADIUS_ARG>      ::= :radius 'RADIUS'
-;;; <HEIGHT_ARG>      ::= :height 'HEIGHT'
-;;; <DIMENSION_ARG>   ::= :dimension 'DIMENSION'
-;;; <COLOR_ARG>       ::= :color 'COLOR'
-;;; <ALPHA_ARG>       ::= :alpha 'ALPHA'
-;;; <RM_OP>           ::= 'NAME'
-;;; <CLEAR_OP>        ::= :clear
-;;; <SEQ_OP>          ::= :seq <E>*
-
-;;; TODO: parent frames
-
-(defun dbl (x)
-  (coerce 'double-float x))
 
 (defun symbol-compare (a b)
   (string-compare (string a) (string b)))
@@ -81,22 +59,71 @@
   (kwarg-map-insert-list (make-tree-map #'gsymbol-compare)
                          argument-list))
 
+
+(defun kwarg-map-insert-map (initial-map new-map)
+  (fold-tree-map #'tree-map-insert initial-map new-map))
+
 (defun kwarg-map-list (map)
   (fold-tree-map (lambda (list key value)
                    (list* key value list))
                  nil map))
 
+(defun context-kwarg-apply (context classes kwargs)
+  (let* ((class-kwargs  (plan-context-class-kwargs context))
+         (class-map (fold (lambda (map class)
+                            (kwarg-map-insert-map map (tree-map-find class-kwargs class)))
+                          (kwarg-map nil)
+                          classes)))
+    (kwarg-map-insert-list class-map kwargs)))
+
+(defun context-add-class (context name parents kwargs)
+  (setf (plan-context-class-kwargs context)
+        (tree-map-insert (plan-context-class-kwargs context)
+                         name
+                         (context-kwarg-apply context parents kwargs))))
+
+(defun context-class-keyword-arguments (context keyword-arguments)
+  "Apply class arguments to KEYWORD-ARGUMENTS."
+  (destructuring-bind (&key class &allow-other-keys) keyword-arguments
+    (if class
+        (kwarg-map-list (context-kwarg-apply context class keyword-arguments))
+        keyword-arguments)))
+
+;;; OBJECT ADD DSL
+;;;
+;;; <E>               ::=  <ADD_OP> | <RM_OP> | <CLEAR_OP> | <SEQ_OP>
+;;; <ADD_OP>          ::= :box      'NAME' (<TF_ARG> | <DIMENSION_ARG> | <COLOR_ARG> | <ALPHA_ARG>)*
+;;;                     | :cylinder 'NAME' (<TF_ARG> | <HEIGHT_ARG> | <RADIUS_ARG> | <COLOR_ARG> | <ALHPA_ARG>)*
+;;;                     | :sphere   'NAME' (<TRANSLATION_ARG> | <RADIUS_ARG> | <COLOR_ARG> | <ALHPA_ARG>)*
+;;; <ROTATATION_ARG>  ::= :rotation 'ROTATION'
+;;; <TRANSLATION_ARG> ::= :translation 'TRANSLATION'
+;;; <TF_ARG>          ::= (<ROTATION_ARG> | <TRANSLATION_ARG>)*
+;;; <RADIUS_ARG>      ::= :radius 'RADIUS'
+;;; <HEIGHT_ARG>      ::= :height 'HEIGHT'
+;;; <DIMENSION_ARG>   ::= :dimension 'DIMENSION'
+;;; <COLOR_ARG>       ::= :color 'COLOR'
+;;; <ALPHA_ARG>       ::= :alpha 'ALPHA'
+;;; <RM_OP>           ::= 'NAME'
+;;; <CLEAR_OP>        ::= :clear
+;;; <CLASS_OP>        ::= :class 'NAME' 'PARENTS' ARGS*
+;;; <SEQ_OP>          ::= :seq <E>*
+
+;;; TODO: parent frames
+
+(defun dbl (x)
+  (coerce 'double-float x))
+
 (defun moveit-scene-exp-eval (exp &key (context *plan-context*))
   (let ((container (plan-context-moveit-container context)))
     (destructuring-ecase exp
-      (((:box :cylinder :sphere) name &rest keyword-args)
-       (destructuring-bind (&key dimension rotation translation parent height radius class color (alpha 1.0))
-           keyword-args
+      ((:object name &rest keyword-arguments)
+       (destructuring-bind (&key shape dimension rotation translation parent height radius class color (alpha 1.0))
+           (context-class-keyword-arguments context keyword-arguments)
          (declare (ignore class))
          (let ((absolute-tf (context-add-object context parent (aa:tf rotation translation) name)))
-           (print exp)
-           (print absolute-tf)
-           (ecase (car exp)
+           ;(print exp)
+           ;(print absolute-tf)
+           (ecase shape
              (:box
               (container-scene-add-box container name (aa:vec3 dimension) absolute-tf))
              (:cylinder
@@ -116,6 +143,8 @@
       ((:clear)
        (context-remove-all-objects context)
        (container-scene-clear container))
+      ((:class name parents &rest keyword-arguments)
+       (context-add-class context name parents keyword-arguments))
       ((:seq &rest ops)
        (dolist (exp ops)
          (moveit-scene-exp-eval exp :context context))))))
