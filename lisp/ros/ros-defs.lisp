@@ -44,8 +44,7 @@ RETURNS: OBJECT"
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defstruct (moveit-container (:include foreign-container)
-                             (:constructor make-moveit-container (pointer)))
-  (relative-tf-tree (make-tf-tree)))
+                             (:constructor make-moveit-container (pointer))))
 
 (cffi:define-foreign-type moveit-container-t ()
   ()
@@ -54,22 +53,3 @@ RETURNS: OBJECT"
 
 (defmethod cffi:expand-to-foreign (value (type moveit-container-t))
   `(moveit-container-pointer ,value))
-
-(defun container-add-object (container parent relative-tf name)
-  "Add object to container. Return absolute transform."
-  ;; Add relative to tree
-  (setf (moveit-container-relative-tf-tree container)
-        (tf-tree-insert (moveit-container-relative-tf-tree container)
-                        (tf-tag parent relative-tf name)))
-  ;; Find absolute
-  (tf-tag-tf (tf-tree-absolute-tf (moveit-container-relative-tf-tree container)
-                                 name)))
-
-(defun container-remove-object (container frame)
-  (setf (moveit-container-relative-tf-tree container)
-        (tf-tree-remove (moveit-container-relative-tf-tree container)
-                        frame)))
-
-(defun container-remove-all-objects (container)
-  (setf (moveit-container-relative-tf-tree container)
-        (make-tf-tree)))
