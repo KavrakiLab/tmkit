@@ -8,7 +8,8 @@
 (defstruct plan-context
   moveit-container
   (tf-tree (make-tf-tree))
-  (class-kwargs (make-tree-map #'string-compare)))
+  (class-kwargs (make-tree-map #'string-compare))
+  (object-map (make-tree-map #'string-compare)))
 
 ;; TODO: handle ROS init and node handles in C library
 
@@ -77,10 +78,9 @@
     (kwarg-map-insert-list class-map kwargs)))
 
 (defun context-add-class (context name parents kwargs)
-  (setf (plan-context-class-kwargs context)
-        (tree-map-insert (plan-context-class-kwargs context)
-                         name
-                         (context-kwarg-apply context parents kwargs))))
+  (tree-map-insertf (plan-context-class-kwargs context)
+                    name
+                    (context-kwarg-apply context parents kwargs)))
 
 (defun context-class-keyword-arguments (context keyword-arguments)
   "Apply class arguments to KEYWORD-ARGUMENTS."
@@ -117,26 +117,36 @@
   (let ((container (plan-context-moveit-container context)))
     (destructuring-ecase exp
       ((:object name &rest keyword-arguments)
-       (destructuring-bind (&key shape dimension rotation translation parent height radius class color (alpha 1.0))
-           (context-class-keyword-arguments context keyword-arguments)
-         (declare (ignore class))
-         (let ((absolute-tf (context-add-object context parent (aa:tf rotation translation) name)))
-           ;(print exp)
-           ;(print absolute-tf)
-           (ecase shape
-             (:box
-              (container-scene-add-box container name (aa:vec3 dimension) absolute-tf))
-             (:cylinder
-              (container-scene-add-cylinder container name height radius absolute-tf))
-             (:sphere
-              (container-scene-add-sphere container name radius (amino:translation absolute-tf))))
-           (when color
-             (etypecase color
-               (cons (container-scene-set-color container name
-                                                (coerce (elt color 0) 'single-float)
-                                                (coerce (elt color 1) 'single-float)
-                                                (coerce (elt color 2) 'single-float)
-                                                (coerce  alpha 'single-float))))))))
+       (let ((keyword-arguments (context-class-keyword-arguments context keyword-arguments)))
+         (destructuring-bind (&key parent
+                                   class
+                                   shape
+                                   dimension rotation translation
+                                   height radius
+                                   color (alpha 1.0)
+                                   affords
+                                   )
+             keyword-arguments
+           (declare (ignore class affords))
+           (let ((absolute-tf (context-add-object context parent (aa:tf rotation translation) name)))
+                                        ;(print exp)
+                                        ;(print absolute-tf)
+             (ecase shape
+               (:box
+                (container-scene-add-box container name (aa:vec3 dimension) absolute-tf))
+               (:cylinder
+                (container-scene-add-cylinder container name height radius absolute-tf))
+               (:sphere
+                (container-scene-add-sphere container name radius (amino:translation absolute-tf))))
+             (when color
+               (etypecase color
+                 (cons (container-scene-set-color container name
+                                                  (coerce (elt color 0) 'single-float)
+                                                  (coerce (elt color 1) 'single-float)
+                                                  (coerce (elt color 2) 'single-float)
+                                                  (coerce  alpha 'single-float)))))))
+         (tree-map-insertf (plan-context-object-map context)
+                           name keyword-arguments)))
       ((:rm name)
        (context-remove-object context name)
        (container-scene-rm container name))
