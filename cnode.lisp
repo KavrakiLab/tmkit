@@ -14,18 +14,8 @@
 
 (format t "~&Vars: ~A~%" (length *q-all-start*))
 
-(moveit-scene-exp-eval `(:seq (:clear)
-                              (:box "back-table"
-                                    :dimension (1 2 .01)
-                                    :translation (-.80 0 0))
-                              (:box "front-table"
-                                    :dimension (1 2 .01)
-                                    :translation (.80 -.4 0))
-                              (:box "block"
-                                    :dimension (.1 .1 .1)
-                                    :translation (0 0 .05)
-                                    :parent "front-table")
-                              ))
+(moveit-scene-exp-eval '(:clear))
+(moveit-scene-file "/home/ntd/git/tmsmt/scene/scene.se")
 
 (container-set-start *moveit-cx* *q-all-start*)
 (container-set-group *moveit-cx* *group*)

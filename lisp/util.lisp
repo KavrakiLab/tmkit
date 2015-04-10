@@ -5,6 +5,15 @@
   (with-open-file (s filename :direction :input)
     (read s)))
 
+(defun load-all-sexp (filename)
+  "Read all s-expressions from a file"
+  (with-open-file (s filename :direction :input)
+    (loop
+       with unique = #'load-all-sexp ;; a valid s-expression will never EQ this
+       for sexp = (read s nil unique)
+       until (eq sexp unique)
+       collect sexp)))
+
 (defun check-symbol (value required)
   "Check symbol name of `VALUE' is string= to symbol name of `REQUIRED'"
   (unless (string= (string value) (string required))

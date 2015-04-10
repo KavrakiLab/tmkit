@@ -1,0 +1,8 @@
+(:box "back-table"  :dimension (1 2 .01) :translation (-.80 0 0))
+(:box "front-table" :dimension (1 2 .01) :translation (.80 -.4 0))
+
+(:box "block" :dimension (.1 .1 .1) :translation (0 0 .05) :parent "front-table")
+
+;; Local Variables:
+;; mode: lisp
+;; End:

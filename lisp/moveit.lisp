@@ -39,8 +39,9 @@
 (defun moveit-scene-exp-eval (exp &key (context *moveit-cx*))
   (destructuring-ecase exp
     (((:box :cylinder :sphere) name &rest keyword-args)
-     (destructuring-bind (&key dimension rotation translation parent height radius)
+     (destructuring-bind (&key dimension rotation translation parent height radius class)
          keyword-args
+       (declare (ignore class))
        (let ((absolute-tf (container-add-object context parent (aa:tf rotation translation) name)))
          (print exp)
          (print absolute-tf)
@@ -62,4 +63,6 @@
        (moveit-scene-exp-eval exp :context context)))))
 
 
-;(defun moveit-scene-eval (exp &key (context *moveit-cx*))
+(defun moveit-scene-file (file &key (context *moveit-cx*))
+  (let ((exp (cons :seq (load-all-sexp file))))
+    (moveit-scene-exp-eval exp :context context)))
