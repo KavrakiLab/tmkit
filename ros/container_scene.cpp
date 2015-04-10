@@ -3,6 +3,7 @@
 #include "cros.hpp"
 #include "container_scene.h"
 #include "moveit_container.hpp"
+#include <std_msgs/ColorRGBA.h>
 
 /**
  * Publish the scene.
@@ -111,4 +112,16 @@ tms_container_scene_clear( struct container * c )
 {
 
     c->planning_scene->removeAllCollisionObjects();
+}
+
+void
+tms_container_scene_set_color( struct container * c, const char *name,
+                               float r, float g, float b, float a)
+{
+    std_msgs::ColorRGBA msg;
+    msg.r = r;
+    msg.g = g;
+    msg.b = b;
+    msg.a = a;
+    c->planning_scene->setObjectColor( name, msg );
 }

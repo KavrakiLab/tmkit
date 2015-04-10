@@ -52,3 +52,12 @@
 (cffi:defcfun ("tms_container_scene_rm" container-scene-rm) :void
   (container moveit-container-t)
   (name :string))
+
+
+(cffi:defcfun ("tms_container_scene_set_color" container-scene-set-color) :void
+  (container moveit-container-t)
+  (name :string)
+  (r :float)
+  (g :float)
+  (b :float)
+  (a :float))

@@ -44,6 +44,12 @@ tms_container_scene_rm( struct container * c, const char *name );
 void
 tms_container_scene_clear( struct container * c );
 
+/**
+ * Set object color.
+ */
+void
+tms_container_scene_set_color( struct container * c, const char *name,
+                               float r, float g, float b, float a);
 #ifdef __cplusplus
 }
 #endif

@@ -15,10 +15,13 @@
 (format t "~&Vars: ~A~%" (length *q-all-start*))
 
 (moveit-scene-exp-eval '(:clear))
+
 (moveit-scene-file "/home/ntd/git/tmsmt/scene/scene.se")
 
 (container-set-start *moveit-cx* *q-all-start*)
 (container-set-group *moveit-cx* *group*)
+
+;(container-scene-set-color *moveit-cx* "block" 1.0 0.0 0.0 1.0)
 
 ;; (container-scene-add-box *moveit-cx* "table" (amino:vec3* 1 2 .01)
 ;;                          (amino:tf nil (amino:vec3* -.75 0 0)))
