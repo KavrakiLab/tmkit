@@ -85,9 +85,7 @@
 (defun context-class-keyword-arguments (context keyword-arguments)
   "Apply class arguments to KEYWORD-ARGUMENTS."
   (destructuring-bind (&key class &allow-other-keys) keyword-arguments
-    (if class
-        (kwarg-map-list (context-kwarg-apply context class keyword-arguments))
-        keyword-arguments)))
+    (context-kwarg-apply context class keyword-arguments)))
 
 ;;; OBJECT ADD DSL
 ;;;
@@ -117,7 +115,8 @@
   (let ((container (plan-context-moveit-container context)))
     (destructuring-ecase exp
       ((:object name &rest keyword-arguments)
-       (let ((keyword-arguments (context-class-keyword-arguments context keyword-arguments)))
+       (let* ((keyword-arguments-map (context-class-keyword-arguments context keyword-arguments))
+              (keyword-arguments (kwarg-map-list keyword-arguments-map)))
          (destructuring-bind (&key parent
                                    class
                                    shape
@@ -146,7 +145,7 @@
                                                   (coerce (elt color 2) 'single-float)
                                                   (coerce  alpha 'single-float)))))))
          (tree-map-insertf (plan-context-object-map context)
-                           name keyword-arguments)))
+                           name keyword-arguments-map)))
       ((:rm name)
        (context-remove-object context name)
        (container-scene-rm container name))
@@ -163,3 +162,33 @@
 (defun moveit-scene-file (file &key (context *plan-context*))
   (let ((exp (cons :seq (load-all-sexp file))))
     (moveit-scene-exp-eval exp :context context)))
+
+
+
+(defun moveit-scene-facts (context &key (resolution 0.1))
+  (let ((object-map (plan-context-object-map context)))
+    (labels ((kwarg-map (object)
+               (tree-map-find object-map object))
+             (kwarg-value (object keyword)
+               (tree-map-find (kwarg-map object) keyword))
+             (affords (object action)
+               (if (find action (kwarg-value object :affords) :test #'string=)
+                   t nil))
+             (collect-affords (action)
+               (fold-tree-map (lambda (list name kwarg-map)
+                                (declare (ignore kwarg-map))
+                                (if (affords name action)
+                                    (cons name list)
+                                    list))
+                              nil object-map))
+             (object-location (object)
+               (let* ((translation (kwarg-value object :translation))
+                      (x (round (/ (elt translation 0) resolution)))
+                      (y (round (/ (elt translation 1) resolution))))
+               (list 'on object (kwarg-value object :parent) x y))))
+      (let* ((moveable-objects (collect-affords "move"))
+             (stackable-objects (collect-affords "stack"))
+             (locations (map 'list #'object-location moveable-objects)))
+        (values moveable-objects
+                stackable-objects
+                locations)))))
