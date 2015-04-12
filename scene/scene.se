@@ -9,22 +9,29 @@
 (:class "purple" () :color (.6 0.3 .6))
 
 ;; Object Types
-(:class "block" () :shape :box :dimension (.1 .1 .1) :affords ("move") :alpha 1)
+(:class "block" () :shape :box :dimension (.1 .1 .1) :alpha 1 :affords ("move"))
 (:class "table" ("purple") :shape :box :dimension (1 2 .01) :alpha .8 :affords ("stack"))
 
 ;;;;;;;;;;;;;;;
 ;;; Objects ;;;
 ;;;;;;;;;;;;;;;
 
-
 ;; Tables
-(:object "back-table" :class ("table") :translation (-.80 0 0))
+;(:object "back-table" :class ("table") :translation (-.80 0 0))
 (:object "front-table" :class ("table") :translation (.80 0 0))
 
 
 ;; Blocks
-(:object "block-a"  :class ("block" "green") :translation (0 -.2 .05) :parent "front-table")
-(:object "block-b"  :class ("block" "green") :translation (0 -.4 .05) :parent "front-table")
+(:object "block-a"  :class ("block" "green") :translation (0 -.25 .05) :parent "front-table")
+(:object "block-b"  :class ("block" "green") :translation (0 -.45 .05) :parent "front-table")
+
+
+;;;;;;;;;;;;;
+;;; Goals ;;;
+;;;;;;;;;;;;;
+
+(:goal "block-a" :translation (0 -.25 .05) :parent "front-table")
+(:goal "block-b" :translation (0 -.45 .05) :parent "front-table")
 
 ;; Local Variables:
 ;; mode: lisp

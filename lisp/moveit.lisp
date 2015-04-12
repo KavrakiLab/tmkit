@@ -9,7 +9,8 @@
   moveit-container
   (tf-tree (make-tf-tree))
   (class-kwargs (make-tree-map #'string-compare))
-  (object-map (make-tree-map #'string-compare)))
+  (object-init-map (make-tree-map #'string-compare))
+  (object-goal-map (make-tree-map #'string-compare)))
 
 ;; TODO: handle ROS init and node handles in C library
 
@@ -144,11 +145,14 @@
                                                   (coerce (elt color 1) 'single-float)
                                                   (coerce (elt color 2) 'single-float)
                                                   (coerce  alpha 'single-float)))))))
-         (tree-map-insertf (plan-context-object-map context)
+         (tree-map-insertf (plan-context-object-init-map context)
                            name keyword-arguments-map)))
       ((:rm name)
        (context-remove-object context name)
        (container-scene-rm container name))
+      ((:goal name &key parent rotation translation)
+       (tree-map-insertf (plan-context-object-goal-map context)
+                           name (tf-tag parent (tf rotation translation) name)))
       ((:clear)
        (context-remove-all-objects context)
        (container-scene-clear container))
@@ -163,12 +167,15 @@
   (let ((exp (cons :seq (load-all-sexp file))))
     (moveit-scene-exp-eval exp :context context)))
 
+(defun moveit-scene-facts (context
+                           &key
+                             (resolution 0.1)
+                             (problem 'itmp)
+                             (domain 'itmp))
 
-
-(defun moveit-scene-facts (context &key (resolution 0.1))
-  (let ((object-map (plan-context-object-map context)))
+  (let ((object-init-map (plan-context-object-init-map context)))
     (labels ((kwarg-map (object)
-               (tree-map-find object-map object))
+               (tree-map-find object-init-map object))
              (kwarg-value (object keyword)
                (tree-map-find (kwarg-map object) keyword))
              (affords (object action)
@@ -180,15 +187,51 @@
                                 (if (affords name action)
                                     (cons name list)
                                     list))
-                              nil object-map))
-             (object-location (object)
-               (let* ((translation (kwarg-value object :translation))
-                      (x (round (/ (elt translation 0) resolution)))
-                      (y (round (/ (elt translation 1) resolution))))
-               (list 'on object (kwarg-value object :parent) x y))))
+                              nil object-init-map))
+             (encode-location (obj x y)
+               (smt-mangle obj
+                           (round (/ x resolution))
+                           (round (/ y resolution))))
+             (location-predicate (object parent x y)
+               (list 'at object (encode-location parent x y))))
       (let* ((moveable-objects (collect-affords "move"))
              (stackable-objects (collect-affords "stack"))
-             (locations (map 'list #'object-location moveable-objects)))
-        (values moveable-objects
-                stackable-objects
-                locations)))))
+             (locations (loop for obj in stackable-objects
+                          for dimension = (kwarg-value obj :dimension)
+                          for x-max = (/ (- (first dimension) resolution)
+                                         2)
+                          for x-min = (- x-max)
+                          for y-max = (/ (- (second dimension) resolution)
+                                         2)
+                          for y-min = (- y-max)
+                           append (loop for x from x-min to x-max by resolution
+                                     append (loop for y from y-min to y-max by resolution
+                                               collect
+                                                 (encode-location obj x y)))))
+             (initial-locations (loop for obj in moveable-objects
+                                   for translation = (kwarg-value obj :translation)
+                                   collect (location-predicate obj (kwarg-value obj :parent)
+                                                               (first translation)
+                                                               (second translation))))
+             (goal-locations (map-tree-map :inorder 'list
+                                           (lambda (name tf-tag)
+                                             (let* ((translation (translation (tf-tag-tf tf-tag))))
+                                               (location-predicate name (tf-tag-parent tf-tag)
+                                                                   (vec3-x translation)
+                                                                   (vec3-y translation))))
+                                           (plan-context-object-goal-map context)))
+
+             )
+
+        `(define (problem ,problem)
+             (:domain ,domain)
+           (:objects ,@moveable-objects - block
+                     ,@stackable-objects - table
+                     ,@locations - location)
+           (:init ,@initial-locations)
+           (:goal (and ,@goal-locations))
+                     )))))
+
+        ;; (values moveable-objects
+        ;;         stackable-objects
+        ;;         locations)))))
