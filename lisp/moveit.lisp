@@ -141,9 +141,9 @@
              (when color
                (etypecase color
                  (cons (container-scene-set-color container name
-                                                  (coerce (elt color 0) 'single-float)
-                                                  (coerce (elt color 1) 'single-float)
-                                                  (coerce (elt color 2) 'single-float)
+                                                  (coerce (vec-x color) 'single-float)
+                                                  (coerce (vec-y color) 'single-float)
+                                                  (coerce (vec-z color) 'single-float)
                                                   (coerce  alpha 'single-float)))))))
          (tree-map-insertf (plan-context-object-init-map context)
                            name keyword-arguments-map)))
@@ -211,14 +211,14 @@
              (initial-locations (loop for obj in moveable-objects
                                    for translation = (kwarg-value obj :translation)
                                    collect (location-predicate obj (kwarg-value obj :parent)
-                                                               (first translation)
-                                                               (second translation))))
+                                                               (vec-x translation)
+                                                               (vec-y translation))))
              (goal-locations (map-tree-map :inorder 'list
                                            (lambda (name tf-tag)
                                              (let* ((translation (translation (tf-tag-tf tf-tag))))
                                                (location-predicate name (tf-tag-parent tf-tag)
-                                                                   (vec3-x translation)
-                                                                   (vec3-y translation))))
+                                                                   (vec-x translation)
+                                                                   (vec-y translation))))
                                            (plan-context-object-goal-map context)))
 
              )
