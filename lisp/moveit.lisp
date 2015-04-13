@@ -193,7 +193,9 @@
                            (round (/ x resolution))
                            (round (/ y resolution))))
              (location-predicate (object parent x y)
-               (list 'at object (encode-location parent x y))))
+               (list 'at object (encode-location parent x y)))
+             (occupied-predicate (parent x y)
+               (list 'occupied (encode-location parent x y))))
       (let* ((moveable-objects (collect-affords "move"))
              (stackable-objects (collect-affords "stack"))
              (locations (loop for obj in stackable-objects
@@ -208,11 +210,13 @@
                                      append (loop for y from y-min to y-max by resolution
                                                collect
                                                  (encode-location obj x y)))))
-             (initial-locations (loop for obj in moveable-objects
-                                   for translation = (kwarg-value obj :translation)
-                                   collect (location-predicate obj (kwarg-value obj :parent)
-                                                               (vec-x translation)
-                                                               (vec-y translation))))
+             (initial-true (loop for obj in moveable-objects
+                              for translation = (kwarg-value obj :translation)
+                              for parent = (kwarg-value obj :parent)
+                              for x = (vec-x translation)
+                              for y = (vec-y translation)
+                              nconc (list (location-predicate obj parent x y)
+                                          (occupied-predicate parent x y))))
              (goal-locations (map-tree-map :inorder 'list
                                            (lambda (name tf-tag)
                                              (let* ((translation (translation (tf-tag-tf tf-tag))))
@@ -228,7 +232,7 @@
            (:objects ,@moveable-objects - block
                      ,@stackable-objects - table
                      ,@locations - location)
-           (:init ,@initial-locations)
+           (:init ,@initial-true)
            (:goal (and ,@goal-locations))
                      )))))
 

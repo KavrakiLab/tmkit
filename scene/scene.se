@@ -30,8 +30,8 @@
 ;;; Goals ;;;
 ;;;;;;;;;;;;;
 
-(:goal "block-a" :translation (0 -.25 .05) :parent "front-table")
-(:goal "block-b" :translation (0 -.45 .05) :parent "front-table")
+(:goal "block-b" :translation (0 -.25 .05) :parent "front-table")
+(:goal "block-a" :translation (0 -.45 .05) :parent "front-table")
 
 ;; Local Variables:
 ;; mode: lisp
