@@ -9,7 +9,9 @@
 (:class "purple" () :color (.6 0.3 .6))
 
 ;; Object Types
-(:class "block" () :shape :box :dimension (.1 .1 .1) :alpha 1 :affords ("move"))
+(:class "block" () :shape :box :dimension (.1 .1 .1) :alpha 1 :affords ("move")
+        :grasps '((:pair (0 -.05 0) (0 .05 0))))
+
 (:class "table" ("purple") :shape :box :dimension (1 2 .01) :alpha .8 :affords ("stack"))
 
 ;;;;;;;;;;;;;;;

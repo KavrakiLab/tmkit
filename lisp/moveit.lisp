@@ -125,9 +125,10 @@
                                    height radius
                                    color (alpha 1.0)
                                    affords
+                                   grasps
                                    )
              keyword-arguments
-           (declare (ignore class affords))
+           (declare (ignore class affords grasps))
            (let ((absolute-tf (context-add-object context parent (aa:tf rotation translation) name)))
                                         ;(print exp)
                                         ;(print absolute-tf)
