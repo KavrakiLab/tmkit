@@ -12,7 +12,7 @@
 (:class "block" () :shape :box :dimension (.1 .1 .1) :alpha 1 :affords ("move")
         :grasps '((:pair (0 -.05 0) (0 .05 0))))
 
-(:class "table" ("purple") :shape :box :dimension (1 2 .01) :alpha .8 :affords ("stack"))
+(:class "table" ("purple") :shape :box :dimension (1 3 .01) :alpha .8 :affords ("stack"))
 
 ;;;;;;;;;;;;;;;
 ;;; Objects ;;;
@@ -21,6 +21,8 @@
 ;; Tables
 ;(:object "back-table" :class ("table") :translation (-.80 0 0))
 (:object "front-table" :class ("table") :translation (.80 0 0))
+(:object "side-1-table" :class ("table") :dimension (2 1 .01) :translation (-.7 -1 0))
+(:object "side-2-table" :class ("table")  :dimension (2 1 .01):translation (-.7  1 0))
 
 
 ;; Blocks
