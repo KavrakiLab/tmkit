@@ -115,7 +115,27 @@
   (i amino-ffi:size-t))
 
 (cffi:defcfun tms-container-plan :int
-  (container moveit-container-t))
+  (container moveit-container-t)
+  (n-vars :pointer)
+  (n-points :pointer)
+  (points :pointer))
 
 (defun container-plan (container)
-  (tms-container-plan container))
+  (cffi:with-foreign-objects ((n-vars 'amino-ffi:size-t)
+                              (n-points 'amino-ffi::size-t)
+                              (points :pointer))
+    (tms-container-plan container n-vars n-points points)
+    (let ((n-vars (cffi:mem-ref n-vars 'amino-ffi:size-t))
+          (n-points (cffi:mem-ref n-points 'amino-ffi:size-t))
+          (points (cffi:mem-ref points :pointer)))
+      (prog1
+          (loop for i below n-points
+             for vec = (make-vec n-vars)
+             collect
+               (cffi:with-pointer-to-vector-data (ptr vec)
+                 (amino-ffi:libc-memcpy ptr
+                                        (cffi:inc-pointer points
+                                                          (* 8 i n-vars))
+                                        (* 8 n-vars))
+                 vec))
+        (amino-ffi:libc-free points)))))

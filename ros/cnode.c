@@ -107,7 +107,7 @@ int main(int argc, char **argv)
     tms_container_set_ws_goal(cont, link, q1, v1, .01, .01 );
 
 
-    tms_container_plan(cont );
+    //tms_container_plan(cont );
 
     tms_container_scene_clear(cont );
     sleep(1);

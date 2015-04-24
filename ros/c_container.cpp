@@ -169,7 +169,8 @@ tms_container_set_ws_goal( struct container * c, const char *link, const double 
 
 
 int
-tms_container_plan( struct container * c )
+tms_container_plan( struct container * c,
+                    size_t *n_vars, size_t *n_points, double **points)
 {
     /**********/
     /*  PLAN  */
@@ -192,29 +193,64 @@ tms_container_plan( struct container * c )
     /************/
     moveit_msgs::MotionPlanResponse res_msg;
     res.getMessage(res_msg);
+    int i = 0;
     for( auto itr = res_msg.trajectory.joint_trajectory.points.begin();
          itr != res_msg.trajectory.joint_trajectory.points.end();
          itr++ )
     {
-         printf("foo: ");
-         for( auto j = itr->positions.begin();
-              j != itr->positions.end();
-              j++ )
-         {
-             printf("%f\t", *j );
-         }
-         printf("\n");
+        printf("waypoint %02d: ", i++);
+        for( auto j = itr->positions.begin();
+             j != itr->positions.end();
+             j++ )
+        {
+            printf("%f\t", *j );
+        }
+        printf("\n");
     }
+
+    /* Copy Result */
+    *n_points = res_msg.trajectory.joint_trajectory.points.size();
+    if( 0 == n_points ) return 0;
+    *n_vars = res_msg.trajectory.joint_trajectory.points[0].positions.size();
+    i = 0;
+    double *start = (double*)malloc( sizeof(*start) * (*n_points) * (*n_vars) );
+    *points = start;
+    for( auto itr = res_msg.trajectory.joint_trajectory.points.begin();
+         itr != res_msg.trajectory.joint_trajectory.points.end();
+         itr++ )
+    {
+        size_t s = itr->positions.size();
+        if( s != *n_vars ) {
+            fprintf(stderr, "Bogus variable count\n");
+            *n_points = 0;
+            free(points);
+            return -1;
+        }
+        std::copy( itr->positions.begin(), itr->positions.end(), start );
+
+        // for( size_t j = 0; j < *n_vars; j ++ ) {
+        //     printf("%f\t", start[j] );
+        // }
+        // printf("\n");
+
+        start = start +  (*n_vars);
+    }
+
+    // printf("%lx\n",*points);
+
+    // for(i = 0; i < (*n_vars)*(*n_points); i++ ){
+    //     printf("%f%c", (*points)[i], ( (i+1) % (*n_vars) ) ? '\t' : '\n'   );
+    // }
 
     /***************/
     /*  Visualize  */
     /***************/
-    moveit_msgs::DisplayTrajectory display_trajectory;
+    // moveit_msgs::DisplayTrajectory display_trajectory;
 
-    ROS_INFO("Visualizing plan 1 (again)");
-    display_trajectory.trajectory_start = res_msg.trajectory_start;
-    display_trajectory.trajectory.push_back(res_msg.trajectory);
-    c->display_publisher.publish(display_trajectory);
+    // ROS_INFO("Visualizing plan 1 (again)");
+    // display_trajectory.trajectory_start = res_msg.trajectory_start;
+    // display_trajectory.trajectory.push_back(res_msg.trajectory);
+    // c->display_publisher.publish(display_trajectory);
 
     return 0;
 }

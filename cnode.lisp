@@ -38,4 +38,6 @@
 
 (container-set-ws-goal *moveit-container* *link* *e-goal*)
 
-(container-plan *moveit-container*)
+(defvar *plan*)
+
+(setq *plan* (container-plan *moveit-container*))

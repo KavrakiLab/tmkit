@@ -63,7 +63,8 @@ tms_container_set_ws_goal( struct container * c, const char *link, const double 
  * Compute a motion plan using previously set options.
  */
 int
-tms_container_plan( struct container * c );
+tms_container_plan( struct container * c,
+                    size_t *n_vars, size_t *n_points, double **points);
 
 /**
  * Compute forward kinematics for end link of a group.
