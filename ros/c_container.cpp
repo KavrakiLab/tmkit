@@ -230,6 +230,30 @@ tms_container_group_endlink( struct container * c, const char *group )
     return end_link.c_str();
 }
 
+
+size_t
+tms_container_group_joint_count( struct container * c, const char *group )
+{
+    robot_state::RobotState state(c->robot_model);
+    const robot_state::JointModelGroup* joint_model_group
+        = state.getJointModelGroup(group);
+    return joint_model_group->getVariableCount();
+}
+
+const char *
+tms_container_group_joint_name( struct container * c, const char *group, size_t i )
+{
+    robot_state::RobotState state(c->robot_model);
+    const robot_state::JointModelGroup* joint_model_group
+        = state.getJointModelGroup(group);
+    const std::vector< std::string > & names = joint_model_group->getActiveJointModelNames();
+    if( i < names.size() ) {
+        return names[i].c_str();
+    } else {
+        return NULL;
+    }
+}
+
 int
 tms_container_group_fk( struct container * c, const char *group, size_t n, const double *q,
                     double r[4], double v[3]  )

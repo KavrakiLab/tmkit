@@ -72,13 +72,30 @@ int
 tms_container_group_fk( struct container * c, const char *group, size_t n, const double *q_group,
                         double r[4], double v[3]  );
 
+/**
+ * Return number of joints in the group.
+ */
+size_t
+tms_container_group_joint_count( struct container * c, const char *group );
+
+/**
+ * Return name of the ith joint in the group.
+ */
+const char *
+tms_container_group_joint_name( struct container * c, const char *group, size_t i );
 
 /**
  * Compute forward kinematics for a link.
  */
 int
 tms_container_link_fk( struct container * c, const char *link, size_t n, const double *q_all,
-                       double r[4], double v[3]  );
+                       double r[4], double v[3] );
+
+/**
+ * Find the link at the end of a group.
+ */
+const char *
+tms_container_group_endlink( struct container * c, const char *group );
 
 /**
  * Find the link at the end of a group.

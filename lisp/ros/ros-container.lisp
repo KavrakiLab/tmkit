@@ -105,6 +105,15 @@
   (container moveit-container-t)
   (group :string))
 
+(cffi:defcfun ("tms_container_group_joint_count" container-group-joint-count) amino-ffi:size-t
+  (container moveit-container-t)
+  (group :string))
+
+(cffi:defcfun ("tms_container_group_joint_name" container-group-joint-name) :string
+  (container moveit-container-t)
+  (group :string)
+  (i amino-ffi:size-t))
+
 (cffi:defcfun tms-container-plan :int
   (container moveit-container-t))
 

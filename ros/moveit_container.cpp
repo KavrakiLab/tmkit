@@ -50,10 +50,10 @@ container::container ( ros::NodeHandle &nh, const char *name ) :
     display_publisher = nh.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 10, true);
     scene_publisher = nh.advertise<moveit_msgs::PlanningScene>("/move_group/monitored_planning_scene", 10, true);
 
-    while(scene_publisher.getNumSubscribers() < 1)
-    {
-        printf("Waiting for scene subscriber...\n");
-        ros::WallDuration sleep_t(0.5);
-        sleep_t.sleep();
-    }
+    // while(scene_publisher.getNumSubscribers() < 1)
+    // {
+    //     printf("Waiting for scene subscriber...\n");
+    //     ros::WallDuration sleep_t(0.5);
+    //     sleep_t.sleep();
+    // }
 }
