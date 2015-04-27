@@ -11,14 +11,17 @@
     map))
 
 
-(defun render-group-plan (container group plan)
-  (let ((config-map-list
-         (loop for points in plan
-            collect (point-config-map container group points))))
+(defun render-group-plan (context group plan)
+  (let* ((container (plan-context-moveit-container context))
+         (config-map-list
+          (loop for points in plan
+             collect (point-config-map container group points)))
+         (scene-graph (robray::scene-graph-merge (plan-context-robot-graph context)
+                                                 (plan-context-object-graph context))))
     (flet ((frame-config-fun (frame)
              (if (< frame (length config-map-list))
                  (elt config-map-list frame)
                  nil)))
-      ;; TODO: store scene-graph in container
       (robray::scene-graph-frame-animate #'frame-config-fun
-                                         :include "baxter.inc"))))
+                                         :include "baxter.inc"
+                                         :scene-graph scene-graph))))

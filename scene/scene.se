@@ -9,10 +9,10 @@
 (:class "purple" () :color (.6 0.3 .6))
 
 ;; Object Types
-(:class "block" () :shape :box :dimension (.1 .1 .1) :alpha 1 :affords ("move")
+(:class "block" () :shape :box :dimension (.1 .1 .1) :alpha .5 :affords ("move")
         :grasps '((:pair (0 -.05 0) (0 .05 0))))
 
-(:class "table" ("purple") :shape :box :dimension (1 3 .01) :alpha .8 :affords ("stack"))
+(:class "table" ("purple") :shape :box :dimension (1 3 .01) :alpha .5 :affords ("stack"))
 
 ;;;;;;;;;;;;;;;
 ;;; Objects ;;;
@@ -26,7 +26,7 @@
 
 
 ;; Blocks
-(:object "block-a"  :class ("block" "green") :translation (0 -.25 .05) :parent "front-table")
+(:object "block-a"  :class ("block" "green") :translation (0 -.0 .05) :parent "front-table")
 (:object "block-b"  :class ("block" "green") :translation (0 -.45 .05) :parent "front-table")
 
 

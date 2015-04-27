@@ -1,8 +1,22 @@
 (require :tmsmt)
 
+(in-package :robray)
+
+(setq *urdf-package-alist*
+      `(("baxter_description" . ,(concatenate 'string (namestring (user-homedir-pathname))
+                                              "ros_ws/src/baxter_common/baxter_description"))))
+(setq *render-host-alist*
+      '(("localhost"  ; 4 core (HT), 3.6GHz
+         :jobs 8 :threads 1 :nice 0)
+        ("dione"      ; 12 core, 1.4GHz
+         :jobs 6 :threads 2 :nice 0)
+        ("zeus"       ; 16 core, 2.4GHz
+         :jobs 7 :threads 2 :nice 1 :povray "/home/ndantam/local/bin/povray")
+        ))
 (in-package :tmsmt)
 
-(moveit-init)
+
+(moveit-init "/home/ntd/ros_ws/src/baxter_common/baxter_description/urdf/baxter.urdf")
 
 (defparameter *group* "right_arm")
 (defparameter *link* (container-group-endlink *moveit-container* *group*))

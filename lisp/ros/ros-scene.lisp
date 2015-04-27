@@ -6,6 +6,23 @@
 (defun container-scene-send (container)
   (tms-container-scene-send container))
 
+
+(cffi:defcfun tms-container-scene-set-color :void
+  (container moveit-container-t)
+  (name :string)
+  (r :float)
+  (g :float)
+  (b :float)
+  (a :float))
+
+(defun container-scene-set-color (container name color &optional (alpha 1.0))
+  (tms-container-scene-set-color container name
+                                 (coerce (vec-x color) 'single-float)
+                                 (coerce (vec-y color) 'single-float)
+                                 (coerce (vec-z color) 'single-float)
+                                 (coerce  alpha 'single-float)))
+
+
 (cffi:defcfun tms-container-scene-add-box :void
   (container moveit-container-t)
   (name :string)
@@ -52,12 +69,3 @@
 (cffi:defcfun ("tms_container_scene_rm" container-scene-rm) :void
   (container moveit-container-t)
   (name :string))
-
-
-(cffi:defcfun ("tms_container_scene_set_color" container-scene-set-color) :void
-  (container moveit-container-t)
-  (name :string)
-  (r :float)
-  (g :float)
-  (b :float)
-  (a :float))

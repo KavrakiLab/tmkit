@@ -8,15 +8,16 @@
 (defstruct plan-context
   moveit-container
   configuration
-  (robot-graph (robray:scene-graph nil))
-  (scene-graph (robray:scene-graph nil))
+  (robot-graph (scene-graph nil))
+  (object-graph (scene-graph nil))
   (class-kwargs (make-tree-map #'string-compare))
   (object-init-map (make-tree-map #'string-compare))
   (object-goal-map (make-tree-map #'string-compare)))
 
 ;; TODO: handle ROS init and node handles in C library
 
-(defun moveit-init ()
+(defun moveit-init (urdf-file)
+  ;; TODO: get URDF from moveit
   (unless (and (boundp '*node-handle*)
                *node-handle*)
     (format t "~&Initializing ROS and moveit model~%")
@@ -25,26 +26,44 @@
   (unless (and (boundp '*plan-context*)
                *plan-context*)
     (setq *moveit-container* (container-create *node-handle*))
-    (setq *plan-context* (make-plan-context :moveit-container *moveit-container*))))
+    (setq *plan-context* (make-plan-context :moveit-container *moveit-container*
+                                            :robot-graph (robray::urdf-parse urdf-file)))))
 
-(defun context-add-object (context parent relative-tf name)
+(defun context-add-frame (context parent relative-tf name)
   "Add object to container. Return absolute transform."
   ;; Add relative to tree
-  (setf (plan-context-scene-graph context)
-        (scene-graph-add-frame (plan-context-scene-graph context)
+  (setf (plan-context-object-graph context)
+        (scene-graph-add-frame (plan-context-object-graph context)
                                (scene-frame-fixed parent name
-                                                  :tf relative-tf)))
-  (robray::scene-graph-tf-absolute (plan-context-scene-graph context)
-                                   name))
+                                                  :tf relative-tf))))
+
+
+(defun context-add-box (context parent name tf dimensions color alpha)
+  ;; Scene Graph
+  (context-add-frame context parent tf name)
+  (setf (plan-context-object-graph context)
+        (scene-graph-add-visual (plan-context-object-graph context)
+                                name
+                                (robray::make-scene-visual :geometry (scene-box dimensions)
+                                                           :color color
+                                                           :alpha alpha)))
+  ;; Move It Scene
+  (container-scene-add-box (plan-context-moveit-container context)
+                           name dimensions
+                           (robray::scene-graph-tf-absolute (plan-context-object-graph context)
+                                                            name))
+  (container-scene-set-color (plan-context-moveit-container context)
+                             name color alpha))
+
 
 (defun context-remove-object (context frame-name)
-  (setf (plan-context-scene-graph context)
-        (scene-graph-remove-frame (plan-context-scene-graph context)
+  (setf (plan-context-object-graph context)
+        (scene-graph-remove-frame (plan-context-object-graph context)
                                   frame-name)))
 
 (defun context-remove-all-objects (context)
-  (setf (plan-context-scene-graph context)
-        (plan-context-robot-graph context)))
+  (setf (plan-context-object-graph context)
+        (scene-graph nil)))
 
 
 (defun symbol-compare (a b)
@@ -125,29 +144,25 @@
                                    shape
                                    dimension rotation translation
                                    height radius
-                                   color (alpha 1.0)
+                                   (color (vec 0d0 0d0 0d0))
+                                   (alpha 1d0)
                                    affords
                                    grasps
                                    )
              keyword-arguments
            (declare (ignore class affords grasps))
-           (let ((absolute-tf (context-add-object context parent (aa:tf rotation translation) name)))
+           (let ((tf (tf rotation translation))
+                 (alpha (coerce alpha 'double-float)))
                                         ;(print exp)
                                         ;(print absolute-tf)
              (ecase shape
                (:box
-                (container-scene-add-box container name (aa:vec3 dimension) absolute-tf))
-               (:cylinder
-                (container-scene-add-cylinder container name height radius absolute-tf))
-               (:sphere
-                (container-scene-add-sphere container name radius (amino:translation absolute-tf))))
-             (when color
-               (etypecase color
-                 (cons (container-scene-set-color container name
-                                                  (coerce (vec-x color) 'single-float)
-                                                  (coerce (vec-y color) 'single-float)
-                                                  (coerce (vec-z color) 'single-float)
-                                                  (coerce  alpha 'single-float)))))))
+                (context-add-box context parent name tf (vec3 dimension) color alpha))
+               ;(:cylinder
+                ;(container-scene-add-cylinder container name height radius absolute-tf))
+               ;(:sphere
+                ;(container-scene-add-sphere container name radius (amino:translation absolute-tf)))
+               )))
          (tree-map-insertf (plan-context-object-init-map context)
                            name keyword-arguments-map)))
       ((:rm name)
