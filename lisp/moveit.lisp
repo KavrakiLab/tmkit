@@ -7,7 +7,9 @@
 
 (defstruct plan-context
   moveit-container
-  (tf-tree (make-tf-tree))
+  configuration
+  (robot-graph (robray:scene-graph nil))
+  (scene-graph (robray:scene-graph nil))
   (class-kwargs (make-tree-map #'string-compare))
   (object-init-map (make-tree-map #'string-compare))
   (object-goal-map (make-tree-map #'string-compare)))
@@ -28,21 +30,21 @@
 (defun context-add-object (context parent relative-tf name)
   "Add object to container. Return absolute transform."
   ;; Add relative to tree
-  (setf (plan-context-tf-tree context)
-        (tf-tree-insert (plan-context-tf-tree context)
-                        (tf-tag parent relative-tf name)))
-  ;; Find absolute
-  (tf-tag-tf (tf-tree-absolute-tf (plan-context-tf-tree context)
-                                 name)))
+  (setf (plan-context-scene-graph context)
+        (scene-graph-add-frame (plan-context-scene-graph context)
+                               (scene-frame-fixed parent name
+                                                  :tf relative-tf)))
+  (robray::scene-graph-tf-absolute (plan-context-scene-graph context)
+                                   name))
 
-(defun context-remove-object (context frame)
-  (setf (plan-context-tf-tree context)
-        (tf-tree-remove (plan-context-tf-tree context)
-                        frame)))
+(defun context-remove-object (context frame-name)
+  (setf (plan-context-scene-graph context)
+        (scene-graph-remove-frame (plan-context-scene-graph context)
+                                  frame-name)))
 
 (defun context-remove-all-objects (context)
-  (setf (plan-context-tf-tree context)
-        (make-tf-tree)))
+  (setf (plan-context-scene-graph context)
+        (plan-context-robot-graph context)))
 
 
 (defun symbol-compare (a b)
