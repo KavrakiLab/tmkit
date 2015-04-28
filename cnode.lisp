@@ -32,6 +32,9 @@
 
 (moveit-scene-file "/home/ntd/git/tmsmt/scene/scene.se")
 
+(context-add-sphere *plan-context* "right_w2" "my_right_ee" (quaternion-translation nil) .08
+                    :color '(0 1 0) :collision nil)
+
 (container-set-start *moveit-container* *q-all-start*)
 (container-set-group *moveit-container* *group*)
 

@@ -38,22 +38,56 @@
                                                   :tf relative-tf))))
 
 
-(defun context-add-box (context parent name tf dimensions color alpha)
-  ;; Scene Graph
+(defun context-add-geometry (context parent name tf geometry &key
+                                                               (color '(0 0 0))
+                                                               (alpha 1d0)
+                                                               (collision t)
+                                                               (visual t))
+  (declare (ignore collision))
   (context-add-frame context parent tf name)
-  (setf (plan-context-object-graph context)
-        (scene-graph-add-visual (plan-context-object-graph context)
-                                name
-                                (robray::make-scene-visual :geometry (scene-box dimensions)
-                                                           :color color
-                                                           :alpha alpha)))
+  (when visual
+    (setf (plan-context-object-graph context)
+          (scene-graph-add-visual (plan-context-object-graph context)
+                                  name
+                                  (robray::make-scene-visual :geometry geometry
+                                                             :color color
+                                                             :alpha alpha)))))
+
+(defun context-add-sphere (context parent name tf radius &key
+                                                           (color '(0 0 0))
+                                                           (alpha 1d0)
+                                                           (collision t)
+                                                           (visual t))
+  ;; Scene Graph
+  (context-add-geometry context parent name tf (scene-sphere radius)
+                        :color color :alpha alpha
+                        :collision collision :visual visual)
   ;; Move It Scene
-  (container-scene-add-box (plan-context-moveit-container context)
-                           name dimensions
-                           (robray::scene-graph-tf-absolute (plan-context-object-graph context)
-                                                            name))
-  (container-scene-set-color (plan-context-moveit-container context)
-                             name color alpha))
+  (when collision
+    (container-scene-add-sphere (plan-context-moveit-container context)
+                                name radius
+                                (translation (robray::scene-graph-tf-absolute (plan-context-object-graph context)
+                                                                              name)))
+    (container-scene-set-color (plan-context-moveit-container context)
+                               name color alpha)))
+
+(defun context-add-box (context parent name tf dimensions &key
+                                                            (color '(0 0 0))
+                                                            (alpha 1d0)
+                                                            (collision t)
+                                                            (visual t))
+  ;; Scene Graph
+  (context-add-geometry context parent name tf (scene-box dimensions)
+                        :color color :alpha alpha
+                        :collision collision :visual visual)
+  ;; Move It Scene
+  (when collision
+    (container-scene-add-box (plan-context-moveit-container context)
+                             name dimensions
+                             (robray::scene-graph-tf-absolute (plan-context-object-graph context)
+                                                              name))
+    (container-scene-set-color (plan-context-moveit-container context)
+                               name color alpha)))
 
 
 (defun context-remove-object (context frame-name)
@@ -157,7 +191,8 @@
                                         ;(print absolute-tf)
              (ecase shape
                (:box
-                (context-add-box context parent name tf (vec3 dimension) color alpha))
+                (context-add-box context parent name tf (vec3 dimension)
+                                 :color color :alpha alpha))
                ;(:cylinder
                 ;(container-scene-add-cylinder container name height radius absolute-tf))
                ;(:sphere

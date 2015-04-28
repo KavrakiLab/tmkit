@@ -23,5 +23,20 @@
                  (elt config-map-list frame)
                  nil)))
       (robray::scene-graph-frame-animate #'frame-config-fun
-                                         :include "baxter.inc"
+                                         :include "baxter.inc" ;; TODO: fix this
                                          :scene-graph scene-graph))))
+
+
+
+(defun render-group-config (context group config)
+  (let* ((container (plan-context-moveit-container context))
+         (config-map (point-config-map container group config))
+         (scene-graph (robray::scene-graph-merge (plan-context-robot-graph context)
+                                                 (plan-context-object-graph context))))
+    (robray::pov-render (robray::scene-graph-pov-frame scene-graph
+                                                       :configuration-map config-map
+                                                       :include "baxter.inc" ;; TODO: fix this
+                                                       )
+                        :directory "/tmp/robray/"
+                        :file "tmsmt.pov"
+                        :output "tmsmt.png")))
