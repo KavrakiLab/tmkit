@@ -38,6 +38,10 @@
                                                   :tf relative-tf))))
 
 
+(defun context-object-tf (context name)
+  (robray::scene-graph-tf-absolute (plan-context-object-graph context)
+                                   name))
+
 (defun context-add-geometry (context parent name tf geometry &key
                                                                no-shadow
                                                                (color '(0 0 0))

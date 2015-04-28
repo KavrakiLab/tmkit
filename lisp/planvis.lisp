@@ -11,11 +11,21 @@
     map))
 
 
-(defun render-group-plan (context group plan)
+(defun render-group-plan (context group plan
+                          &key
+                            (width robray::*width*)
+                            (height robray::*height*)
+                            (frames-per-second robray::*frames-per-second*))
   (let* ((container (plan-context-moveit-container context))
          (config-map-list
-          (loop for points in plan
-             collect (point-config-map container group points)))
+          (loop
+             for rest on plan
+             for points = (first rest)
+             for next = (second rest)
+             append
+               (append (list (point-config-map container group points))
+                       (when next
+                             (list (point-config-map container group (g* 0.5 (g+ points next))))))))
          (scene-graph (robray::scene-graph-merge (plan-context-robot-graph context)
                                                  (plan-context-object-graph context))))
     (flet ((frame-config-fun (frame)
@@ -23,6 +33,9 @@
                  (elt config-map-list frame)
                  nil)))
       (robray::scene-graph-frame-animate #'frame-config-fun
+                                         :height height
+                                         :width width
+                                         :frames-per-second frames-per-second
                                          :include "baxter.inc" ;; TODO: fix this
                                          :scene-graph scene-graph))))
 
