@@ -39,6 +39,7 @@
 
 
 (defun context-add-geometry (context parent name tf geometry &key
+                                                               no-shadow
                                                                (color '(0 0 0))
                                                                (alpha 1d0)
                                                                (collision t)
@@ -51,15 +52,18 @@
                                   name
                                   (robray::make-scene-visual :geometry geometry
                                                              :color color
-                                                             :alpha alpha)))))
+                                                             :alpha alpha
+                                                             :modifiers (when no-shadow '(:no-shadow)))))))
 
 (defun context-add-sphere (context parent name tf radius &key
+                                                           no-shadow
                                                            (color '(0 0 0))
                                                            (alpha 1d0)
                                                            (collision t)
                                                            (visual t))
   ;; Scene Graph
   (context-add-geometry context parent name tf (scene-sphere radius)
+                        :no-shadow no-shadow
                         :color color :alpha alpha
                         :collision collision :visual visual)
   ;; Move It Scene
@@ -72,12 +76,14 @@
                                name color alpha)))
 
 (defun context-add-box (context parent name tf dimensions &key
+                                                           no-shadow
                                                             (color '(0 0 0))
                                                             (alpha 1d0)
                                                             (collision t)
                                                             (visual t))
   ;; Scene Graph
   (context-add-geometry context parent name tf (scene-box dimensions)
+                        :no-shadow no-shadow
                         :color color :alpha alpha
                         :collision collision :visual visual)
   ;; Move It Scene
@@ -92,12 +98,14 @@
 
 (defun context-add-cylinder (context parent name tf length radius axis
                              &key
+                               no-shadow
                                (color '(0 0 0))
                                (alpha 1d0)
                                (collision t)
                                (visual t))
   ;; Scene Graph
   (context-add-geometry context parent name tf (robray::scene-cylinder length radius axis)
+                        :no-shadow no-shadow
                         :color color :alpha alpha
                         :collision collision :visual visual)
   (when collision
@@ -106,12 +114,14 @@
 
 (defun context-add-cone (context parent name tf length start-radius end-radius axis
                          &key
+                           no-shadow
                            (color '(0 0 0))
                            (alpha 1d0)
                            (collision t)
                            (visual t))
   ;; Scene Graph
   (context-add-geometry context parent name tf (robray::scene-cone length start-radius end-radius axis)
+                        :no-shadow no-shadow
                         :color color :alpha alpha
                         :collision collision :visual visual)
   (when collision
@@ -131,30 +141,36 @@
       (context-add-cylinder context frame-name (subframe "x")
                             (quaternion-translation-2 nil (vec3* l/2 0 0))
                             length w/2 '(1 0 0)
+                            :no-shadow t
                             :color '(1 0 0) :collision nil)
 
       (context-add-cylinder  context frame-name (subframe "y")
                              (quaternion-translation-2 nil (vec3* 0 l/2 0))
                              length w/2 '(0 1 0)
+                             :no-shadow t
                              :color '(0 1 0) :collision nil)
       (context-add-cylinder  context frame-name (subframe "z")
                              (quaternion-translation-2 nil (vec3* 0 0 l/2))
                              length w/2 '(0 0 1)
+                             :no-shadow t
                              :color '(0 0 1) :collision nil)
 
       (context-add-cone context frame-name (subframe "x_arrow")
                         (quaternion-translation-2 nil (vec3* length 0 0))
                         arrow-length cone-radius 0d0 '(1 0 0)
+                        :no-shadow t
                         :color '(1 0 0) :collision nil)
 
       (context-add-cone context frame-name (subframe "y_arrow")
                         (quaternion-translation-2 nil (vec3* 0 length 0))
                         arrow-length cone-radius 0d0 '(0 1 0)
+                        :no-shadow t
                         :color '(0 1 0) :collision nil)
 
       (context-add-cone context frame-name (subframe "z_arrow")
                         (quaternion-translation-2 nil (vec3* 0 0 length))
                         arrow-length cone-radius 0d0 '(0 0 1)
+                        :no-shadow t
                         :color '(0 0 1) :collision nil)
       )
 
