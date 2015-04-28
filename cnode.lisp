@@ -56,8 +56,8 @@
 (defvar *plan*)
 
 (context-add-frame *plan-context* "block-b"
-                   (tf (y-angle (* 1 pi))
-                       (vec3* 0 0 .10))
+                   (tf* (y-angle (* 1 pi))
+                        (vec3* 0 0 .10))
                    "grasp-target")
 
 ;; (context-add-frame-marker *plan-context* "grasp-target"
