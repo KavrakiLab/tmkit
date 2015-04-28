@@ -35,6 +35,12 @@
 (context-add-sphere *plan-context* "right_w2" "my_right_ee" (quaternion-translation nil) .08
                     :color '(0 1 0) :collision nil)
 
+(context-add-frame-marker *plan-context* "right_w2"
+                          :length .25 :width .025)
+
+(context-add-frame-marker *plan-context* "left_w2"
+                          :length .25 :width .025)
+
 (container-set-start *moveit-container* *q-all-start*)
 (container-set-group *moveit-container* *group*)
 
@@ -50,11 +56,16 @@
 
 (container-scene-send *moveit-container*)
 
-(defparameter *e-goal* (amino:tf (amino:axis-angle (amino:y-angle (* .5 pi)))
-                                 (amino:vec3* 0.788372  -0.383374  0.345540)))
-
-(container-set-ws-goal *moveit-container* *link* *e-goal*)
-
 (defvar *plan*)
 
-(setq *plan* (container-plan *moveit-container*))
+(progn
+  (defparameter *e-goal* (amino:tf (amino:axis-angle (amino:y-angle (* 1 pi)))
+                                   (amino:vec3* 0.788372  -0.383374  0.345540)))
+
+  (container-goal-clear *moveit-container*)
+  (container-set-ws-goal *moveit-container* *link* *e-goal*))
+
+
+(progn
+  (setq *plan* (container-plan *moveit-container*))
+  (container-group-fk *moveit-container* *group* (car (last *plan*))))
