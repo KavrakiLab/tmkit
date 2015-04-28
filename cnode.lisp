@@ -59,7 +59,7 @@
 (defvar *plan*)
 
 (progn
-  (defparameter *e-goal* (amino:tf (amino:axis-angle (amino:y-angle (* 1 pi)))
+  (defparameter *e-goal* (amino:tf (amino:axis-angle (amino:y-angle (* .5 pi)))
                                    (amino:vec3* 0.788372  -0.383374  0.345540)))
 
   (container-goal-clear *moveit-container*)

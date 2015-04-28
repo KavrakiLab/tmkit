@@ -103,25 +103,60 @@
   (when collision
     (error "Unimplimented")))
 
+
+(defun context-add-cone (context parent name tf length start-radius end-radius axis
+                         &key
+                           (color '(0 0 0))
+                           (alpha 1d0)
+                           (collision t)
+                           (visual t))
+  ;; Scene Graph
+  (context-add-geometry context parent name tf (robray::scene-cone length start-radius end-radius axis)
+                        :color color :alpha alpha
+                        :collision collision :visual visual)
+  (when collision
+    (error "Unimplimented")))
+
 (defun context-add-frame-marker (context frame-name &key
                                                       (length .25)
-                                                      (width .025))
+                                                      (width .025)
+                                                      (arrow-width (* 2 width))
+                                                      (arrow-length (* 1 arrow-width)))
   (labels ((subframe (dim)
              (concatenate 'string frame-name "_robray_marker_" dim)))
     (let ((l/2 (/ length 2))
-          (w/2 (/ width 2)))
+          (w/2 (/ width 2))
+          (cone-radius (/ arrow-width 2)))
+
       (context-add-cylinder context frame-name (subframe "x")
                             (quaternion-translation-2 nil (vec3* l/2 0 0))
                             length w/2 '(1 0 0)
                             :color '(1 0 0) :collision nil)
+
       (context-add-cylinder  context frame-name (subframe "y")
                              (quaternion-translation-2 nil (vec3* 0 l/2 0))
                              length w/2 '(0 1 0)
                              :color '(0 1 0) :collision nil)
-      (context-add-cylinder  context "right_w2" (subframe "z")
+      (context-add-cylinder  context frame-name (subframe "z")
                              (quaternion-translation-2 nil (vec3* 0 0 l/2))
                              length w/2 '(0 0 1)
-                             :color '(0 0 1) :collision nil)))
+                             :color '(0 0 1) :collision nil)
+
+      (context-add-cone context frame-name (subframe "x_arrow")
+                        (quaternion-translation-2 nil (vec3* length 0 0))
+                        arrow-length cone-radius 0d0 '(1 0 0)
+                        :color '(1 0 0) :collision nil)
+
+      (context-add-cone context frame-name (subframe "y_arrow")
+                        (quaternion-translation-2 nil (vec3* 0 length 0))
+                        arrow-length cone-radius 0d0 '(0 1 0)
+                        :color '(0 1 0) :collision nil)
+
+      (context-add-cone context frame-name (subframe "z_arrow")
+                        (quaternion-translation-2 nil (vec3* 0 0 length))
+                        arrow-length cone-radius 0d0 '(0 0 1)
+                        :color '(0 0 1) :collision nil)
+      )
 
 
       ;; (context-add-box context frame-name (subframe "x")
@@ -137,7 +172,7 @@
       ;;                   (list width width length)
       ;;                   :color '(0 0 1) :collision nil)))
 
-  )
+  ))
 
 (defun context-remove-object (context frame-name)
   (setf (plan-context-object-graph context)
