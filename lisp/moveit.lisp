@@ -54,11 +54,11 @@
                        parent name
                        :geometry geometry
                        :tf tf
-                       :no-shadow no-shadow
-                       :color color
-                       :alpha alpha
-                       :visual visual
-                       :collision collision)))
+                       :options (robray::draw-options-default :no-shadow no-shadow
+                                                              :color color
+                                                              :alpha alpha
+                                                              :visual visual
+                                                              :collision collision))))
 
 (defun context-add-sphere (context parent name tf radius &key
                                                            no-shadow
@@ -139,82 +139,96 @@
                       &key
                         geometry
                         tf
-                        (options nil)
-                        (no-shadow (draw-option options :no-shadow))
-                        (color (draw-option options :color))
-                        (alpha (draw-option options :alpha))
-                        (visual (draw-option options :visual))
-                        (collision (draw-option options :collision)))
+                        (options nil))
 
   (setf (plan-context-object-graph context)
         (draw-geometry (plan-context-object-graph context)
                        parent name
                        :geometry geometry
                        :tf tf
-                       :no-shadow no-shadow
-                       :color color
-                       :alpha alpha
-                       :visual visual
-                       :collision collision
                        :options options)))
 
 
 (defun context-add-frame-marker (context frame-name &key
                                                       (alpha 0.5d0)
-                                                      (length .25)
+                                                      (length .35)
                                                       (width .025)
                                                       (arrow-width (* 2 width))
                                                       (arrow-length (* 1 arrow-width)))
   (labels ((subframe (dim)
              (concatenate 'string frame-name "_robray_marker_" dim)))
     (let* ((w/2 (/ width 2))
-           (cone-radius (/ arrow-width 2))
-           (options (draw-options :no-shadow t :alpha 1d0
+           (options (draw-options :no-shadow t :alpha alpha
                                           :visual t :collision nil))
            (cylinder (scene-cylinder :height length :radius w/2))
            (cone (scene-cone :height arrow-length
                              :start-radius (/ arrow-width 2)
-                             :end-radius 0d0)))
-      (context-draw context
-                    frame-name (subframe "x")
-                    :geometry cylinder
-                    :tf (draw-tf-axis (vec 1d0 0 0))
-                    :options options
-                    :color '(1 0 0))
-      (context-draw context
-                    frame-name (subframe "y")
-                    :geometry cylinder
-                    :tf (draw-tf-axis (vec 0 1d0 0))
-                    :options options
-                    :color '(0 1 0))
-      (context-draw context
-                    frame-name (subframe "z")
-                    :geometry cylinder
-                    :tf (draw-tf-axis (vec 0 0 1d0))
-                    :options options
-                    :color '(0 0 1))
+                             :end-radius 0d0))
+           (red (robray::draw-options :color '(1 0 0)))
+           (green (robray::draw-options :color '(0 1 0)))
+           (blue (robray::draw-options :color '(0 0 1))))
+
+      (setf (plan-context-object-graph context)
+            (robray::draw-items (plan-context-object-graph context)
+                                frame-name
+                                (robray::item-frame-marker (robray::draw-subframe frame-name "marker")
+                                                           :length length
+                                                           :width width
+                                                           :arrow-width arrow-width
+                                                           :arrow-length arrow-length)
+
+                                :options options)))))
 
 
-      (context-draw context
-                    frame-name (subframe "x_arrow")
-                    :geometry cone
-                    :tf (draw-tf-axis (vec 1d0 0 0) (vec3* length 0 0))
-                    :options options
-                    :color '(1 0 0))
+      ;; (setf (plan-context-object-graph context)
+      ;;       (robray::draw (plan-context-object-graph context)
+      ;;                     frame-name
+      ;;                     (robray::item-arrow-axis "marker_x"
+      ;;                                              :options red
+      ;;                                              :axis (vec3* 1 0 0)
+      ;;                                              :length length
+      ;;                                              :width width
+      ;;                                              :end-arrow t
+      ;;                                              :end-arrow-start-width arrow-width
+      ;;                                              :end-arrow-length arrow-length)
+      ;;                     ;; (list (robray::item-cylinder-axis (robray::draw-subframe frame-name "marker_x")
+      ;;                     ;;                                   :height length :radius w/2
+      ;;                     ;;                                   :axis (vec 1d0 0 0))
+      ;;                     ;;       (robray::item-cone-axis (robray::draw-subframe frame-name "marker_x_arrow")
+      ;;                     ;;                                   :height arrow-length :start-radius (/ arrow-width 2)
+      ;;                     ;;                                   :axis (vec 1d0 0 0)
+      ;;                     ;;                                   :translation (vec3* length 0 0)))
+      ;;                     :options options))
+      ;; (context-draw context
+      ;;               frame-name (subframe "y")
+      ;;               :geometry cylinder
+      ;;               :tf (draw-tf-axis (vec 0 1d0 0))
+      ;;               :options (robray::merge-draw-options green options))
+      ;; (context-draw context
+      ;;               frame-name (subframe "z")
+      ;;               :geometry cylinder
+      ;;               :tf (draw-tf-axis (vec 0 0 1d0))
+      ;;               :options (robray::merge-draw-options blue options))
 
-      (context-draw context
-                    frame-name (subframe "y_arrow")
-                    :geometry cone
-                    :tf (draw-tf-axis (vec 0d0 1d0 0) (vec3* 0 length 0))
-                    :options options
-                    :color '(0 1 0))
 
-      (context-draw context
-                    frame-name (subframe "z_arrow")
-                    :geometry cone
-                    :tf (draw-tf-axis (vec 0d0 0 1d0) (vec3* 0 0 length))
-                    :options options
-                    :color '(0 0 1)))))
+      ;; ;; (context-draw context
+      ;; ;;               frame-name (subframe "x_arrow")
+      ;; ;;               :geometry cone
+      ;; ;;               :tf (draw-tf-axis (vec 1d0 0 0) (vec3* length 0 0))
+      ;; ;;               :options options
+      ;; ;;               :color '(1 0 0))
+
+      ;; (context-draw context
+      ;;               frame-name (subframe "y_arrow")
+      ;;               :geometry cone
+      ;;               :tf (draw-tf-axis (vec 0d0 1d0 0) (vec3* 0 length 0))
+      ;;               :options (robray::merge-draw-options green options))
+
+      ;; (context-draw context
+      ;;               frame-name (subframe "z_arrow")
+      ;;               :geometry cone
+      ;;               :tf (draw-tf-axis (vec 0d0 0 1d0) (vec3* 0 0 length))
+      ;;               :options (robray::merge-draw-options blue options)))))
 
 (defun context-remove-object (context frame-name)
   (setf (plan-context-object-graph context)
@@ -313,8 +327,6 @@
            (declare (ignore class affords grasps))
            (let ((tf (tf* rotation translation))
                  (alpha (coerce alpha 'double-float)))
-                                        ;(print exp)
-                                        ;(print absolute-tf)
              (ecase shape
                (:box
                 (context-add-box context parent name tf (vec3 dimension)

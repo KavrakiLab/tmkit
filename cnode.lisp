@@ -33,10 +33,10 @@
 (moveit-scene-file "/home/ntd/git/tmsmt/scene/scene.se")
 
 (context-add-frame-marker *plan-context* "right_w2"
-                          :length .20 :width .025)
+                          :length .25 :width .025)
 
 (context-add-frame-marker *plan-context* "left_w2"
-                          :length .20 :width .025)
+                          :length .25 :width .025)
 
 (container-set-start *moveit-container* *q-all-start*)
 (container-set-group *moveit-container* *group*)
