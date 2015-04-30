@@ -120,6 +120,23 @@
   (n-points :pointer)
   (points :pointer))
 
+(cffi:defcfun tms-container-merge-group :int
+  (container moveit-container-t)
+  (group :string)
+  (n-group amino-ffi:size-t)
+  (q-group :pointer)
+  (n-all amino-ffi:size-t)
+  (q-all :pointer))
+
+(defun container-merge-group (container group-name q-group q-all)
+  (check-type q-group (simple-array double-float (*)))
+  (check-type q-all (simple-array double-float (*)))
+  (amino-ffi:with-foreign-simple-vector (q-all n-all) q-all :output
+    (amino-ffi:with-foreign-simple-vector (q-group n-group) q-group :input
+      (tms-container-merge-group container group-name
+                                 n-group q-group
+                                 n-all q-all))))
+
 (defun container-plan (container)
   (cffi:with-foreign-objects ((n-vars 'amino-ffi:size-t)
                               (n-points 'amino-ffi::size-t)
