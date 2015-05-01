@@ -88,66 +88,12 @@
                              0.9953607016244341d0 0.04254853481160224d0 1.3359037004119487d0
                              0.0461604074055537d0))
 
-(defvar *attach-tf*)
-
-;; (setq *attach-tf*
-;;       (robray::scene-graph-tf-absolute (robray::scene-graph-merge  (plan-context-robot-graph *plan-context*)
-;;                                                                    (plan-context-object-graph *plan-context*))
-;;                                        "grasp-pick"
-;;                                        :configuration-map
-;;                                        (container-group-configuration-map *moveit-container* *group*
-;;                                                                           (container-plan-endpoint *plan*))
-;;                                        :default-configuration 0d0))
-
-
-(defun attach-object (context group q-group frame link object)
-  ;; moveit seems to attach objects at current state that defaults zero
-  ;; Objects are NOT attached relative to the start state of the plan
-  ;;       Find global_TF_obj
-  ;;       Find ee_TF_obj
-  ;;       Find object absolute TF as when EE: global_TF_ee(obj)(q=0) * ee_TF_obj
-  (let* ((container (plan-context-moveit-container context))
-         (configuration-map (container-group-configuration-map container group q-group))
-         (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
-                                                  (plan-context-object-graph context))))
-    ;(container-scene-rm container object)
-    (container-scene-attach-box container link object (vec .1 .1 .1)
-                                (robray::scene-graph-tf-relative scene-graph
-                                                                 frame object
-                                                                 :configuration-map configuration-map))))
-
-
-
-
-
-(context-add-frame *plan-context* "right_endpoint"
-                   (tf* nil (vec3* 0 0 .02))
-                   "object-attach")
-
-(setq *attach-tf*
-      (robray::scene-graph-tf-absolute (robray::scene-graph-merge  (plan-context-robot-graph *plan-context*)
-                                                                   (plan-context-object-graph *plan-context*))
-                                       "object-attach"
-                                       :configuration-map
-                                       (container-group-configuration-map *moveit-container* *group*
-                                                                          (loop for i below 7 collect 0d0))
-                                       :default-configuration 0d0))
-
-
-;(setq *attach-tf* (tf* nil '(0 0 0)))
-;(setq *attach-tf* (context-object-tf *plan-context* "block-a"))
-
 (container-set-start *moveit-container*
                      (container-merge-group *moveit-container* *group*
                                             *q-grasp*
                                             *q-all-start*))
 
-;;(container-scene-rm *moveit-container* "block-a")
-
-;;(container-scene-rm *moveit-container* "block-a-1")
-
-;(container-scene-attach-box *moveit-container* *link* "block-a-1" (vec .01 .01 .01)  *attach-tf*)
-(attach-object *plan-context* *group* *q-grasp* "right_endpoint" *link* "block-a")
+(context-attach-object *plan-context* *group* *q-grasp* "right_endpoint" *link* "block-a")
 
 (container-set-start *moveit-container*
                      (container-merge-group *moveit-container* *group*

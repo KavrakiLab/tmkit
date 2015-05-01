@@ -155,80 +155,16 @@
                                                       (width .020)
                                                       (arrow-width (* 2 width))
                                                       (arrow-length (* 1 arrow-width)))
-  (labels ((subframe (dim)
-             (concatenate 'string frame-name "_robray_marker_" dim)))
-    (let* ((w/2 (/ width 2))
-           (options (draw-options :no-shadow t :alpha alpha
-                                          :visual t :collision nil))
-           (cylinder (scene-cylinder :height length :radius w/2))
-           (cone (scene-cone :height arrow-length
-                             :start-radius (/ arrow-width 2)
-                             :end-radius 0d0))
-           (red (robray::draw-options :color '(1 0 0)))
-           (green (robray::draw-options :color '(0 1 0)))
-           (blue (robray::draw-options :color '(0 0 1))))
-
-      (setf (plan-context-object-graph context)
-            (robray::draw-items (plan-context-object-graph context)
-                                frame-name
-                                (robray::item-frame-marker (robray::draw-subframe frame-name "marker")
-                                                           :length length
-                                                           :width width
-                                                           :arrow-width arrow-width
-                                                           :arrow-length arrow-length)
-
-                                :options options)))))
-
-
-      ;; (setf (plan-context-object-graph context)
-      ;;       (robray::draw (plan-context-object-graph context)
-      ;;                     frame-name
-      ;;                     (robray::item-arrow-axis "marker_x"
-      ;;                                              :options red
-      ;;                                              :axis (vec3* 1 0 0)
-      ;;                                              :length length
-      ;;                                              :width width
-      ;;                                              :end-arrow t
-      ;;                                              :end-arrow-start-width arrow-width
-      ;;                                              :end-arrow-length arrow-length)
-      ;;                     ;; (list (robray::item-cylinder-axis (robray::draw-subframe frame-name "marker_x")
-      ;;                     ;;                                   :height length :radius w/2
-      ;;                     ;;                                   :axis (vec 1d0 0 0))
-      ;;                     ;;       (robray::item-cone-axis (robray::draw-subframe frame-name "marker_x_arrow")
-      ;;                     ;;                                   :height arrow-length :start-radius (/ arrow-width 2)
-      ;;                     ;;                                   :axis (vec 1d0 0 0)
-      ;;                     ;;                                   :translation (vec3* length 0 0)))
-      ;;                     :options options))
-      ;; (context-draw context
-      ;;               frame-name (subframe "y")
-      ;;               :geometry cylinder
-      ;;               :tf (draw-tf-axis (vec 0 1d0 0))
-      ;;               :options (robray::merge-draw-options green options))
-      ;; (context-draw context
-      ;;               frame-name (subframe "z")
-      ;;               :geometry cylinder
-      ;;               :tf (draw-tf-axis (vec 0 0 1d0))
-      ;;               :options (robray::merge-draw-options blue options))
-
-
-      ;; ;; (context-draw context
-      ;; ;;               frame-name (subframe "x_arrow")
-      ;; ;;               :geometry cone
-      ;; ;;               :tf (draw-tf-axis (vec 1d0 0 0) (vec3* length 0 0))
-      ;; ;;               :options options
-      ;; ;;               :color '(1 0 0))
-
-      ;; (context-draw context
-      ;;               frame-name (subframe "y_arrow")
-      ;;               :geometry cone
-      ;;               :tf (draw-tf-axis (vec 0d0 1d0 0) (vec3* 0 length 0))
-      ;;               :options (robray::merge-draw-options green options))
-
-      ;; (context-draw context
-      ;;               frame-name (subframe "z_arrow")
-      ;;               :geometry cone
-      ;;               :tf (draw-tf-axis (vec 0d0 0 1d0) (vec3* 0 0 length))
-      ;;               :options (robray::merge-draw-options blue options)))))
+  (setf (plan-context-object-graph context)
+        (robray::draw-items (plan-context-object-graph context)
+                            frame-name
+                            (robray::item-frame-marker (robray::draw-subframe frame-name "marker")
+                                                       :length length
+                                                       :width width
+                                                       :arrow-width arrow-width
+                                                       :arrow-length arrow-length)
+                            :options (draw-options :no-shadow t :alpha alpha
+                                                   :visual t :collision nil))))
 
 (defun context-remove-object (context frame-name)
   (setf (plan-context-object-graph context)
@@ -238,6 +174,18 @@
 (defun context-remove-all-objects (context)
   (setf (plan-context-object-graph context)
         (scene-graph nil)))
+
+
+(defun context-attach-object (context group q-group frame link object)
+  (let* ((container (plan-context-moveit-container context))
+         (configuration-map (container-group-configuration-map container group q-group))
+         (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
+                                                  (plan-context-object-graph context))))
+    (container-scene-attach-box container link object (vec .1 .1 .1)
+                                (robray::scene-graph-tf-relative scene-graph
+                                                                 frame object
+                                                                 :configuration-map configuration-map))))
+
 
 
 (defun symbol-compare (a b)
