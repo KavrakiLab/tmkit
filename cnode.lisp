@@ -107,23 +107,17 @@
   ;;       Find ee_TF_obj
   ;;       Find object absolute TF as when EE: global_TF_ee(obj)(q=0) * ee_TF_obj
   (let* ((container (plan-context-moveit-container context))
-         (g_TF_obj (context-object-tf context object))
-         (g_TF_ee (robray::scene-graph-tf-absolute (plan-context-robot-graph *plan-context*)
-                                                   frame
-                                                   :configuration-map
-                                                   (container-group-configuration-map container group q-group)
-                                                   :default-configuration 0d0))
-         (ee_tf_obj (g* (inverse g_TF_ee) g_TF_obj))
-         ;; (g_TF_ee_0 (robray::scene-graph-tf-absolute (plan-context-robot-graph *plan-context*)
-         ;;                                             frame
-         ;;                                             :configuration-map
-         ;;                                             (make-tree-map #'string-compare)
-         ;;                                             :default-configuration 0d0))
-         )
-
-    (container-scene-rm container object)
+         (configuration-map (container-group-configuration-map container group q-group))
+         (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
+                                                  (plan-context-object-graph context))))
+    ;(container-scene-rm container object)
     (container-scene-attach-box container link object (vec .1 .1 .1)
-                                ee_TF_obj)))
+                                (robray::scene-graph-tf-relative scene-graph
+                                                                 frame object
+                                                                 :configuration-map configuration-map))))
+
+
+
 
 
 (context-add-frame *plan-context* "right_endpoint"
@@ -148,9 +142,9 @@
                                             *q-grasp*
                                             *q-all-start*))
 
-(container-scene-rm *moveit-container* "block-a")
+;;(container-scene-rm *moveit-container* "block-a")
 
-(container-scene-rm *moveit-container* "block-a-1")
+;;(container-scene-rm *moveit-container* "block-a-1")
 
 ;(container-scene-attach-box *moveit-container* *link* "block-a-1" (vec .01 .01 .01)  *attach-tf*)
 (attach-object *plan-context* *group* *q-grasp* "right_endpoint" *link* "block-a")
