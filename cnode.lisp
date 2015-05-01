@@ -86,10 +86,12 @@
 (terpri)
 (finish-output)
 
-(container-scene-attach-box *moveit-container*
-                            *link*
-                            "block_b"
-                            (vec .05 .05 .05)  *attach-tf*)
+;; (container-scene-attach-box *moveit-container*
+;;                             *link*
+;;                             "block_b"
+;;                             (vec .05 .05 .05)  *attach-tf*)
+
+;(container-scene-rm *moveit-container* "block_b")
 
 ;(container-scene-set-color *moveit-container* "block_b" '(1 0 0))
 

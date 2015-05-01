@@ -100,11 +100,17 @@ tms_container_scene_add_sphere( struct container * c, const char *name, double r
 void
 tms_container_scene_rm( struct container * c, const char *name )
 {
-
-    moveit_msgs::CollisionObject msg;
-    msg.id = name;
-    msg.operation = msg.REMOVE;
-    c->planning_scene->processCollisionObjectMsg( msg );
+    if( c->planning_scene->getCurrentState().hasAttachedBody(name) ) {
+        moveit_msgs::AttachedCollisionObject msg;
+        msg.object.id = name;
+        msg.object.operation = msg.object.REMOVE;
+        c->planning_scene->processAttachedCollisionObjectMsg( msg );
+    } else {
+        moveit_msgs::CollisionObject msg;
+        msg.id = name;
+        msg.operation = msg.REMOVE;
+        c->planning_scene->processCollisionObjectMsg( msg );
+    }
 }
 
 void
@@ -145,37 +151,37 @@ attach_primitive( struct container * c, const char *parent,
     attached_object.object.operation = attached_object.object.ADD;
 
 
-    bool r = c->planning_scene->processAttachedCollisionObjectMsg( attached_object );
+    c->planning_scene->processAttachedCollisionObjectMsg( attached_object );
 
-    c->planning_scene->getTransforms();
-    printf("attached id: %s\n"
-           "  link_name: %s\n"
-           "   frame_id: %s\n"
-           "   result:   %d\n",
-           attached_object.object.id.c_str(),
-           attached_object.link_name.c_str(),
-           attached_object.object.header.frame_id.c_str(),
-           r);
-    robot_state::RobotState state = c->planning_scene->getCurrentState();
-    std::cout << state << std::endl;
-    std::cout << "knows: " << name << " " << c->planning_scene->knowsFrameTransform(name)  << std::endl;
-    std::cout << "has attached: " << name << " " << state.hasAttachedBody(name)  << std::endl;
+    // c->planning_scene->getTransforms();
+    // printf("attached id: %s\n"
+    //        "  link_name: %s\n"
+    //        "   frame_id: %s\n"
+    //        "   result:   %d\n",
+    //        attached_object.object.id.c_str(),
+    //        attached_object.link_name.c_str(),
+    //        attached_object.object.header.frame_id.c_str(),
+    //        r);
+    // robot_state::RobotState state = c->planning_scene->getCurrentState();
+    // std::cout << state << std::endl;
+    // std::cout << "knows: " << name << " " << c->planning_scene->knowsFrameTransform(name)  << std::endl;
+    // std::cout << "has attached: " << name << " " << state.hasAttachedBody(name)  << std::endl;
 
-    const Eigen::Affine3d &eigen_tf = c->planning_scene->getFrameTransform(name);
-    Eigen::Affine3d::ConstTranslationPart eigen_tf_vec = eigen_tf.translation();
-    printf("vec: %f %f %f\n",
-           eigen_tf_vec[0],
-           eigen_tf_vec[1],
-           eigen_tf_vec[2] );
-    //std::cout << "tf: " << name << " " << eigen_tf  << std::endl;
-    //std::cout << "tf: " << name << " " << eigen_tf  << std::endl;
+    // const Eigen::Affine3d &eigen_tf = c->planning_scene->getFrameTransform(name);
+    // Eigen::Affine3d::ConstTranslationPart eigen_tf_vec = eigen_tf.translation();
+    // printf("vec: %f %f %f\n",
+    //        eigen_tf_vec[0],
+    //        eigen_tf_vec[1],
+    //        eigen_tf_vec[2] );
+    // //std::cout << "tf: " << name << " " << eigen_tf  << std::endl;
+    // //std::cout << "tf: " << name << " " << eigen_tf  << std::endl;
 
 
-    const robot_model::RobotModelConstPtr& model = c->planning_scene->getRobotModel();
-    const std::vector< std::string > &link_names = model->getLinkModelNames();
-    std::cout << "LINKS:" << std::endl;
-    for( auto itr = link_names.begin(); itr != link_names.end(); itr++ )
-        std::cout << *itr << std::endl;
+    // const robot_model::RobotModelConstPtr& model = c->planning_scene->getRobotModel();
+    // const std::vector< std::string > &link_names = model->getLinkModelNames();
+    // std::cout << "LINKS:" << std::endl;
+    // for( auto itr = link_names.begin(); itr != link_names.end(); itr++ )
+    //     std::cout << *itr << std::endl;
 }
 
 
