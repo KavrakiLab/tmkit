@@ -74,6 +74,7 @@ tms_container_set_start( struct container * c, size_t n_all, const double *q_all
         std::copy ( p, p+n,
                     c->req.start_state.joint_state.position.begin() );
     }
+    c->req.start_state.is_diff = true;
 
     // // Print stuff
     // {

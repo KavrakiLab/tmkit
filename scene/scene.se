@@ -26,7 +26,7 @@
 
 
 ;; Blocks
-(:object "block-a"  :class ("block" "green") :translation (0 -.0 .05) :parent "front-table")
+(:object "block-a"  :class ("block" "green") :translation (0 -.2 .05) :parent "front-table")
 (:object "block-b"  :class ("block" "green") :translation (0 -.45 .05) :parent "front-table")
 
 

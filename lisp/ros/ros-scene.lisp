@@ -69,3 +69,18 @@
 (cffi:defcfun ("tms_container_scene_rm" container-scene-rm) :void
   (container moveit-container-t)
   (name :string))
+
+
+
+(cffi:defcfun tms-container-scene-attach-box :void
+  (container moveit-container-t)
+  (parent :string)
+  (name :string)
+  (dim amino::vector-3-t)
+  (quat amino::quaternion-t)
+  (vec amino::vector-3-t))
+
+(defun container-scene-attach-box (container parent name dim tf)
+  (tms-container-scene-attach-box container parent name dim
+                                  (amino:rotation tf)
+                                  (amino:translation tf)))

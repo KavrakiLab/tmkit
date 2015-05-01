@@ -50,6 +50,14 @@ tms_container_scene_clear( struct container * c );
 void
 tms_container_scene_set_color( struct container * c, const char *name,
                                float r, float g, float b, float a);
+
+/**
+ * Attach a box to something
+ */
+void
+tms_container_scene_attach_box( struct container * c, const char *parent,
+                                const char *name, const double dim[3],
+                                const double quat[4], const double vec[3] );
 #ifdef __cplusplus
 }
 #endif
