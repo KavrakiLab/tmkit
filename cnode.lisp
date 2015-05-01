@@ -54,7 +54,7 @@
 
 (context-add-frame *plan-context* "grasp-pick"
                    (tf* nil
-                        (vec3* .15 -.25 .00))
+                        (vec3* .00 -.05 .00))
                    "grasp-place")
 
 (context-add-frame-marker *plan-context* "grasp-pick")
@@ -114,15 +114,16 @@
                                                    (container-group-configuration-map container group q-group)
                                                    :default-configuration 0d0))
          (ee_tf_obj (g* (inverse g_TF_ee) g_TF_obj))
-         (g_TF_ee_0 (robray::scene-graph-tf-absolute (plan-context-robot-graph *plan-context*)
-                                                     frame
-                                                     :configuration-map
-                                                     (make-tree-map #'string-compare)
-                                                     :default-configuration 0d0)))
+         ;; (g_TF_ee_0 (robray::scene-graph-tf-absolute (plan-context-robot-graph *plan-context*)
+         ;;                                             frame
+         ;;                                             :configuration-map
+         ;;                                             (make-tree-map #'string-compare)
+         ;;                                             :default-configuration 0d0))
+         )
 
     (container-scene-rm container object)
     (container-scene-attach-box container link object (vec .1 .1 .1)
-                                (g* g_tf_ee_0 ee_tf_obj))))
+                                ee_TF_obj)))
 
 
 (context-add-frame *plan-context* "right_endpoint"

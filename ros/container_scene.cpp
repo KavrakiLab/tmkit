@@ -143,7 +143,8 @@ attach_primitive( struct container * c, const char *parent,
 {
     moveit_msgs::AttachedCollisionObject attached_object;
     attached_object.link_name = parent;
-    attached_object.object.header.frame_id = c->planning_scene->getPlanningFrame();
+    //attached_object.object.header.frame_id = c->planning_scene->getPlanningFrame();
+    attached_object.object.header.frame_id = parent;
     attached_object.object.id = name;
 
     attached_object.object.primitives.push_back(primitive);
