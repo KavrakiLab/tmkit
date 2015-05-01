@@ -29,13 +29,17 @@
     (setq *plan-context* (make-plan-context :moveit-container *moveit-container*
                                             :robot-graph (robray::urdf-parse urdf-file)))))
 
-(defun context-add-frame (context parent relative-tf name)
+(defun context-add-frame (context parent relative-tf name &optional (actual-parent parent))
   "Add object to container. Return absolute transform."
   ;; Add relative to tree
   (setf (plan-context-object-graph context)
-        (scene-graph-add-frame (plan-context-object-graph context)
-                               (scene-frame-fixed parent name
-                                                  :tf relative-tf))))
+        (robray::scene-graph-add-tf (plan-context-object-graph context)
+                                    (tf-tag parent relative-tf name)
+                                    :actual-parent actual-parent)))
+
+        ;; (scene-graph-add-frame (plan-context-object-graph context)
+        ;;                        (scene-frame-fixed parent name
+        ;;                                           :tf relative-tf))))
 
 
 (defun context-object-tf (context name)
@@ -180,11 +184,19 @@
   (let* ((container (plan-context-moveit-container context))
          (configuration-map (container-group-configuration-map container group q-group))
          (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
-                                                  (plan-context-object-graph context))))
-    (container-scene-attach-box container link object (vec .1 .1 .1)
-                                (robray::scene-graph-tf-relative scene-graph
-                                                                 frame object
-                                                                 :configuration-map configuration-map))))
+                                                  (plan-context-object-graph context)))
+         (object-frame (robray::scene-graph-lookup scene-graph object))
+         (collision (robray::scene-frame-collision object-frame))
+         (tf (robray::scene-graph-tf-relative scene-graph
+                                              frame object
+                                              :configuration-map configuration-map)))
+    (etypecase collision
+      (robray::scene-box
+       (container-scene-attach-box container link object (robray::scene-box-dimension collision)
+                                   tf)))
+    (setf (plan-context-object-graph context)
+          (scene-graph-reparent (plan-context-object-graph context) frame object
+                                :tf tf))))
 
 
 

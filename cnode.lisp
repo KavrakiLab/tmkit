@@ -34,28 +34,30 @@
 
 (format t "~&Vars: ~A~%" (length *q-all-start*))
 
+(moveit-scene-exp-eval '(:rm "block-a"))
+(moveit-scene-exp-eval '(:rm "block-b"))
 (moveit-scene-exp-eval '(:clear))
 
 (moveit-scene-file "/home/ntd/git/tmsmt/scene/scene.se")
 
 (context-add-frame-marker *plan-context* "right_endpoint")
-
 (context-add-frame-marker *plan-context* "left_endpoint")
 
-(container-scene-rm *moveit-container* "block-b")
+(moveit-scene-exp-eval '(:rm "block-b"))
 
-;(container-scene-rm *moveit-container* "block-a")
+(defparameter *scene-graph* (robray::scene-graph-merge (plan-context-robot-graph *plan-context*)
+                                                       (plan-context-object-graph *plan-context*)))
 
 
-(context-add-frame *plan-context* "block-b"
+(context-add-frame *plan-context* "block-a"
                    (tf* (y-angle (* 1 pi))
-                        (vec3* .00 .25 .15))
-                   "grasp-pick")
+                        (vec3* .00 .00 .15))
+                   "grasp-pick" nil)
 
 (context-add-frame *plan-context* "grasp-pick"
                    (tf* nil
-                        (vec3* .00 -.05 .00))
-                   "grasp-place")
+                        (vec3* .00 -.25 .00))
+                   "grasp-place" nil)
 
 (context-add-frame-marker *plan-context* "grasp-pick")
 (context-add-frame-marker *plan-context* "grasp-place")
@@ -67,31 +69,23 @@
 
 ;; PICK ;;
 
-;; (defvar *plan*)
 
 
-;; (container-set-start *moveit-container* *q-all-start*)
+(container-set-start *moveit-container* *q-all-start*)
 
 
-;; (progn
-;;   (container-goal-clear *moveit-container*)
-;;   (container-set-ws-goal *moveit-container* *link* *e-pick*))
+(progn
+  (container-goal-clear *moveit-container*)
+  (container-set-ws-goal *moveit-container* *link* *e-pick*))
 
 
-;; (container-scene-send *moveit-container*)
+(container-scene-send *moveit-container*)
 
-;; (progn
-;;   (setq *plan* (container-plan *moveit-container*)))
+(defvar *plan-pick*)
+(setq *plan-pick* (container-plan *moveit-container*))
 
 ;; PLACE ;;
-(defparameter *q-grasp* (vec 0.8921887533975497d0 -0.7577635932222542d0 -0.04866383109478782d0
-                             0.9953607016244341d0 0.04254853481160224d0 1.3359037004119487d0
-                             0.0461604074055537d0))
-
-(container-set-start *moveit-container*
-                     (container-merge-group *moveit-container* *group*
-                                            *q-grasp*
-                                            *q-all-start*))
+(defparameter *q-grasp* (container-plan-endpoint *plan-pick*))
 
 (context-attach-object *plan-context* *group* *q-grasp* "right_endpoint" *link* "block-a")
 
@@ -108,5 +102,13 @@
   (container-set-ws-goal *moveit-container* *link* *e-place*))
 
 
+(defvar *plan-place*)
+(setq *plan-place* (container-plan *moveit-container*))
 
-(container-plan *moveit-container*)
+
+(render-group-itmp *plan-context* *group*
+                   (list *plan-pick*
+                         '(:pick "block-a")
+                         *plan-place*)
+                   :scene-graph *scene-graph*
+                   :frame-name "right_endpoint")
