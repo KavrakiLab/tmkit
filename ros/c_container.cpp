@@ -62,7 +62,7 @@ tms_container_set_start( struct container * c, size_t n_all, const double *q_all
                 tms_container_variable_count(c), n_all);
         return -1;
     }
-    robot_state::RobotState start_state(c->robot_model);
+    robot_state::RobotState start_state = c->planning_scene->getCurrentState();
     start_state.setVariablePositions(q_all);
     start_state.update(true);
 
@@ -188,6 +188,10 @@ tms_container_plan( struct container * c,
         //return 0;
     }
 
+    if(res.error_code_.val < 0 ) {
+        fprintf(stderr, "returning failure\n");
+        return -1;
+    }
 
     /************/
     /*  Result  */
@@ -246,12 +250,12 @@ tms_container_plan( struct container * c,
     /***************/
     /*  Visualize  */
     /***************/
-    // moveit_msgs::DisplayTrajectory display_trajectory;
+    moveit_msgs::DisplayTrajectory display_trajectory;
 
-    // ROS_INFO("Visualizing plan 1 (again)");
-    // display_trajectory.trajectory_start = res_msg.trajectory_start;
-    // display_trajectory.trajectory.push_back(res_msg.trajectory);
-    // c->display_publisher.publish(display_trajectory);
+    ROS_INFO("Visualizing plan 1 (again)");
+    display_trajectory.trajectory_start = res_msg.trajectory_start;
+    display_trajectory.trajectory.push_back(res_msg.trajectory);
+    c->display_publisher.publish(display_trajectory);
 
     return 0;
 }

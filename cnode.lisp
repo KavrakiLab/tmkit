@@ -38,37 +38,97 @@
 
 (moveit-scene-file "/home/ntd/git/tmsmt/scene/scene.se")
 
-(context-add-frame-marker *plan-context* "right_w2"
-                          :length .25 :width .025)
+(context-add-frame-marker *plan-context* "right_endpoint")
 
-(context-add-frame-marker *plan-context* "left_w2"
-                          :length .25 :width .025)
+(context-add-frame-marker *plan-context* "left_endpoint")
 
+(container-scene-rm *moveit-container* "block-b")
 
-;(container-scene-set-color *moveit-cx* "block" 1.0 0.0 0.0 1.0)
+;(container-scene-rm *moveit-container* "block-a")
 
-;; (container-scene-add-box *moveit-cx* "table" (amino:vec3* 1 2 .01)
-;;                          (amino:tf nil (amino:vec3* -.75 0 0)))
-
-;; (container-scene-add-box *moveit-cx* "table2" (amino:vec3* 1 2 .01)
-;;                          (amino:tf nil (amino:vec3* .75 0 0)))
-
-;(container-scene-clear *moveit-cx*)
-
-
-
-(defvar *plan*)
 
 (context-add-frame *plan-context* "block-b"
                    (tf* (y-angle (* 1 pi))
-                        (vec3* .00 .25 .10))
-                   "grasp-target")
+                        (vec3* .00 .25 .15))
+                   "grasp-pick")
 
-(context-add-frame *plan-context* "right_endpoint"
-                   (tf* nil (vec3* 0 0 .10))
-                   "object-attach")
+(context-add-frame *plan-context* "grasp-pick"
+                   (tf* nil
+                        (vec3* .15 -.25 .00))
+                   "grasp-place")
+
+(context-add-frame-marker *plan-context* "grasp-pick")
+(context-add-frame-marker *plan-context* "grasp-place")
+
+(defparameter *e-pick* (context-object-tf *plan-context* "grasp-pick"))
+(defparameter *e-place* (context-object-tf *plan-context* "grasp-place"))
+
+(container-set-group *moveit-container* *group*)
+
+;; PICK ;;
+
+;; (defvar *plan*)
+
+
+;; (container-set-start *moveit-container* *q-all-start*)
+
+
+;; (progn
+;;   (container-goal-clear *moveit-container*)
+;;   (container-set-ws-goal *moveit-container* *link* *e-pick*))
+
+
+;; (container-scene-send *moveit-container*)
+
+;; (progn
+;;   (setq *plan* (container-plan *moveit-container*)))
+
+;; PLACE ;;
+(defparameter *q-grasp* (vec 0.8921887533975497d0 -0.7577635932222542d0 -0.04866383109478782d0
+                             0.9953607016244341d0 0.04254853481160224d0 1.3359037004119487d0
+                             0.0461604074055537d0))
 
 (defvar *attach-tf*)
+
+;; (setq *attach-tf*
+;;       (robray::scene-graph-tf-absolute (robray::scene-graph-merge  (plan-context-robot-graph *plan-context*)
+;;                                                                    (plan-context-object-graph *plan-context*))
+;;                                        "grasp-pick"
+;;                                        :configuration-map
+;;                                        (container-group-configuration-map *moveit-container* *group*
+;;                                                                           (container-plan-endpoint *plan*))
+;;                                        :default-configuration 0d0))
+
+
+(defun attach-object (context group q-group frame link object)
+  ;; moveit seems to attach objects at current state that defaults zero
+  ;; Objects are NOT attached relative to the start state of the plan
+  ;;       Find global_TF_obj
+  ;;       Find ee_TF_obj
+  ;;       Find object absolute TF as when EE: global_TF_ee(obj)(q=0) * ee_TF_obj
+  (let* ((container (plan-context-moveit-container context))
+         (g_TF_obj (context-object-tf context object))
+         (g_TF_ee (robray::scene-graph-tf-absolute (plan-context-robot-graph *plan-context*)
+                                                   frame
+                                                   :configuration-map
+                                                   (container-group-configuration-map container group q-group)
+                                                   :default-configuration 0d0))
+         (ee_tf_obj (g* (inverse g_TF_ee) g_TF_obj))
+         (g_TF_ee_0 (robray::scene-graph-tf-absolute (plan-context-robot-graph *plan-context*)
+                                                     frame
+                                                     :configuration-map
+                                                     (make-tree-map #'string-compare)
+                                                     :default-configuration 0d0)))
+
+    (container-scene-rm container object)
+    (container-scene-attach-box container link object (vec .1 .1 .1)
+                                (g* g_tf_ee_0 ee_tf_obj))))
+
+
+(context-add-frame *plan-context* "right_endpoint"
+                   (tf* nil (vec3* 0 0 .02))
+                   "object-attach")
+
 (setq *attach-tf*
       (robray::scene-graph-tf-absolute (robray::scene-graph-merge  (plan-context-robot-graph *plan-context*)
                                                                    (plan-context-object-graph *plan-context*))
@@ -79,38 +139,33 @@
                                        :default-configuration 0d0))
 
 
-(container-scene-rm *moveit-container* "block-b")
+;(setq *attach-tf* (tf* nil '(0 0 0)))
+;(setq *attach-tf* (context-object-tf *plan-context* "block-a"))
+
+(container-set-start *moveit-container*
+                     (container-merge-group *moveit-container* *group*
+                                            *q-grasp*
+                                            *q-all-start*))
+
 (container-scene-rm *moveit-container* "block-a")
 
-(print *attach-tf*)
-(terpri)
-(finish-output)
+(container-scene-rm *moveit-container* "block-a-1")
 
-;; (container-scene-attach-box *moveit-container*
-;;                             *link*
-;;                             "block_b"
-;;                             (vec .05 .05 .05)  *attach-tf*)
+;(container-scene-attach-box *moveit-container* *link* "block-a-1" (vec .01 .01 .01)  *attach-tf*)
+(attach-object *plan-context* *group* *q-grasp* "right_endpoint" *link* "block-a")
 
-;(container-scene-rm *moveit-container* "block_b")
-
-;(container-scene-set-color *moveit-container* "block_b" '(1 0 0))
-
-(context-add-frame-marker *plan-context* "grasp-target"
-                          :length .20 :width .025)
-
-
-(container-set-start *moveit-container* *q-all-start*)
-(container-set-group *moveit-container* *group*)
-
-(progn
-  (defparameter *e-goal* (context-object-tf *plan-context* "grasp-target"))
-
-  (container-goal-clear *moveit-container*)
-  (container-set-ws-goal *moveit-container* *link* *e-goal*))
+(container-set-start *moveit-container*
+                     (container-merge-group *moveit-container* *group*
+                                            *q-grasp*
+                                            *q-all-start*))
 
 
 (container-scene-send *moveit-container*)
 
 (progn
-  (setq *plan* (container-plan *moveit-container*))
-  (container-group-fk *moveit-container* *group* (car (last *plan*))))
+  (container-goal-clear *moveit-container*)
+  (container-set-ws-goal *moveit-container* *link* *e-place*))
+
+
+
+(container-plan *moveit-container*)

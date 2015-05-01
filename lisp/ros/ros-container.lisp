@@ -138,30 +138,39 @@
   (q-all :pointer))
 
 (defun container-merge-group (container group-name q-group q-all)
-  (check-type q-group (simple-array double-float (*)))
-  (check-type q-all (simple-array double-float (*)))
-  (amino-ffi:with-foreign-simple-vector (q-all n-all) q-all :output
-    (amino-ffi:with-foreign-simple-vector (q-group n-group) q-group :input
-      (tms-container-merge-group container group-name
-                                 n-group q-group
-                                 n-all q-all))))
+  (let ((q-all (copy-seq q-all)))
+    (check-type q-group (simple-array double-float (*)))
+    (check-type q-all (simple-array double-float (*)))
+    (amino-ffi:with-foreign-simple-vector (q-all n-all) q-all :output
+      (amino-ffi:with-foreign-simple-vector (q-group n-group) q-group :input
+        (tms-container-merge-group container group-name
+                                   n-group q-group
+                                   n-all q-all)))))
 
 (defun container-plan (container)
   (cffi:with-foreign-objects ((n-vars 'amino-ffi:size-t)
                               (n-points 'amino-ffi::size-t)
                               (points :pointer))
-    (tms-container-plan container n-vars n-points points)
-    (let ((n-vars (cffi:mem-ref n-vars 'amino-ffi:size-t))
-          (n-points (cffi:mem-ref n-points 'amino-ffi:size-t))
-          (points (cffi:mem-ref points :pointer)))
-      (prog1
-          (loop for i below n-points
-             for vec = (make-vec n-vars)
-             collect
-               (cffi:with-pointer-to-vector-data (ptr vec)
-                 (amino-ffi:libc-memcpy ptr
-                                        (cffi:inc-pointer points
-                                                          (* 8 i n-vars))
-                                        (* 8 n-vars))
-                 vec))
-        (amino-ffi:libc-free points)))))
+    (let ((result (tms-container-plan container n-vars n-points points)))
+      (if (< result 0)
+          (progn
+            (format t "~&CL: Planning failed: ~D~%" result)
+             nil)
+          (let ((n-vars (cffi:mem-ref n-vars 'amino-ffi:size-t))
+                (n-points (cffi:mem-ref n-points 'amino-ffi:size-t))
+                (points (cffi:mem-ref points :pointer)))
+            (when points
+              (prog1
+                  (loop for i below n-points
+                     for vec = (make-vec n-vars)
+                     collect
+                       (cffi:with-pointer-to-vector-data (ptr vec)
+                         (amino-ffi:libc-memcpy ptr
+                                                (cffi:inc-pointer points
+                                                                  (* 8 i n-vars))
+                                                (* 8 n-vars))
+                         vec))
+                (amino-ffi:libc-free points))))))))
+
+(defun container-plan-endpoint (plan)
+  (car (last plan)))

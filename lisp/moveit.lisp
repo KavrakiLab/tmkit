@@ -151,8 +151,8 @@
 
 (defun context-add-frame-marker (context frame-name &key
                                                       (alpha 0.5d0)
-                                                      (length .35)
-                                                      (width .025)
+                                                      (length .15)
+                                                      (width .020)
                                                       (arrow-width (* 2 width))
                                                       (arrow-length (* 1 arrow-width)))
   (labels ((subframe (dim)
