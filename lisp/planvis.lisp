@@ -59,11 +59,10 @@
        with config-map
        with frame-number = 0
        for action in itmp
-       do (print action)
+       do
          (if (motion-action-p action)
               (flet ((frame-config-fun (n)
                        (let ((i (- n frame-number)))
-                         (format t "~&f: ~D, n: ~D, i: ~D" frame-number n i)
                          (if (< i (length action))
                              (setq config-map (point-config-map container group (elt action i)))
                              nil))))

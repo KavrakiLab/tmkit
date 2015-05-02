@@ -51,12 +51,12 @@
 
 (context-add-frame *plan-context* "block-a"
                    (tf* (y-angle (* 1 pi))
-                        (vec3* .00 .00 .15))
+                        (vec3* .00 .00 .10))
                    "grasp-pick" nil)
 
 (context-add-frame *plan-context* "grasp-pick"
                    (tf* nil
-                        (vec3* .00 -.25 .00))
+                        (vec3* .40 -.65 .00))
                    "grasp-place" nil)
 
 (context-add-frame-marker *plan-context* "grasp-pick")
@@ -110,5 +110,9 @@
                    (list *plan-pick*
                          '(:pick "block-a")
                          *plan-place*)
+                   :width 1920
+                   :height 1080
                    :scene-graph *scene-graph*
                    :frame-name "right_endpoint")
+
+;(render-group-config *plan-context* *group* (container-plan-endpoint *plan-place*))
