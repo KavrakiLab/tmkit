@@ -46,112 +46,47 @@
   (robray::scene-graph-tf-absolute (plan-context-object-graph context)
                                    name))
 
-(defun context-add-geometry (context parent name tf geometry &key
-                                                               no-shadow
-                                                               (color '(0 0 0))
-                                                               (alpha 1d0)
-                                                               (collision t)
-                                                               (visual t))
-
-  (setf (plan-context-object-graph context)
-        (draw-geometry (plan-context-object-graph context)
-                       parent name
-                       :geometry geometry
-                       :tf tf
-                       :options (robray::draw-options-default :no-shadow no-shadow
-                                                              :color color
-                                                              :alpha alpha
-                                                              :visual visual
-                                                              :collision collision))))
-
-(defun context-add-sphere (context parent name tf radius &key
-                                                           no-shadow
-                                                           (color '(0 0 0))
-                                                           (alpha 1d0)
-                                                           (collision t)
-                                                           (visual t))
-  ;; Scene Graph
-  (context-add-geometry context parent name tf (scene-sphere radius)
-                        :no-shadow no-shadow
-                        :color color :alpha alpha
-                        :collision collision :visual visual)
-  ;; Move It Scene
-  (when collision
-    (container-scene-add-sphere (plan-context-moveit-container context)
-                                name radius
-                                (translation (robray::scene-graph-tf-absolute (plan-context-object-graph context)
-                                                                              name)))
-    (container-scene-set-color (plan-context-moveit-container context)
-                               name color alpha)))
-
-(defun context-add-box (context parent name tf dimensions &key
-                                                           no-shadow
-                                                            (color '(0 0 0))
-                                                            (alpha 1d0)
-                                                            (collision t)
-                                                            (visual t))
-  ;; Scene Graph
-  (context-add-geometry context parent name tf (scene-box dimensions)
-                        :no-shadow no-shadow
-                        :color color :alpha alpha
-                        :collision collision :visual visual)
-  ;; Move It Scene
-  (when collision
-    (container-scene-add-box (plan-context-moveit-container context)
-                             name dimensions
-                             (robray::scene-graph-tf-absolute (plan-context-object-graph context)
-                                                              name))
-    (container-scene-set-color (plan-context-moveit-container context)
-                               name color alpha)))
-
-
-(defun context-add-cylinder (context parent name tf length radius
-                             &key
-                               no-shadow
-                               (color '(0 0 0))
-                               (alpha 1d0)
-                               (collision t)
-                               (visual t))
-  ;; Scene Graph
-  (context-add-geometry context parent name tf (scene-cylinder :height length :radius radius)
-                        :no-shadow no-shadow
-                        :color color :alpha alpha
-                        :collision collision :visual visual)
-  (when collision
-    (error "Unimplimented")))
-
-
-(defun context-add-cone (context parent name tf length start-radius end-radius
-                         &key
-                           no-shadow
-                           (color '(0 0 0))
-                           (alpha 1d0)
-                           (collision t)
-                           (visual t))
-  ;; Scene Graph
-  (context-add-geometry context parent name tf (scene-cone :height length
-                                                                   :start-radius start-radius
-                                                                   :end-radius end-radius)
-                        :no-shadow no-shadow
-                        :color color :alpha alpha
-                        :collision collision :visual visual)
-  (when collision
-    (error "Unimplimented")))
-
+(defun context-add-plan-collision (context object)
+  "Add object from CONTEXT's object-graph to the planning scene."
+  (let* ((container (plan-context-moveit-container context))
+         (scene-graph (plan-context-object-graph context))
+         (object-frame (robray::scene-graph-lookup scene-graph object))
+         (geometry (robray::scene-frame-collision object-frame))
+         (visual (robray::scene-frame-visual object-frame))
+         (tf (context-object-tf context object)))
+    (etypecase geometry
+      (scene-box
+       (container-scene-add-box container
+                                object (robray::scene-box-dimension geometry)
+                                tf))
+      (scene-cylinder
+       (error "Unimplimented"))
+      (scene-cone
+       (error "Unimplimented"))
+      (scene-sphere
+       (container-scene-add-sphere container
+                                   object (robray::scene-sphere-radius geometry)
+                                   (translation tf))))
+    (when visual
+      (let ((color (robray::scene-visual-color visual))
+            (alpha (robray::scene-visual-alpha visual)))
+        (container-scene-set-color container object color alpha)))))
 
 (defun context-draw (context parent name
                       &key
                         geometry
                         tf
                         (options nil))
-
+  ;; Add to object-graph
   (setf (plan-context-object-graph context)
         (draw-geometry (plan-context-object-graph context)
                        parent name
                        :geometry geometry
                        :tf tf
-                       :options options)))
-
+                       :options options))
+  ;; Maybe add to planning scene
+  (when (and geometry (get-draw-option options :collision))
+    (context-add-plan-collision context name)))
 
 (defun context-add-frame-marker (context frame-name &key
                                                       (alpha 0.5d0)
@@ -197,6 +132,20 @@
     (setf (plan-context-object-graph context)
           (scene-graph-reparent (plan-context-object-graph context) frame object
                                 :tf tf))))
+
+;; (defun context-dettach-object (context group q-group object)
+;;   (let* ((container (plan-context-moveit-container context))
+;;          (configuration-map (container-group-configuration-map container group q-group))
+;;          (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
+;;                                                   (plan-context-object-graph context)))
+;;          (object-frame (robray::scene-graph-lookup scene-graph object))
+;;          (collision (robray::scene-frame-collision object-frame))
+;;          (tf (robray::scene-graph-tf-absolute scene-graph object
+;;                                               :configuration-map configuration-map)))
+;;     (container-scene-rm container object)
+;;     (setf (plan-context-object-graph context)
+;;           (scene-graph-reparent (plan-context-object-graph context) frame object
+;;                                 :tf tf))))
 
 
 
@@ -285,19 +234,27 @@
                                    )
              keyword-arguments
            (declare (ignore class affords grasps))
-           (let ((tf (tf* rotation translation))
-                 (alpha (coerce alpha 'double-float)))
-             (ecase shape
-               (:box
-                (context-add-box context parent name tf (vec3 dimension)
-                                 :color color :alpha alpha))
-               ;(:cylinder
-                ;(container-scene-add-cylinder container name height radius absolute-tf))
-               ;(:sphere
-                ;(container-scene-add-sphere container name radius (amino:translation absolute-tf)))
-               )))
-         (tree-map-insertf (plan-context-object-init-map context)
-                           name keyword-arguments-map)))
+           (let* ((tf (tf* rotation translation))
+                  (alpha (coerce alpha 'double-float))
+                  (options (robray::draw-options-default :color color
+                                                         :alpha alpha
+                                                         :visual t
+                                                         :collision t))
+                  (geometry
+                   (ecase shape
+                     (:box
+                      (scene-box (apply #'vec dimension)))
+                     (:cylinder
+                      (scene-cylinder :height height :radius radius))
+                     (:sphere
+                      (scene-sphere radius)))))
+             (when geometry
+               (context-draw context parent name
+                             :geometry geometry
+                             :tf tf
+                             :options options))))
+           (tree-map-insertf (plan-context-object-init-map context)
+                             name keyword-arguments-map)))
       ((:rm name)
        (context-remove-object context name)
        (container-scene-rm container name))
