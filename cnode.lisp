@@ -49,15 +49,15 @@
                                                        (plan-context-object-graph *plan-context*)))
 
 
-(context-add-frame *plan-context* "block-a"
-                   (tf* (y-angle (* 1 pi))
-                        (vec3* .00 .00 .10))
-                   "grasp-pick" nil)
+(context-draw *plan-context* "block-a" "grasp-pick"
+              :tf (tf* (y-angle (* 1 pi))
+                       (vec3* .00 .00 .10))
+              :actual-parent nil)
 
-(context-add-frame *plan-context* "grasp-pick"
-                   (tf* nil
-                        (vec3* .40 -.65 .00))
-                   "grasp-place" nil)
+(context-draw *plan-context* "grasp-pick" "grasp-place"
+              :tf (tf* nil
+                       (vec3* .40 -.65 .00))
+              :actual-parent nil)
 
 (context-add-frame-marker *plan-context* "grasp-pick")
 (context-add-frame-marker *plan-context* "grasp-place")

@@ -29,19 +29,6 @@
     (setq *plan-context* (make-plan-context :moveit-container *moveit-container*
                                             :robot-graph (robray::urdf-parse urdf-file)))))
 
-(defun context-add-frame (context parent relative-tf name &optional (actual-parent parent))
-  "Add object to container. Return absolute transform."
-  ;; Add relative to tree
-  (setf (plan-context-object-graph context)
-        (robray::scene-graph-add-tf (plan-context-object-graph context)
-                                    (tf-tag parent relative-tf name)
-                                    :actual-parent actual-parent)))
-
-        ;; (scene-graph-add-frame (plan-context-object-graph context)
-        ;;                        (scene-frame-fixed parent name
-        ;;                                           :tf relative-tf))))
-
-
 (defun context-object-tf (context name)
   (robray::scene-graph-tf-absolute (plan-context-object-graph context)
                                    name))
@@ -74,6 +61,7 @@
 
 (defun context-draw (context parent name
                       &key
+                        (actual-parent parent)
                         geometry
                         tf
                         (options nil))
@@ -81,6 +69,7 @@
   (setf (plan-context-object-graph context)
         (draw-geometry (plan-context-object-graph context)
                        parent name
+                       :actual-parent actual-parent
                        :geometry geometry
                        :tf tf
                        :options options))
