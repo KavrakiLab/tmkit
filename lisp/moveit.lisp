@@ -65,6 +65,7 @@
                         geometry
                         tf
                         (options nil))
+  "Add geometry to the context."
   ;; Add to object-graph
   (setf (plan-context-object-graph context)
         (draw-geometry (plan-context-object-graph context)
@@ -84,15 +85,15 @@
                                                       (arrow-width (* 2 width))
                                                       (arrow-length (* 1 arrow-width)))
   (setf (plan-context-object-graph context)
-        (robray::draw-items (plan-context-object-graph context)
-                            frame-name
-                            (robray::item-frame-marker (robray::draw-subframe frame-name "marker")
-                                                       :length length
-                                                       :width width
-                                                       :arrow-width arrow-width
-                                                       :arrow-length arrow-length)
-                            :options (draw-options :no-shadow t :alpha alpha
-                                                   :visual t :collision nil))))
+        (draw-items (plan-context-object-graph context)
+                    frame-name
+                    (robray::item-frame-marker (robray::draw-subframe frame-name "marker")
+                                               :length length
+                                               :width width
+                                               :arrow-width arrow-width
+                                               :arrow-length arrow-length)
+                    :options (draw-options :no-shadow t :alpha alpha
+                                           :visual t :collision nil))))
 
 (defun context-remove-object (context frame-name)
   (setf (plan-context-object-graph context)
@@ -117,7 +118,7 @@
                                               frame object
                                               :configuration-map configuration-map)))
     (etypecase collision
-      (robray::scene-box
+      (scene-box
        (container-scene-attach-box container link object (robray::scene-box-dimension collision)
                                    tf)))
     (setf (plan-context-object-graph context)
@@ -208,56 +209,55 @@
   (coerce 'double-float x))
 
 (defun moveit-scene-exp-eval (exp &key (context *plan-context*))
-  (let ((container (plan-context-moveit-container context)))
-    (destructuring-ecase exp
-      ((:object name &rest keyword-arguments)
-       (let* ((keyword-arguments-map (context-class-keyword-arguments context keyword-arguments))
-              (keyword-arguments (kwarg-map-list keyword-arguments-map)))
-         (destructuring-bind (&key parent
-                                   class
-                                   shape
-                                   dimension rotation translation
-                                   height radius
-                                   (color (vec 0d0 0d0 0d0))
-                                   (alpha 1d0)
-                                   affords
-                                   grasps
-                                   )
-             keyword-arguments
-           (declare (ignore class affords grasps))
-           (let* ((tf (tf* rotation translation))
-                  (alpha (coerce alpha 'double-float))
-                  (options (robray::draw-options-default :color color
-                                                         :alpha alpha
-                                                         :visual t
-                                                         :collision t))
-                  (geometry
-                   (ecase shape
-                     (:box
-                      (scene-box (apply #'vec dimension)))
-                     (:cylinder
-                      (scene-cylinder :height height :radius radius))
-                     (:sphere
-                      (scene-sphere radius)))))
-             (when geometry
-               (context-draw context parent name
-                             :geometry geometry
-                             :tf tf
-                             :options options))))
-           (tree-map-insertf (plan-context-object-init-map context)
-                             name keyword-arguments-map)))
-      ((:rm name)
-       (context-remove-object context name))
-      ((:goal name &key parent rotation translation)
-       (tree-map-insertf (plan-context-object-goal-map context)
-                           name (tf-tag parent (tf* rotation translation) name)))
-      ((:clear)
-       (context-remove-all-objects context))
-      ((:class name parents &rest keyword-arguments)
-       (context-add-class context name parents keyword-arguments))
-      ((:seq &rest ops)
-       (dolist (exp ops)
-         (moveit-scene-exp-eval exp :context context))))))
+  (destructuring-ecase exp
+    ((:object name &rest keyword-arguments)
+     (let* ((keyword-arguments-map (context-class-keyword-arguments context keyword-arguments))
+            (keyword-arguments (kwarg-map-list keyword-arguments-map)))
+       (destructuring-bind (&key parent
+                                 class
+                                 shape
+                                 dimension rotation translation
+                                 height radius
+                                 (color (vec 0d0 0d0 0d0))
+                                 (alpha 1d0)
+                                 affords
+                                 grasps
+                                 )
+           keyword-arguments
+         (declare (ignore class affords grasps))
+         (let* ((tf (tf* rotation translation))
+                (alpha (coerce alpha 'double-float))
+                (options (draw-options-default :color color
+                                               :alpha alpha
+                                               :visual t
+                                               :collision t))
+                (geometry
+                 (ecase shape
+                   (:box
+                    (scene-box (apply #'vec dimension)))
+                   (:cylinder
+                    (scene-cylinder :height height :radius radius))
+                   (:sphere
+                    (scene-sphere radius)))))
+           (when geometry
+             (context-draw context parent name
+                           :geometry geometry
+                           :tf tf
+                           :options options))))
+       (tree-map-insertf (plan-context-object-init-map context)
+                         name keyword-arguments-map)))
+    ((:rm name)
+     (context-remove-object context name))
+    ((:goal name &key parent rotation translation)
+     (tree-map-insertf (plan-context-object-goal-map context)
+                       name (tf-tag parent (tf* rotation translation) name)))
+    ((:clear)
+     (context-remove-all-objects context))
+    ((:class name parents &rest keyword-arguments)
+     (context-add-class context name parents keyword-arguments))
+    ((:seq &rest ops)
+     (dolist (exp ops)
+       (moveit-scene-exp-eval exp :context context)))))
 
 
 (defun moveit-scene-file (file &key (context *plan-context*))
