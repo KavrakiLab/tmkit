@@ -13,9 +13,7 @@
 
 (defun render-group-plan (context group plan
                           &key
-                            (width robray::*width*)
-                            (height robray::*height*)
-                            (frames-per-second robray::*frames-per-second*))
+                            (render-options robray::*render-options*))
   (let* ((container (plan-context-moveit-container context))
          (config-map-list
           (loop
@@ -33,9 +31,7 @@
                  (elt config-map-list frame)
                  nil)))
       (robray::scene-graph-frame-animate #'frame-config-fun
-                                         :height height
-                                         :width width
-                                         :frames-per-second frames-per-second
+                                         :options render-options
                                          :include "baxter.inc" ;; TODO: fix this
                                          :scene-graph scene-graph))))
 
@@ -45,13 +41,7 @@
                             frame-name
                             scene-graph
                             (output-directory robray::*robray-tmp-directory*)
-                            (width robray::*width*)
-                            (height robray::*height*)
-                            (quality robray::*quality*)
-                            (render-frames t)
-                            (encode-video t)
-                            (use-collision t)
-                            (frames-per-second robray::*frames-per-second*))
+                            (render-options robray::*render-options*))
   (map nil #'delete-file (robray::frame-files output-directory))
   (labels ((motion-action-p (action)
              (arrayp (elt action 0))))
@@ -68,12 +58,9 @@
                              (setq config-map (point-config-map container group (elt action i)))
                              nil))))
                 (robray::scene-graph-frame-animate #'frame-config-fun
-                                                   :height height
-                                                   :width width
-                                                   :use-collision use-collision
+                                                   :options render-options
                                                    :append t
                                                    :render-frames nil
-                                                   :frames-per-second frames-per-second
                                                    :include "baxter.inc" ;; TODO: fix this
                                                    :scene-graph scene-graph)
                 (incf frame-number (length action)))
@@ -85,13 +72,12 @@
                  (setq scene-graph (robray::scene-graph-reparent scene-graph nil object
                                                                  :configuration-map config-map)))))))
   ;; Render
-  (when render-frames
-    (robray::net-render :height height
-                        :width width
-                        :quality quality)
+  (when (robray::get-render-option render-options :render-frames)
+    (robray::net-render :directory output-directory
+                        :options render-options)
     ;; Encode Video
-    (when encode-video
-      (robray::animate-encode :frames-per-second frames-per-second))))
+    (when (robray::get-render-option render-options :encode-video)
+      (robray::animate-encode :options render-options))))
 
 (defun render-group-config (context group config)
   (let* ((container (plan-context-moveit-container context))

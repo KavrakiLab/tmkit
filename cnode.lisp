@@ -125,16 +125,16 @@
 (defvar *plan-return*)
 (setq *plan-return* (container-plan *moveit-container*))
 
-;; (render-group-itmp *plan-context* *group*
-;;                    (list *plan-pick*
-;;                          '(:pick "block-a")
-;;                          *plan-place*
-;;                          '(:place "block-a")
-;;                          *plan-return*
-;;                          )
-;;                    :width 1920
-;;                    :height 1080
-;;                    :scene-graph *scene-graph*
-;;                    :frame-name "right_endpoint")
+(time (render-group-itmp *plan-context* *group*
+                   (list *plan-pick*
+                         '(:pick "block-a")
+                         *plan-place*
+                         '(:place "block-a")
+                         *plan-return*
+                         )
+                   :render-options (merge-render-options (render-options :use-collision t)
+                                                         (render-options-full-hd))
+                   :scene-graph *scene-graph*
+                   :frame-name "right_endpoint"))
 
 ;(render-group-config *plan-context* *group* (container-plan-endpoint *plan-place*))
