@@ -105,6 +105,37 @@ tms_container_goal_clear( struct container *c )
     return 0;
 }
 
+
+int
+tms_container_set_js_goal( struct container * c, const char *group, size_t n_all, double *q_all )
+{
+
+    if( n_all != tms_container_variable_count(c) ) {
+        fprintf(stderr, "error: Size mismatch between robot model (%lu) and provided array (%lu)\n",
+                tms_container_variable_count(c), n_all);
+        return -1;
+    }
+
+    robot_state::RobotState goal_state(c->robot_model);
+    goal_state.setVariablePositions(q_all);
+
+    const robot_state::JointModelGroup* joint_model_group = goal_state.getJointModelGroup(group);
+
+    moveit_msgs::Constraints joint_goal = kinematic_constraints::constructGoalConstraints(goal_state,
+                                                                                          joint_model_group);
+    c->req.goal_constraints.push_back(joint_goal);
+
+
+    {
+        double *x = goal_state.getVariablePositions();
+        for( size_t i = 0; i < goal_state.getVariableNames().size(); i++ ) {
+            fprintf(stderr, "goal %lu: %f\n", i, x[i] );
+        }
+    }
+
+    return 0;
+}
+
 int
 tms_container_set_ws_goal( struct container * c, const char *link, const double quat[4], const double vec[3],
                            double tol_x, double tol_angle )

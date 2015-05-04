@@ -125,24 +125,21 @@
           (scene-graph-reparent (plan-context-object-graph context) frame object
                                 :tf tf))))
 
-;; (defun context-dettach-object (context group q-group object)
-;;   (let* ((container (plan-context-moveit-container context))
-;;          (configuration-map (container-group-configuration-map container group q-group))
-;;          (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
-;;                                                   (plan-context-object-graph context)))
-;;          (object-frame (robray::scene-graph-lookup scene-graph object))
-;;          (collision (robray::scene-frame-collision object-frame))
-;;          (tf (robray::scene-graph-tf-absolute scene-graph object
-;;                                               :configuration-map configuration-map)))
-;;     (container-scene-rm container object)
-;;     (setf (plan-context-object-graph context)
-;;           (scene-graph-reparent (plan-context-object-graph context) frame object
-;;                                 :tf tf))))
-
-
-
-(defun symbol-compare (a b)
-  (string-compare (string a) (string b)))
+(defun context-dettach-object (context group q-group object)
+  (let* ((container (plan-context-moveit-container context))
+         (configuration-map (container-group-configuration-map container group q-group))
+         (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
+                                                  (plan-context-object-graph context)))
+         (tf (robray::scene-graph-tf-absolute scene-graph object
+                                              :configuration-map configuration-map)))
+    ;; Reparent in graph
+    ;; TODO: what about placing objects?
+    (setf (plan-context-object-graph context)
+          (scene-graph-reparent (plan-context-object-graph context) nil object
+                                :tf tf))
+    ;; Set in planning scene
+    (container-scene-rm container object)
+    (context-add-plan-collision context object)))
 
 (defun kwarg-map-insert-list (map argument-list)
   (if (null argument-list)

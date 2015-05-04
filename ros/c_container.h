@@ -52,6 +52,13 @@ tms_container_set_group( struct container * c, const char *group );
 int
 tms_container_goal_clear( struct container *c );
 
+
+/**
+ * Set a joint space goal.
+ */
+int
+tms_container_set_js_goal( struct container * c, const char *group, size_t n_all, double *q_all );
+
 /**
  * Set a workspace goal.
  */

@@ -66,6 +66,16 @@
                                            angle-tolerance)))
     (check-tms-result result "set-ws-goal")))
 
+(cffi:defcfun tms-container-set-js-goal :int
+  (container moveit-container-t)
+  (group :string)
+  (n-all amino::size-t)
+  (q-all :pointer))
+
+(defun container-set-js-goal (container  group q-all)
+  (let ((result (amino-ffi:with-foreign-simple-vector (q-ptr n-all) q-all :input
+                  (tms-container-set-js-goal container group n-all q-ptr))))
+    (check-tms-result result "set-js-goal")))
 
 (cffi:defcfun tms-container-group-fk :int
   (container moveit-container-t)

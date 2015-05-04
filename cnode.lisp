@@ -106,13 +106,35 @@
 (setq *plan-place* (container-plan *moveit-container*))
 
 
-(render-group-itmp *plan-context* *group*
-                   (list *plan-pick*
-                         '(:pick "block-a")
-                         *plan-place*)
-                   :width 1920
-                   :height 1080
-                   :scene-graph *scene-graph*
-                   :frame-name "right_endpoint")
+;; RETURN ;;
+(defparameter *q-place* (container-plan-endpoint *plan-place*))
+
+(context-dettach-object *plan-context* *group* *q-place* "block-a")
+
+(progn
+  (container-goal-clear *moveit-container*)
+  (container-set-js-goal *moveit-container* *group* *q-all-start*))
+
+(container-scene-send *moveit-container*)
+
+(container-set-start *moveit-container*
+                     (container-merge-group *moveit-container* *group*
+                                            *q-place*
+                                            *q-all-start*))
+
+(defvar *plan-return*)
+(setq *plan-return* (container-plan *moveit-container*))
+
+;; (render-group-itmp *plan-context* *group*
+;;                    (list *plan-pick*
+;;                          '(:pick "block-a")
+;;                          *plan-place*
+;;                          '(:place "block-a")
+;;                          *plan-return*
+;;                          )
+;;                    :width 1920
+;;                    :height 1080
+;;                    :scene-graph *scene-graph*
+;;                    :frame-name "right_endpoint")
 
 ;(render-group-config *plan-context* *group* (container-plan-endpoint *plan-place*))
