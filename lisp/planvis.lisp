@@ -50,6 +50,7 @@
                             (quality robray::*quality*)
                             (render-frames t)
                             (encode-video t)
+                            (use-collision t)
                             (frames-per-second robray::*frames-per-second*))
   (map nil #'delete-file (robray::frame-files output-directory))
   (labels ((motion-action-p (action)
@@ -69,6 +70,7 @@
                 (robray::scene-graph-frame-animate #'frame-config-fun
                                                    :height height
                                                    :width width
+                                                   :use-collision use-collision
                                                    :append t
                                                    :render-frames nil
                                                    :frames-per-second frames-per-second
