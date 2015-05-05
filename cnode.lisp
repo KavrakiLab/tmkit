@@ -132,8 +132,7 @@
                          '(:place "block-a")
                          *plan-return*
                          )
-                   :render-options (merge-render-options (render-options :use-collision t)
-                                                         (render-options-full-hd))
+                   :render-options  (render-options-default :options (render-options-full-hd))
                    :scene-graph *scene-graph*
                    :frame-name "right_endpoint"))
 

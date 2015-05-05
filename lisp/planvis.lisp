@@ -35,6 +35,15 @@
                                          :include "baxter.inc" ;; TODO: fix this
                                          :scene-graph scene-graph))))
 
+(defun plan-interpolate (plan)
+  (loop
+     for rest on plan
+     for points = (first rest)
+     for next = (second rest)
+     nconc
+       (nconc (list points)
+              (when next
+                (list (g* 0.5 (g+ points next)))))))
 
 (defun render-group-itmp (context group itmp
                           &key
@@ -45,24 +54,28 @@
   (map nil #'delete-file (robray::frame-files output-directory))
   (labels ((motion-action-p (action)
              (arrayp (elt action 0))))
-    (loop
+    (lopo
+       with fps = (get-render-option render-options :frames-per-second)
        with container = (plan-context-moveit-container context)
        with config-map
        with frame-number = 0
        for action in itmp
        do
          (if (motion-action-p action)
-              (flet ((frame-config-fun (n)
-                       (let ((i (- n frame-number)))
-                         (if (< i (length action))
-                             (setq config-map (point-config-map container group (elt action i)))
-                             nil))))
-                (robray::scene-graph-frame-animate #'frame-config-fun
-                                                   :options render-options
-                                                   :append t
-                                                   :render-frames nil
-                                                   :include "baxter.inc" ;; TODO: fix this
-                                                   :scene-graph scene-graph)
+             (let* ((action (if (> fps 15)
+                                (plan-interpolate action)
+                                action)))
+               (flet ((frame-config-fun (n)
+                        (let ((i (- n frame-number)))
+                          (if (< i (length action))
+                              (setq config-map (point-config-map container group (elt action i)))
+                              nil))))
+                 (robray::scene-graph-frame-animate #'frame-config-fun
+                                                    :options render-options
+                                                    :append t
+                                                    :render-frames nil
+                                                    :include "baxter.inc" ;; TODO: fix this
+                                                    :scene-graph scene-graph))
                 (incf frame-number (length action)))
               (destructuring-ecase action
                 ((:pick object)
