@@ -54,7 +54,7 @@
   (map nil #'delete-file (robray::frame-files output-directory))
   (labels ((motion-action-p (action)
              (arrayp (elt action 0))))
-    (lopo
+    (loop
        with fps = (get-render-option render-options :frames-per-second)
        with container = (plan-context-moveit-container context)
        with config-map
@@ -92,15 +92,18 @@
     (when (robray::get-render-option render-options :encode-video)
       (robray::animate-encode :options render-options))))
 
-(defun render-group-config (context group config)
+(defun render-group-config (context group config &key
+                                                   (options (render-options-medium)))
   (let* ((container (plan-context-moveit-container context))
          (config-map (point-config-map container group config))
          (scene-graph (robray::scene-graph-merge (plan-context-robot-graph context)
                                                  (plan-context-object-graph context))))
     (robray::pov-render (robray::scene-graph-pov-frame scene-graph
+                                                       :options options
                                                        :configuration-map config-map
                                                        :include "baxter.inc" ;; TODO: fix this
                                                        )
+                        :options options
                         :directory "/tmp/robray/"
                         :file "tmsmt.pov"
                         :output "tmsmt.png")))

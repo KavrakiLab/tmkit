@@ -21,13 +21,22 @@
   (unless (and (boundp '*node-handle*)
                *node-handle*)
     (format t "~&Initializing ROS and moveit model~%")
+    (format t "~&  Calling ros-init...")
     (ros-init :name "lisp")
-    (setq *node-handle* (node-handle-create "lisp")))
+    (format t "~&  done")
+    (format t "~&  Creating node-handle...")
+    (setq *node-handle* (node-handle-create "lisp"))
+    (format t "~&  done"))
   (unless (and (boundp '*plan-context*)
                *plan-context*)
+    (format t "~&Creating move-it container...~%")
     (setq *moveit-container* (container-create *node-handle*))
+    (format t "~&   done ~%")
+    (format t "~&Creating plan context...~%")
     (setq *plan-context* (make-plan-context :moveit-container *moveit-container*
-                                            :robot-graph (robray::urdf-parse urdf-file)))))
+                                            :robot-graph (robray::urdf-parse urdf-file)))
+    (format t "~&   done ~%")))
+
 
 (defun context-object-tf (context name)
   (robray::scene-graph-tf-absolute (plan-context-object-graph context)
@@ -125,6 +134,7 @@
           (scene-graph-reparent (plan-context-object-graph context) frame object
                                 :tf tf))))
 
+;; TODO: reset moveit color
 (defun context-dettach-object (context group q-group object)
   (let* ((container (plan-context-moveit-container context))
          (configuration-map (container-group-configuration-map container group q-group))

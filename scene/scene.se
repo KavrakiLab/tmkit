@@ -5,7 +5,7 @@
 ;; Colors
 (:class "red"    () :color (1 0 0))
 (:class "green"  () :color (0 1 0))
-(:class "blue"   () :color (0 0 0))
+(:class "blue"   () :color (0 0 1))
 (:class "purple" () :color (.6 0.3 .6))
 
 ;; Object Types
@@ -26,8 +26,8 @@
 
 
 ;; Blocks
-(:object "block-a"  :class ("block" "green") :translation (0 -.2 .0551) :parent "front-table")
-(:object "block-b"  :class ("block" "green") :translation (0 -.45 .0551) :parent "front-table")
+(:object "block-a"  :class ("block" "red") :translation (0 -.2 .0551) :parent "front-table")
+(:object "block-b"  :class ("block" "blue") :translation (0 -.45 .0551) :parent "front-table")
 
 
 ;;;;;;;;;;;;;
