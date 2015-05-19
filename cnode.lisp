@@ -80,13 +80,12 @@
 
 ;; B to A
 (defparameter *plan-1*
-  (multiple-value-setq (*plan-pick-1* *plan-place-1*)
-    (act-transfer-tf *plan-context* *group*
-                     (container-merge-group *moveit-container* *group*
-                                            (container-plan-endpoint (third *plan-0*))
-                                            *q-all-start* )
-                     "right_endpoint" *link*
-                     "block-b" *tf-grasp-rel* "front-table"  *tf-a*)))
+  (act-transfer-tf *plan-context* *group*
+                   (container-merge-group *moveit-container* *group*
+                                          (container-plan-endpoint (third *plan-0*))
+                                          *q-all-start* )
+                   "right_endpoint" *link*
+                   "block-b" *tf-grasp-rel* "front-table"  *tf-a*))
 
 (assert *plan-1*)
 
@@ -96,15 +95,14 @@
 ;; (defvar *plan-place-2*)
 
 (defparameter *plan-2*
-  (multiple-value-setq (*plan-pick-1* *plan-place-1*)
-    (act-transfer-tf *plan-context* *group*
-                     (container-merge-group *moveit-container* *group*
-                                            (container-plan-endpoint (third *plan-1*))
-                                            *q-all-start* )
-                     "right_endpoint" *link*
-                     "block-a" *tf-grasp-rel* "front-table"
-                     ;(g* *tf-tmp* (tf* nil (vec3* .05 0 0)))
-                     *tf-b* )))
+  (act-transfer-tf *plan-context* *group*
+                   (container-merge-group *moveit-container* *group*
+                                          (container-plan-endpoint (third *plan-1*))
+                                          *q-all-start* )
+                   "right_endpoint" *link*
+                   "block-a" *tf-grasp-rel* "front-table"
+                                        ;;(g* *tf-tmp* (tf* nil (vec3* .05 0 0)))
+                   *tf-b* ))
 (assert *plan-2*)
 
 ;; (multiple-value-setq (*plan-pick-2* *plan-place-2*)
@@ -154,7 +152,7 @@
                          (append *plan-0*
                                  *plan-1*
                                  *plan-2*)
-                         :render-options  (render-options-default :options (render-options-full-hd))
+                         :render-options  (render-options-default :options (render-options-medium))
                          :scene-graph *scene-graph*
                          :frame-name "right_endpoint"))
 

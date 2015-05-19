@@ -42,31 +42,35 @@
   (robray::scene-graph-tf-absolute (plan-context-object-graph context)
                                    name))
 
-(defun context-add-plan-collision (context object)
+(defun context-add-plan-collision (context name)
   "Add object from CONTEXT's object-graph to the planning scene."
   (let* ((container (plan-context-moveit-container context))
          (scene-graph (plan-context-object-graph context))
-         (object-frame (robray::scene-graph-lookup scene-graph object))
-         (geometry (robray::scene-frame-collision object-frame))
-         (visual (robray::scene-frame-visual object-frame))
-         (tf (context-object-tf context object)))
-    (etypecase geometry
-      (scene-box
-       (container-scene-add-box container
-                                object (robray::scene-box-dimension geometry)
-                                tf))
-      (scene-cylinder
-       (error "Unimplimented"))
-      (scene-cone
-       (error "Unimplimented"))
-      (scene-sphere
-       (container-scene-add-sphere container
-                                   object (robray::scene-sphere-radius geometry)
-                                   (translation tf))))
-    (when visual
-      (let ((color (robray::scene-visual-color visual))
-            (alpha (robray::scene-visual-alpha visual)))
-        (container-scene-set-color container object color alpha)))))
+         (object-frame (robray::scene-graph-lookup scene-graph name))
+         (tf (context-object-tf context name)))
+    ;; TODO: multiple objects
+    (loop for geometry in (robray::scene-frame-geometry object-frame)
+       for shape = (robray::scene-geometry-shape geometry)
+       when (robray::scene-geometry-collision geometry)
+       do
+         (progn
+           (etypecase shape
+             (scene-box
+              (container-scene-add-box container
+                                       name (robray::scene-box-dimension shape)
+                                       tf))
+             (scene-cylinder
+              (error "Unimplimented"))
+             (scene-cone
+              (error "Unimplimented"))
+             (scene-sphere
+              (container-scene-add-sphere container
+                                          name (robray::scene-sphere-radius shape)
+                                          (translation tf))))
+           (let* ((options (robray::scene-geometry-options geometry))
+                  (color (robray::scene-geometry-option options :color))
+                  (alpha (robray::scene-geometry-option options :alpha)))
+             (container-scene-set-color container name color alpha))))))
 
 (defun context-draw (context parent name
                       &key
@@ -122,7 +126,9 @@
          (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
                                                   (plan-context-object-graph context)))
          (object-frame (robray::scene-graph-lookup scene-graph object))
-         (collision (robray::scene-frame-collision object-frame))
+         (collision (loop for g in (robray::scene-frame-geometry object-frame)
+                       until (robray::scene-geometry-collision g)
+                       finally (return (robray::scene-geometry-shape g))))
          (tf (robray::scene-graph-tf-relative scene-graph
                                               frame object
                                               :configuration-map configuration-map)))
