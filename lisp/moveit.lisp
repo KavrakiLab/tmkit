@@ -10,9 +10,10 @@
   configuration
   (robot-graph (scene-graph nil))
   (object-graph (scene-graph nil))
-  (class-kwargs (make-tree-map #'string-compare))
-  (object-init-map (make-tree-map #'string-compare))
-  (object-goal-map (make-tree-map #'string-compare)))
+  )
+  ;(class-kwargs (make-tree-map #'string-compare))
+  ;(object-init-map (make-tree-map #'string-compare))
+  ;(object-goal-map (make-tree-map #'string-compare)))
 
 ;; TODO: handle ROS init and node handles in C library
 
@@ -72,41 +73,6 @@
                   (alpha (robray::scene-geometry-option options :alpha)))
              (container-scene-set-color container name color alpha))))))
 
-(defun context-draw (context parent name
-                      &key
-                        (actual-parent parent)
-                        geometry
-                        tf
-                        (options nil))
-  "Add geometry to the context."
-  ;; Add to object-graph
-  (setf (plan-context-object-graph context)
-        (draw-geometry (plan-context-object-graph context)
-                       parent name
-                       :actual-parent actual-parent
-                       :geometry geometry
-                       :tf tf
-                       :options options))
-  ;; Maybe add to planning scene
-  (when (and geometry (get-draw-option options :collision))
-    (context-add-plan-collision context (plan-context-object-graph context) name)))
-
-(defun context-add-frame-marker (context frame-name &key
-                                                      (alpha 0.5d0)
-                                                      (length .15)
-                                                      (width .020)
-                                                      (arrow-width (* 2 width))
-                                                      (arrow-length (* 1 arrow-width)))
-  (setf (plan-context-object-graph context)
-        (draw-items (plan-context-object-graph context)
-                    frame-name
-                    (robray::item-frame-marker (robray::draw-subframe frame-name "marker")
-                                               :length length
-                                               :width width
-                                               :arrow-width arrow-width
-                                               :arrow-length arrow-length)
-                    :options (draw-options :no-shadow t :alpha alpha
-                                           :visual t :collision nil))))
 
 (defun context-remove-object (context frame-name)
   (setf (plan-context-object-graph context)
@@ -156,125 +122,6 @@
     ;; Set in planning scene
     (container-scene-rm container object)
     (context-add-plan-collision context (plan-context-object-graph context) object)))
-
-(defun kwarg-map-insert-list (map argument-list)
-  (if (null argument-list)
-      map
-      (destructuring-bind (keyword argument &rest argument-list)
-          argument-list
-        (assert (keywordp keyword))
-        (kwarg-map-insert-list (tree-map-insert map keyword argument)
-                               argument-list))))
-
-(defun kwarg-map (argument-list)
-  (kwarg-map-insert-list (make-tree-map #'gsymbol-compare)
-                         argument-list))
-
-
-(defun kwarg-map-insert-map (initial-map new-map)
-  (fold-tree-map #'tree-map-insert initial-map new-map))
-
-(defun kwarg-map-list (map)
-  (fold-tree-map (lambda (list key value)
-                   (list* key value list))
-                 nil map))
-
-(defun context-kwarg-apply (context classes kwargs)
-  (let* ((class-kwargs  (plan-context-class-kwargs context))
-         (class-map (fold (lambda (map class)
-                            (kwarg-map-insert-map map (tree-map-find class-kwargs class)))
-                          (kwarg-map nil)
-                          classes)))
-    (kwarg-map-insert-list class-map kwargs)))
-
-(defun context-add-class (context name parents kwargs)
-  (tree-map-insertf (plan-context-class-kwargs context)
-                    name
-                    (context-kwarg-apply context parents kwargs)))
-
-(defun context-class-keyword-arguments (context keyword-arguments)
-  "Apply class arguments to KEYWORD-ARGUMENTS."
-  (destructuring-bind (&key class &allow-other-keys) keyword-arguments
-    (context-kwarg-apply context class keyword-arguments)))
-
-;;; OBJECT ADD DSL
-;;;
-;;; <E>               ::=  <ADD_OP> | <RM_OP> | <CLEAR_OP> | <SEQ_OP>
-;;; <ADD_OP>          ::= :box      'NAME' (<TF_ARG> | <DIMENSION_ARG> | <COLOR_ARG> | <ALPHA_ARG>)*
-;;;                     | :cylinder 'NAME' (<TF_ARG> | <HEIGHT_ARG> | <RADIUS_ARG> | <COLOR_ARG> | <ALHPA_ARG>)*
-;;;                     | :sphere   'NAME' (<TRANSLATION_ARG> | <RADIUS_ARG> | <COLOR_ARG> | <ALHPA_ARG>)*
-;;; <ROTATATION_ARG>  ::= :rotation 'ROTATION'
-;;; <TRANSLATION_ARG> ::= :translation 'TRANSLATION'
-;;; <TF_ARG>          ::= (<ROTATION_ARG> | <TRANSLATION_ARG>)*
-;;; <RADIUS_ARG>      ::= :radius 'RADIUS'
-;;; <HEIGHT_ARG>      ::= :height 'HEIGHT'
-;;; <DIMENSION_ARG>   ::= :dimension 'DIMENSION'
-;;; <COLOR_ARG>       ::= :color 'COLOR'
-;;; <ALPHA_ARG>       ::= :alpha 'ALPHA'
-;;; <RM_OP>           ::= 'NAME'
-;;; <CLEAR_OP>        ::= :clear
-;;; <CLASS_OP>        ::= :class 'NAME' 'PARENTS' ARGS*
-;;; <SEQ_OP>          ::= :seq <E>*
-
-;;; TODO: parent frames
-
-(defun dbl (x)
-  (coerce 'double-float x))
-
-(defun moveit-scene-exp-eval (exp &key (context *plan-context*))
-  (destructuring-ecase exp
-    ((:object name &rest keyword-arguments)
-     (let* ((keyword-arguments-map (context-class-keyword-arguments context keyword-arguments))
-            (keyword-arguments (kwarg-map-list keyword-arguments-map)))
-       (destructuring-bind (&key parent
-                                 class
-                                 shape
-                                 dimension rotation translation
-                                 height radius
-                                 (color (vec 0d0 0d0 0d0))
-                                 (alpha 1d0)
-                                 affords
-                                 grasps
-                                 )
-           keyword-arguments
-         (declare (ignore class affords grasps))
-         (let* ((tf (tf* rotation translation))
-                (alpha (coerce alpha 'double-float))
-                (options (draw-options-default :color color
-                                               :alpha alpha
-                                               :visual t
-                                               :collision t))
-                (geometry
-                 (ecase shape
-                   (:box
-                    (scene-box (apply #'vec dimension)))
-                   (:cylinder
-                    (scene-cylinder :height height :radius radius))
-                   (:sphere
-                    (scene-sphere radius)))))
-           (when geometry
-             (context-draw context parent name
-                           :geometry geometry
-                           :tf tf
-                           :options options))))
-       (tree-map-insertf (plan-context-object-init-map context)
-                         name keyword-arguments-map)))
-    ((:rm name)
-     (context-remove-object context name))
-    ((:goal name &key parent rotation translation)
-     (tree-map-insertf (plan-context-object-goal-map context)
-                       name (tf-tag parent (tf* rotation translation) name)))
-    ((:clear)
-     (context-remove-all-objects context))
-    ((:class name parents &rest keyword-arguments)
-     (context-add-class context name parents keyword-arguments))
-    ((:seq &rest ops)
-     (dolist (exp ops)
-       (moveit-scene-exp-eval exp :context context)))))
-
-(defun moveit-scene-file (file &key (context *plan-context*))
-  (let ((exp (cons :seq (load-all-sexp file))))
-    (moveit-scene-exp-eval exp :context context)))
 
 
 (defun context-insert-scene (context object-graph)
@@ -363,3 +210,160 @@
         ;; (values moveable-objects
         ;;         stackable-objects
         ;;         locations)))))
+
+
+
+;; ;;; OBJECT ADD DSL
+;; ;;;
+;; ;;; <E>               ::=  <ADD_OP> | <RM_OP> | <CLEAR_OP> | <SEQ_OP>
+;; ;;; <ADD_OP>          ::= :box      'NAME' (<TF_ARG> | <DIMENSION_ARG> | <COLOR_ARG> | <ALPHA_ARG>)*
+;; ;;;                     | :cylinder 'NAME' (<TF_ARG> | <HEIGHT_ARG> | <RADIUS_ARG> | <COLOR_ARG> | <ALHPA_ARG>)*
+;; ;;;                     | :sphere   'NAME' (<TRANSLATION_ARG> | <RADIUS_ARG> | <COLOR_ARG> | <ALHPA_ARG>)*
+;; ;;; <ROTATATION_ARG>  ::= :rotation 'ROTATION'
+;; ;;; <TRANSLATION_ARG> ::= :translation 'TRANSLATION'
+;; ;;; <TF_ARG>          ::= (<ROTATION_ARG> | <TRANSLATION_ARG>)*
+;; ;;; <RADIUS_ARG>      ::= :radius 'RADIUS'
+;; ;;; <HEIGHT_ARG>      ::= :height 'HEIGHT'
+;; ;;; <DIMENSION_ARG>   ::= :dimension 'DIMENSION'
+;; ;;; <COLOR_ARG>       ::= :color 'COLOR'
+;; ;;; <ALPHA_ARG>       ::= :alpha 'ALPHA'
+;; ;;; <RM_OP>           ::= 'NAME'
+;; ;;; <CLEAR_OP>        ::= :clear
+;; ;;; <CLASS_OP>        ::= :class 'NAME' 'PARENTS' ARGS*
+;; ;;; <SEQ_OP>          ::= :seq <E>*
+
+;; ;;; TODO: parent frames
+
+;; (defun dbl (x)
+;;   (coerce 'double-float x))
+
+;; (defun moveit-scene-exp-eval (exp &key (context *plan-context*))
+;;   (destructuring-ecase exp
+;;     ((:object name &rest keyword-arguments)
+;;      (let* ((keyword-arguments-map (context-class-keyword-arguments context keyword-arguments))
+;;             (keyword-arguments (kwarg-map-list keyword-arguments-map)))
+;;        (destructuring-bind (&key parent
+;;                                  class
+;;                                  shape
+;;                                  dimension rotation translation
+;;                                  height radius
+;;                                  (color (vec 0d0 0d0 0d0))
+;;                                  (alpha 1d0)
+;;                                  affords
+;;                                  grasps
+;;                                  )
+;;            keyword-arguments
+;;          (declare (ignore class affords grasps))
+;;          (let* ((tf (tf* rotation translation))
+;;                 (alpha (coerce alpha 'double-float))
+;;                 (options (draw-options-default :color color
+;;                                                :alpha alpha
+;;                                                :visual t
+;;                                                :collision t))
+;;                 (geometry
+;;                  (ecase shape
+;;                    (:box
+;;                     (scene-box (apply #'vec dimension)))
+;;                    (:cylinder
+;;                     (scene-cylinder :height height :radius radius))
+;;                    (:sphere
+;;                     (scene-sphere radius)))))
+;;            (when geometry
+;;              (context-draw context parent name
+;;                            :geometry geometry
+;;                            :tf tf
+;;                            :options options))))
+;;        (tree-map-insertf (plan-context-object-init-map context)
+;;                          name keyword-arguments-map)))
+;;     ((:rm name)
+;;      (context-remove-object context name))
+;;     ((:goal name &key parent rotation translation)
+;;      (tree-map-insertf (plan-context-object-goal-map context)
+;;                        name (tf-tag parent (tf* rotation translation) name)))
+;;     ((:clear)
+;;      (context-remove-all-objects context))
+;;     ((:class name parents &rest keyword-arguments)
+;;      (context-add-class context name parents keyword-arguments))
+;;     ((:seq &rest ops)
+;;      (dolist (exp ops)
+;;        (moveit-scene-exp-eval exp :context context)))))
+
+;; (defun moveit-scene-file (file &key (context *plan-context*))
+;;   (let ((exp (cons :seq (load-all-sexp file))))
+;;     (moveit-scene-exp-eval exp :context context)))
+
+;; (defun context-draw (context parent name
+;;                       &key
+;;                         (actual-parent parent)
+;;                         geometry
+;;                         tf
+;;                         (options nil))
+;;   "Add geometry to the context."
+;;   ;; Add to object-graph
+;;   (setf (plan-context-object-graph context)
+;;         (draw-geometry (plan-context-object-graph context)
+;;                        parent name
+;;                        :actual-parent actual-parent
+;;                        :geometry geometry
+;;                        :tf tf
+;;                        :options options))
+;;   ;; Maybe add to planning scene
+;;   (when (and geometry (get-draw-option options :collision))
+;;     (context-add-plan-collision context (plan-context-object-graph context) name)))
+
+
+;; (defun context-add-frame-marker (context frame-name &key
+;;                                                       (alpha 0.5d0)
+;;                                                       (length .15)
+;;                                                       (width .020)
+;;                                                       (arrow-width (* 2 width))
+;;                                                       (arrow-length (* 1 arrow-width)))
+;;   (setf (plan-context-object-graph context)
+;;         (draw-items (plan-context-object-graph context)
+;;                     frame-name
+;;                     (robray::item-frame-marker (robray::draw-subframe frame-name "marker")
+;;                                                :length length
+;;                                                :width width
+;;                                                :arrow-width arrow-width
+;;                                                :arrow-length arrow-length)
+;;                     :options (draw-options :no-shadow t :alpha alpha
+;;                                            :visual t :collision nil))))
+
+;; (defun kwarg-map-insert-list (map argument-list)
+;;   (if (null argument-list)
+;;       map
+;;       (destructuring-bind (keyword argument &rest argument-list)
+;;           argument-list
+;;         (assert (keywordp keyword))
+;;         (kwarg-map-insert-list (tree-map-insert map keyword argument)
+;;                                argument-list))))
+
+;; (defun kwarg-map (argument-list)
+;;   (kwarg-map-insert-list (make-tree-map #'gsymbol-compare)
+;;                          argument-list))
+
+;; (defun kwarg-map-insert-map (initial-map new-map)
+;;   (fold-tree-map #'tree-map-insert initial-map new-map))
+
+;; (defun kwarg-map-list (map)
+;;   (fold-tree-map (lambda (list key value)
+;;                    (list* key value list))
+;;                  nil map))
+
+;; (defun context-kwarg-apply (context classes kwargs)
+;;   (let* ((class-kwargs  (plan-context-class-kwargs context))
+;;          (class-map (fold (lambda (map class)
+;;                             (kwarg-map-insert-map map (tree-map-find class-kwargs class)))
+;;                           (kwarg-map nil)
+;;                           classes)))
+;;     (kwarg-map-insert-list class-map kwargs)))
+
+;; (defun context-add-class (context name parents kwargs)
+;;   (tree-map-insertf (plan-context-class-kwargs context)
+;;                     name
+;;                     (context-kwarg-apply context parents kwargs)))
+
+;; (defun context-class-keyword-arguments (context keyword-arguments)
+;;   "Apply class arguments to KEYWORD-ARGUMENTS."
+;;   (destructuring-bind (&key class &allow-other-keys) keyword-arguments
+;;     (context-kwarg-apply context class keyword-arguments)))

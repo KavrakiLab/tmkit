@@ -13,26 +13,18 @@
         ("zeus"       ; 16 core, 2.4GHz
          :jobs 8 :threads 2 :nice 1 :povray "/home/ndantam/local/bin/povray")
         ))
+
 (in-package :tmsmt)
-
-
-(moveit-init "/home/ntd/ros_ws/src/baxter_common/baxter_description/urdf/baxter.urdf")
 
 (defparameter *group* "right_arm")
 (defparameter *link* (container-group-endlink *moveit-container* *group*))
-
-(format t "~&GROUP: ~A~&LINK: ~A" *group* *link*)
-
-
 (defparameter *q-all-start* (amino:make-vec (container-variable-count *moveit-container*)))
 
-(format t "~&Vars: ~A~%" (length *q-all-start*))
-
+(moveit-init "/home/ntd/ros_ws/src/baxter_common/baxter_description/urdf/baxter.urdf")
 (context-remove-object *plan-context* "block_a")
 (context-remove-object *plan-context* "block_b")
-
 (context-remove-all-objects *plan-context*)
-
+(container-set-group *moveit-container* *group*)
 
 (defparameter *object-graph*
   (load-scene-file "/home/ntd/git/robray/test/scene.robray"))
@@ -41,27 +33,14 @@
 (defparameter *tf-tmp* (tf* nil (vec3* -.20 -.40 .0551)))
 
 
-(container-set-group *moveit-container* *group*)
-(context-apply-scene *plan-context* *object-graph*)
-
-;; PICK ;;
-
-;; (setq *plan-pick* (act-pick-tf *plan-context* *q-all-start* *link* "block-a" *tf-grasp-rel*))
-
-;; ;; PLACE ;;
-;; (context-attach-object *plan-context* *group* *q-grasp* "right_endpoint" *link* "block-a")
-
-;; (setq *plan-place* (act-place-tf *plan-context*
-;;                                  (container-merge-group *moveit-container* *group*
-;;                                                         (container-plan-endpoint *plan-pick*)
-;;                                                         *q-all-start*)
-;;                                  *link*
-;;                                  "front-table"
-
-;;                                  "block-a"))
+(defparameter *tf-a* (robray::scene-graph-tf-relative *object-graph*
+                                                      "front_table" "block_a"))
+(defparameter *tf-b* (robray::scene-graph-tf-relative *object-graph*
+                                                      "front_table" "block_b"))
 
 ;; A to TMP
 
+(context-apply-scene *plan-context* *object-graph*)
 (context-apply-scene *plan-context* *object-graph*)
 (defvar *plan-0*)
 (defvar *graph-0*)
@@ -71,7 +50,7 @@
 
 (assert *plan-0*)
 
-;; ;; B to A
+;; B to A
 (context-apply-scene *plan-context* *graph-0*)
 (defvar *plan-1*)
 (defvar *graph-1*)
@@ -85,11 +64,7 @@
 
 (assert *plan-1*)
 
-;; ;; A(tmp) to B
-
-;; ;; (defvar *plan-pick-2*)
-;; ;; (defvar *plan-place-2*)
-
+;; A to B
 (context-apply-scene *plan-context* *graph-1*)
 (defvar *plan-2*)
 (defvar *graph-2*)
@@ -104,48 +79,6 @@
                    *tf-b* ))
 (assert *plan-2*)
 
-;; (multiple-value-setq (*plan-pick-2* *plan-place-2*)
-;;   (act-transfer-tf *plan-context* *group* *q-all-start* "right_endpoint" *link*
-;;                    "block-a" *tf-grasp-rel* "front-table"  *tf-b*))
-
-
-;; (assert (and *plan-pick-2* *plan-place-2*))
-
-;; (container-set-start *moveit-container*
-;;                      (container-merge-group *moveit-container* *group*
-;;                                             *q-grasp*
-;;                                             *q-all-start*))
-
-
-;; (container-scene-send *moveit-container*)
-
-;; (progn
-;;   (container-goal-clear *moveit-container*)
-;;   (container-set-ws-goal *moveit-container* *link* *e-place*))
-
-
-;; (defvar *plan-place*)
-;; (setq *plan-place* (container-plan *moveit-container*))
-
-
-;; ;; RETURN ;;
-;; (defparameter *q-place* (container-plan-endpoint *plan-place*))
-
-;; (context-dettach-object *plan-context* *group* *q-place* "block-a")
-
-;; (progn
-;;   (container-goal-clear *moveit-container*)
-;;   (container-set-js-goal *moveit-container* *group* *q-all-start*))
-
-;; (container-scene-send *moveit-container*)
-
-;; (container-set-start *moveit-container*
-;;                      (container-merge-group *moveit-container* *group*
-;;                                             *q-place*
-;;                                             *q-all-start*))
-
-;; (defvar *plan-return*)
-;; (setq *plan-return* (container-plan *moveit-container*))
 
 (time (render-group-itmp *plan-context* *group*
                          ;*plan-0*
