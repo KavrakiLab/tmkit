@@ -42,12 +42,12 @@
   (robray::scene-graph-tf-absolute (plan-context-object-graph context)
                                    name))
 
-(defun context-add-plan-collision (context name)
+(defun context-add-plan-collision (context scene-graph name
+                                   &optional
+                                     (tf (robray::scene-graph-tf-absolute scene-graph name)))
   "Add object from CONTEXT's object-graph to the planning scene."
-  (let* ((container (plan-context-moveit-container context))
-         (scene-graph (plan-context-object-graph context))
-         (object-frame (robray::scene-graph-lookup scene-graph name))
-         (tf (context-object-tf context name)))
+  (let ((container (plan-context-moveit-container context))
+        (object-frame (robray::scene-graph-lookup scene-graph name)))
     ;; TODO: multiple objects
     (loop for geometry in (robray::scene-frame-geometry object-frame)
        for shape = (robray::scene-geometry-shape geometry)
@@ -89,7 +89,7 @@
                        :options options))
   ;; Maybe add to planning scene
   (when (and geometry (get-draw-option options :collision))
-    (context-add-plan-collision context name)))
+    (context-add-plan-collision context (plan-context-object-graph context) name)))
 
 (defun context-add-frame-marker (context frame-name &key
                                                       (alpha 0.5d0)
@@ -155,7 +155,7 @@
                                 :tf tf))
     ;; Set in planning scene
     (container-scene-rm container object)
-    (context-add-plan-collision context object)))
+    (context-add-plan-collision context (plan-context-object-graph context) object)))
 
 (defun kwarg-map-insert-list (map argument-list)
   (if (null argument-list)
@@ -272,10 +272,24 @@
      (dolist (exp ops)
        (moveit-scene-exp-eval exp :context context)))))
 
-
 (defun moveit-scene-file (file &key (context *plan-context*))
   (let ((exp (cons :seq (load-all-sexp file))))
     (moveit-scene-exp-eval exp :context context)))
+
+
+(defun context-insert-scene (context object-graph)
+  (let ((tf-abs (robray::scene-graph-tf-absolute-map object-graph)))
+    (robray::do-scene-graph-frames (frame object-graph)
+      (let ((name (robray::scene-frame-name frame)))
+        (context-add-plan-collision context object-graph name
+                                    (gethash name tf-abs)))))
+  (setf (plan-context-object-graph context)
+        (robray::scene-graph-merge (plan-context-object-graph context)
+                                   object-graph)))
+
+(defun context-apply-scene (context object-graph)
+  (context-remove-all-objects context)
+  (context-insert-scene context object-graph))
 
 (defun moveit-scene-facts (context
                            &key

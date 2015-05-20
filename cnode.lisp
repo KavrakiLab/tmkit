@@ -11,7 +11,7 @@
         ("dione"      ; 12 core, 1.4GHz
          :jobs 6 :threads 2 :nice 0)
         ("zeus"       ; 16 core, 2.4GHz
-         :jobs 7 :threads 2 :nice 1 :povray "/home/ndantam/local/bin/povray")
+         :jobs 8 :threads 2 :nice 1 :povray "/home/ndantam/local/bin/povray")
         ))
 (in-package :tmsmt)
 
@@ -28,32 +28,21 @@
 
 (format t "~&Vars: ~A~%" (length *q-all-start*))
 
-(moveit-scene-exp-eval '(:rm "block-a"))
-(moveit-scene-exp-eval '(:rm "block-b"))
-(moveit-scene-exp-eval '(:clear))
-(moveit-scene-file "/home/ntd/git/tmsmt/scene/scene.se")
+(context-remove-object *plan-context* "block_a")
+(context-remove-object *plan-context* "block_b")
 
-(context-add-frame-marker *plan-context* "right_endpoint")
-(context-add-frame-marker *plan-context* "left_endpoint")
-
-(defparameter *scene-graph* (robray::scene-graph-merge (plan-context-robot-graph *plan-context*)
-                                                       (plan-context-object-graph *plan-context*)))
+(context-remove-all-objects *plan-context*)
 
 
-
-(container-set-group *moveit-container* *group*)
-
-
-(defparameter *tf-a* (robray::scene-graph-tf-relative (plan-context-object-graph *plan-context*)
-                                                      "front-table" "block-a"))
-(defparameter *tf-b* (robray::scene-graph-tf-relative (plan-context-object-graph *plan-context*)
-                                                      "front-table" "block-b"))
+(defparameter *object-graph*
+  (load-scene-file "/home/ntd/git/robray/test/scene.robray"))
 
 (defparameter *tf-grasp-rel* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .10)))
 (defparameter *tf-tmp* (tf* nil (vec3* -.20 -.40 .0551)))
 
-(defvar *plan-pick*)
-(defvar *plan-place*)
+
+(container-set-group *moveit-container* *group*)
+(context-apply-scene *plan-context* *object-graph*)
 
 ;; PICK ;;
 
@@ -72,36 +61,46 @@
 ;;                                  "block-a"))
 
 ;; A to TMP
-(defparameter *plan-0*
+
+(context-apply-scene *plan-context* *object-graph*)
+(defvar *plan-0*)
+(defvar *graph-0*)
+(multiple-value-setq (*plan-0* *graph-0*)
   (act-transfer-tf *plan-context* *group* *q-all-start* "right_endpoint" *link*
-                   "block-a" *tf-grasp-rel* "front-table"  *tf-tmp*))
+                   "block_a" *tf-grasp-rel* "front_table"  *tf-tmp*))
 
 (assert *plan-0*)
 
-;; B to A
-(defparameter *plan-1*
+;; ;; B to A
+(context-apply-scene *plan-context* *graph-0*)
+(defvar *plan-1*)
+(defvar *graph-1*)
+(multiple-value-setq (*plan-1* *graph-1*)
   (act-transfer-tf *plan-context* *group*
                    (container-merge-group *moveit-container* *group*
                                           (container-plan-endpoint (third *plan-0*))
                                           *q-all-start* )
                    "right_endpoint" *link*
-                   "block-b" *tf-grasp-rel* "front-table"  *tf-a*))
+                   "block_b" *tf-grasp-rel* "front_table"  *tf-a*))
 
 (assert *plan-1*)
 
-;; A(tmp) to B
+;; ;; A(tmp) to B
 
-;; (defvar *plan-pick-2*)
-;; (defvar *plan-place-2*)
+;; ;; (defvar *plan-pick-2*)
+;; ;; (defvar *plan-place-2*)
 
-(defparameter *plan-2*
+(context-apply-scene *plan-context* *graph-1*)
+(defvar *plan-2*)
+(defvar *graph-2*)
+(multiple-value-setq (*plan-2* *graph-2*)
   (act-transfer-tf *plan-context* *group*
                    (container-merge-group *moveit-container* *group*
                                           (container-plan-endpoint (third *plan-1*))
                                           *q-all-start* )
                    "right_endpoint" *link*
-                   "block-a" *tf-grasp-rel* "front-table"
-                                        ;;(g* *tf-tmp* (tf* nil (vec3* .05 0 0)))
+                   "block_a" *tf-grasp-rel* "front_table"
+                   ;;(g* *tf-tmp* (tf* nil (vec3* .05 0 0)))
                    *tf-b* ))
 (assert *plan-2*)
 
@@ -149,11 +148,14 @@
 ;; (setq *plan-return* (container-plan *moveit-container*))
 
 (time (render-group-itmp *plan-context* *group*
+                         ;*plan-0*
                          (append *plan-0*
                                  *plan-1*
                                  *plan-2*)
-                         :render-options  (render-options-default :options (render-options-medium))
-                         :scene-graph *scene-graph*
+                         :render-options  (render-options-default :use-collision t
+                                                                  :options (render-options-fast))
+                         :scene-graph (robray::scene-graph-merge (plan-context-robot-graph *plan-context*)
+                                                                 *object-graph*)
                          :frame-name "right_endpoint"))
 
 ;; (render-group-config *plan-context* *group* (container-plan-endpoint *plan-place*)
