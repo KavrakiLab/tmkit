@@ -138,78 +138,145 @@
   (context-remove-all-objects context)
   (context-insert-scene context object-graph))
 
-(defun moveit-scene-facts (context
-                           &key
-                             (resolution 0.1)
-                             (problem 'itmp)
-                             (domain 'itmp))
-
-  (let ((object-init-map (plan-context-object-init-map context)))
-    (labels ((kwarg-map (object)
-               (tree-map-find object-init-map object))
-             (kwarg-value (object keyword)
-               (tree-map-find (kwarg-map object) keyword))
-             (affords (object action)
-               (if (find action (kwarg-value object :affords) :test #'string=)
-                   t nil))
-             (collect-affords (action)
-               (fold-tree-map (lambda (list name kwarg-map)
-                                (declare (ignore kwarg-map))
-                                (if (affords name action)
-                                    (cons name list)
-                                    list))
-                              nil object-init-map))
-             (encode-location (obj x y)
-               (smt-mangle obj
-                           (round (/ x resolution))
-                           (round (/ y resolution))))
-             (location-predicate (object parent x y)
-               (list 'at object (encode-location parent x y)))
-             (occupied-predicate (parent x y)
-               (list 'occupied (encode-location parent x y))))
-      (let* ((moveable-objects (collect-affords "move"))
-             (stackable-objects (collect-affords "stack"))
-             (locations (loop for obj in stackable-objects
-                          for dimension = (kwarg-value obj :dimension)
-                          for x-max = (/ (- (first dimension) resolution)
-                                         2)
-                          for x-min = (- x-max)
-                          for y-max = (/ (- (second dimension) resolution)
-                                         2)
-                          for y-min = (- y-max)
-                           append (loop for x from x-min to x-max by resolution
-                                     append (loop for y from y-min to y-max by resolution
-                                               collect
-                                                 (encode-location obj x y)))))
-             (initial-true (loop for obj in moveable-objects
-                              for translation = (kwarg-value obj :translation)
-                              for parent = (kwarg-value obj :parent)
+(defun scene-facts (init-scene goal-scene
+                    &key
+                      (resolution 0.1)
+                      (problem 'itmp)
+                      (domain 'itmp))
+  (labels ((collect-type (scene type)
+             (let ((frames (make-tree-set (lambda (a b)
+                                            (string-compare (robray::scene-frame-name a)
+                                                            (robray::scene-frame-name b))))))
+               (robray::do-scene-graph-frames (frame scene
+                                                     (tree-set-list frames))
+                 (when (robray::scene-frame-geometry-isa frame type)
+                   (tree-set-insertf frames frame)))))
+           (location-predicate (object parent x y)
+             (list 'at object (encode-location parent x y)))
+           (occupied-predicate (parent x y)
+             (list 'occupied (encode-location parent x y)))
+           (encode-location (obj x y)
+             (smt-mangle obj
+                         (round (/ x resolution))
+                           (round (/ y resolution)))))
+    (let* ((moveable-frames (collect-type init-scene "moveable"))
+           (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
+           (stackable-frames (collect-type init-scene "stackable"))
+           (stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
+           (locations (loop for frame in stackable-frames
+                         for name = (robray::scene-frame-name frame)
+                         append (loop for g in (robray::scene-frame-geometry frame)
+                                   for shape = (robray::scene-geometry-shape g)
+                                   for dimension = (robray::scene-box-dimension shape)
+                                   for x-max = (/ (- (elt dimension 0) resolution)
+                                                  2)
+                                   for x-min = (- x-max)
+                                   for y-max = (/ (- (elt dimension 1) resolution)
+                                                  2)
+                                   for y-min = (- y-max)
+                                   when (robray::scene-geometry-collision g)
+                                   append (loop for x from x-min to x-max by resolution
+                                             append (loop for y from y-min to y-max by resolution
+                                                       collect
+                                                         (encode-location name x y))))))
+           (initial-true (loop for frame in moveable-frames
+                            for name = (robray::scene-frame-name frame)
+                            for tf = (robray::scene-frame-fixed-tf frame)
+                            for translation = (tf-translation tf)
+                            for parent = (robray::scene-frame-parent frame)
+                            for x = (vec-x translation)
+                            for y = (vec-y translation)
+                            nconc (list (location-predicate name parent x y)
+                                        (occupied-predicate parent x y))))
+           (goal-locations (loop for frame in (collect-type goal-scene "moveable")
+                              for name = (robray::scene-frame-name frame)
+                              for tf = (robray::scene-frame-fixed-tf frame)
+                              for translation = (tf-translation tf)
+                              for parent = (robray::scene-frame-parent frame)
                               for x = (vec-x translation)
                               for y = (vec-y translation)
-                              nconc (list (location-predicate obj parent x y)
-                                          (occupied-predicate parent x y))))
-             (goal-locations (map-tree-map :inorder 'list
-                                           (lambda (name tf-tag)
-                                             (let* ((translation (translation (tf-tag-tf tf-tag))))
-                                               (location-predicate name (tf-tag-parent tf-tag)
-                                                                   (vec-x translation)
-                                                                   (vec-y translation))))
-                                           (plan-context-object-goal-map context)))
+                              collect (location-predicate name parent x y))))
+      `(define (problem ,problem)
+           (:domain ,domain)
+         (:objects ,@moveable-objects - block
+                   ,@stackable-objects - table
+                   ,@locations - location)
+         (:init ,@initial-true)
+         (:goal (and ,@goal-locations))))))
 
-             )
 
-        `(define (problem ,problem)
-             (:domain ,domain)
-           (:objects ,@moveable-objects - block
-                     ,@stackable-objects - table
-                     ,@locations - location)
-           (:init ,@initial-true)
-           (:goal (and ,@goal-locations))
-                     )))))
+;; (defun moveit-scene-facts (context
+;;                            &key
+;;                              (resolution 0.1)
+;;                              (problem 'itmp)
+;;                              (domain 'itmp))
 
-        ;; (values moveable-objects
-        ;;         stackable-objects
-        ;;         locations)))))
+;;   (let ((object-init-map (plan-context-object-init-map context)))
+;;     (labels ((kwarg-map (object)
+;;                (tree-map-find object-init-map object))
+;;              (kwarg-value (object keyword)
+;;                (tree-map-find (kwarg-map object) keyword))
+;;              (affords (object action)
+;;                (if (find action (kwarg-value object :affords) :test #'string=)
+;;                    t nil))
+;;              (collect-affords (action)
+;;                (fold-tree-map (lambda (list name kwarg-map)
+;;                                 (declare (ignore kwarg-map))
+;;                                 (if (affords name action)
+;;                                     (cons name list)
+;;                                     list))
+;;                               nil object-init-map))
+;;              (encode-location (obj x y)
+;;                (smt-mangle obj
+;;                            (round (/ x resolution))
+;;                            (round (/ y resolution))))
+;;              (location-predicate (object parent x y)
+;;                (list 'at object (encode-location parent x y)))
+;;              (occupied-predicate (parent x y)
+;;                (list 'occupied (encode-location parent x y))))
+;;       (let* ((moveable-objects (collect-affords "move"))
+;;              (stackable-objects (collect-affords "stack"))
+;;              (locations (loop for obj in stackable-objects
+;;                           for dimension = (kwarg-value obj :dimension)
+;;                           for x-max = (/ (- (first dimension) resolution)
+;;                                          2)
+;;                           for x-min = (- x-max)
+;;                           for y-max = (/ (- (second dimension) resolution)
+;;                                          2)
+;;                           for y-min = (- y-max)
+;;                            append (loop for x from x-min to x-max by resolution
+;;                                      append (loop for y from y-min to y-max by resolution
+;;                                                collect
+;;                                                  (encode-location obj x y)))))
+;;              (initial-true (loop for obj in moveable-objects
+;;                               for translation = (kwarg-value obj :translation)
+;;                               for parent = (kwarg-value obj :parent)
+;;                               for x = (vec-x translation)
+;;                               for y = (vec-y translation)
+;;                               nconc (list (location-predicate obj parent x y)
+;;                                           (occupied-predicate parent x y))))
+;;              (goal-locations (map-tree-map :inorder 'list
+;;                                            (lambda (name tf-tag)
+;;                                              (let* ((translation (translation (tf-tag-tf tf-tag))))
+;;                                                (location-predicate name (tf-tag-parent tf-tag)
+;;                                                                    (vec-x translation)
+;;                                                                    (vec-y translation))))
+;;                                            (plan-context-object-goal-map context)))
+
+;;              )
+
+;;         `(define (problem ,problem)
+;;              (:domain ,domain)
+;;            (:objects ,@moveable-objects - block
+;;                      ,@stackable-objects - table
+;;                      ,@locations - location)
+;;            (:init ,@initial-true)
+;;            (:goal (and ,@goal-locations))
+;;                      )))))
+
+;;         ;; (values moveable-objects
+;;         ;;         stackable-objects
+;;         ;;         locations)))))
 
 
 
