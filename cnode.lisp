@@ -28,7 +28,7 @@
 (container-set-group *moveit-container* *group*)
 
 (defparameter *object-graph*
-  (load-scene-file "/home/ntd/git/robray/test/scene.robray"))
+  (load-scene-file "/home/ntd/git/robray/demo/baxter/scene.robray"))
 
 
 (defparameter *object-goal*
