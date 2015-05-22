@@ -1,0 +1,59 @@
+
+/***********/
+/* Classes */
+/***********/
+class moveable { }
+class stackable { }
+
+class red   { color [1,0,0]; }
+class green { color [0,1,0]; }
+class blue  { color [0,0,1]; }
+
+
+class table {
+    shape box;
+    isa stackable;
+    color [.6, .3, .6];
+    alpha 0.5;
+}
+
+class block {
+    shape box;
+    isa moveable;
+    color [0, 1, 0];
+    alpha 0.5;
+    dimension [.1, .1, .1];
+}
+
+/**********/
+/* Tables */
+/**********/
+
+frame front_table {
+    translation [.8, -.25, 0];
+    geometry {
+        isa table;
+        dimension [1, 1, .01];
+    }
+}
+
+/**********/
+/* Blocks */
+/**********/
+frame block_a {
+    parent front_table;
+    translation [0, 0, 0.0551];
+    geometry {
+        isa block;
+        isa red;
+    }
+}
+
+frame block_b {
+    parent front_table;
+    translation [0, -.25, 0.0551];
+    geometry {
+        isa block;
+        isa blue;
+    }
+}

@@ -16,6 +16,12 @@
 
 (in-package :tmsmt)
 
+
+(defparameter *scene-directory*
+  (concatenate 'string
+               (namestring (asdf:system-source-directory :tmsmt))
+               "../scene/"))
+
 (moveit-init "/home/ntd/ros_ws/src/baxter_common/baxter_description/urdf/baxter.urdf")
 
 (defparameter *group* "right_arm")
@@ -28,11 +34,12 @@
 (container-set-group *moveit-container* *group*)
 
 (defparameter *object-graph*
-  (load-scene-file "/home/ntd/git/robray/demo/baxter/scene.robray"))
+  (load-scene-file (concatenate 'string *scene-directory* "scene.robray")))
 
 
 (defparameter *object-goal*
-  (load-scene-file "/home/ntd/git/tmsmt/scene/goal1.robray"))
+  (load-scene-file (concatenate 'string *scene-directory* "goal1.robray")))
+
 
 (defparameter *tf-grasp-rel* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .10)))
 (defparameter *tf-tmp* (tf* nil (vec3* -.20 -.40 .0551)))
@@ -84,17 +91,18 @@
                    *tf-b* ))
 (assert *plan-2*)
 
+(defparameter *render* nil)
 
-;; (time (render-group-itmp *plan-context* *group*
-;;                          ;*plan-0*
-;;                          (append *plan-0*
-;;                                  *plan-1*
-;;                                  *plan-2*)
-;;                          :render-options  (render-options-default :use-collision t
-;;                                                                   :options (render-options-fast))
-;;                          :scene-graph (robray::scene-graph-merge (plan-context-robot-graph *plan-context*)
-;;                                                                  *object-graph*)
-;;                          :frame-name "right_endpoint"))
+(when *render*
+  (render-group-itmp *plan-context* *group*
+                     (append *plan-0*
+                             *plan-1*
+                             *plan-2*)
+                     :render-options  (render-options-default :use-collision nil
+                                                              :options (render-options-fast))
+                     :scene-graph (robray::scene-graph-merge (plan-context-robot-graph *plan-context*)
+                                                             *object-graph*)
+                     :frame-name "right_endpoint"))
 
-;; (render-group-config *plan-context* *group* (container-plan-endpoint *plan-place*)
-;;                      :options (render-options-fast))
+;;(render-group-config *plan-context* *group* (container-plan-endpoint (third *plan-2*))
+                     ;;:options (render-options-medium))
