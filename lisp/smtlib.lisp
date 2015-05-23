@@ -29,6 +29,11 @@
   nil)
 
 
+(defun smt-set-option (option value)
+  (list '|set-option|
+        option
+        value))
+
 (defun smt-assert (x)
   (list '|assert| x))
 

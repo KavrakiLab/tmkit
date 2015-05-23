@@ -3,6 +3,47 @@
 (defstruct smt
   process)
 
+(defun smt-input (smt)
+  (sb-ext:process-input (smt-process smt)))
+
+(defun smt-output (smt)
+  (sb-ext:process-output (smt-process smt)))
+
+(define-condition smt-runtime-error (error)
+  ((message :initarg :message
+            :reader message)
+   (expression :initarg :expression
+               :reader expression)))
+
+(defmethod print-object ((object smt-runtime-error) stream)
+  (print-unreadable-object (object stream :type t)
+    (with-slots (message expression) object
+      (format stream "\"~A: '~A'\"" message expression))))
+
+(defun smt-eval (smt exp)
+  (let* ((process (smt-process smt))
+         (input (sb-ext:process-input process)))
+    ;; Write
+    (smt-print-1 exp (sb-ext:process-input process))
+    (terpri (sb-ext:process-input process))
+    (finish-output input)
+    ;; Read
+    (let ((result (read (sb-ext:process-output process))))
+      (cond
+        ((eq result 'unsupported)
+         (error 'smt-runtime-error
+                :message "Unsupported expression"
+                :expression exp))
+        ((eq result 'success)
+         t)
+        ((and (consp result)
+              (eq 'error (car result)))
+         (error 'smt-runtime-error
+                :message (second result)
+                :expression exp))
+        (t
+         result)))))
+
 (defparameter *smt-solver-z3*
   (list "z3" "-smt2" "-in"))
 
@@ -28,41 +69,9 @@
         (smt (make-smt)))
     (sb-ext:finalize smt (lambda () (smt-process-kill process)))
     (setf (smt-process smt) process)
+    (smt-eval smt (smt-set-option ":print-success" '|true|))
     smt))
-
-(defun smt-input (smt)
-  (sb-ext:process-input (smt-process smt)))
-
-(defun smt-output (smt)
-  (sb-ext:process-output (smt-process smt)))
 
 (defun smt-stop (smt)
   (smt-process-kill (smt-process smt))
   (setf (smt-process smt) nil))
-
-(define-condition smt-runtime-error (error)
-  ((message :initarg :message
-            :reader message)
-   (expression :initarg :expression
-               :reader expression)))
-
-(defmethod print-object ((object smt-runtime-error) stream)
-  (print-unreadable-object (object stream :type t)
-    (with-slots (message expression) object
-      (format stream "\"~A: '~A'\"" message expression))))
-
-(defun smt-eval (smt exp)
-  (let* ((process (smt-process smt))
-         (input (sb-ext:process-input process)))
-    ;; Write
-    (smt-print-1 exp (sb-ext:process-input process))
-    (terpri (sb-ext:process-input process))
-    (finish-output input)
-    ;; Read
-    (let ((result (read (sb-ext:process-output process))))
-      (case result
-        (unsupported (error 'smt-runtime-error
-                            :message "Unsupported expression"
-                            :expression exp))
-        (otherwise
-         result)))))
