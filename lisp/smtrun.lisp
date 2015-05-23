@@ -21,6 +21,8 @@
       (format stream "\"~A: '~A'\"" message expression))))
 
 (defun smt-eval (smt exp)
+  (when (eq (car exp) 'comment)
+    (return-from smt-eval t))
   (let* ((process (smt-process smt))
          (input (sb-ext:process-input process)))
     ;; Write

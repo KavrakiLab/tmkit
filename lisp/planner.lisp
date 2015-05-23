@@ -362,16 +362,16 @@
           (push (unmangle-op (string var)) plan))))
     (map 'list #'cdr (sort plan (lambda (a b) (< (car a) (car b)))))))
 
-(defun smt-plan ( &key
-                    operators facts
-                    state-vars
-                    concrete-actions
-                    initial-true
-                    initial-false
-                    initial-state
-                    goal
-                    (steps 1)
-                    (max-steps 10))
+(defun smt-plan-batch ( &key
+                          operators facts
+                          state-vars
+                          concrete-actions
+                          initial-true
+                          initial-false
+                          initial-state
+                          goal
+                          (steps 1)
+                          (max-steps 10))
   (let* ((operators (when operators
                       (load-operators operators)))
          (facts (when facts (load-facts facts)))
@@ -414,6 +414,78 @@
                         (rec (1+ steps)))
                        (t nil)))))
       (rec steps))))
+
+(defun smt-plan ( &key
+                    operators facts
+                    state-vars
+                    concrete-actions
+                    initial-true
+                    initial-false
+                    initial-state
+                    goal
+                    (max-steps 10))
+  (let* ((operators (when operators
+                      (load-operators operators)))
+         (facts (when facts (load-facts facts)))
+         (type-map (compute-type-map (pddl-operators-types operators)
+                                     (pddl-facts-objects facts)))
+         (state-vars (or state-vars
+                         (create-state-variables (pddl-operators-predicates operators)
+                                                 type-map)))
+         (concrete-actions (or concrete-actions
+                               (smt-concrete-actions (pddl-operators-actions operators)
+                                                      type-map)))
+         (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
+         (initial-false (unless initial-state (or initial-false
+                                                  (set-difference  state-vars initial-true :test #'equal))))
+         (initial-state (or initial-state
+                            `(and ,@initial-true
+                                  ,@(loop for v in initial-false collect `(not ,v)))))
+
+         (goal (or goal (pddl-facts-goal facts)))
+         (n-op (length concrete-actions))
+         (n-var (length state-vars)))
+    (format t "~&ground actions: ~D" n-op)
+    (format t "~&ground states: ~D" n-var)
+    (let ((smt (smt-start)))
+      (labels ((stmt (exp)
+                 ;(print (list 'eval exp))
+                 (smt-eval smt exp))
+               (stmt-list (list)
+                 (map nil #'stmt list))
+               (plan-step (i)
+                 (format t "~&trying step ~D" i)
+                 ;; step declarations
+                 (stmt-list (smt-plan-step-stmts state-vars concrete-actions i))
+                 ;; namespace
+                 (stmt '(|push| 1))
+                 ;; goal assertion
+                 (stmt (smt-assert (rewrite-exp goal (1+ i))))
+                 ;; check-sat
+                 (let ((is-sat (smt-eval smt '(|check-sat|))))
+                   (print is-sat)
+                   (case is-sat
+                     (sat
+                      (result i))
+                     (unsat
+                      ;; pop
+                      (stmt '(|pop| 1))
+                      (when (< i max-steps)
+                        (plan-step (1+ i))))
+                     (otherwise
+                      (error "Unrecognized (check-sat) result: ~A" is-sat)))))
+               (result (i)
+                 (let* ((step-ops (smt-plan-step-ops concrete-actions (1+ i)))
+                        (values (stmt `(|get-value| ,step-ops)))
+                        (plan (smt-plan-parse values)))
+                   plan)))
+        ;; Per-step function
+        (stmt-list (smt-plan-step-fun state-vars concrete-actions))
+        ;; initial state
+        (stmt-list (smt-plan-step-vars state-vars 0))
+        (stmt (smt-assert (rewrite-exp initial-state 0)))
+        (prog1 (plan-step 0)
+          (smt-stop smt))))))
 
 (defun plan-automaton (&key operators facts)
   ;; 1. Generate Plan
