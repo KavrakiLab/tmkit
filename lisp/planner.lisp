@@ -239,105 +239,120 @@
   (smt-assert (smt-frame-axioms-exp state-vars concrete-actions step (1+ step))))
 
 
+(defun smt-plan-var-step (state-vars i)
+  (loop for s in state-vars
+     collect (rewrite-exp s i)))
+
+(defun smt-plan-op-step (concrete-actions i)
+  (loop for op in concrete-actions
+     collect (format-concrete-action op i)))
+
+(defun smt-plan-step-fun-args (state-vars concrete-actions i j)
+  (let ((vars-i (smt-plan-var-step state-vars i))
+        (vars-j (smt-plan-var-step state-vars j))
+        (op-i (smt-plan-op-step concrete-actions i)))
+    (append op-i vars-i vars-j)))
+
+(defun smt-plan-step-fun (state-vars concrete-actions)
+  "Generate the per-step assertion for a planning problem"
+  (labels ((bool-args (list)
+             (loop for x in list
+                collect (list x 'bool)))
+           (bool-fun (name args exp)
+             (smt-define-fun name
+                             (bool-args args)
+                             'bool
+                             exp)))
+    (let* ((op-i (smt-plan-op-step concrete-actions 'i))
+           (op-vars (smt-plan-step-fun-args state-vars concrete-actions 'i 'j)))
+      (append
+       (list (smt-comment "Operator Function")
+             (smt-define-fun "op-step"
+                             ;; args
+                             (bool-args op-vars)
+                             'bool
+                             ;; exp
+                             (apply #'smt-and
+                                    (loop
+                                       for op in concrete-actions
+                                       for op-var in op-i
+                                       collect
+                                         (let ((pre (rewrite-exp (concrete-action-precondition op) 'i))
+                                               (eff (rewrite-exp (concrete-action-effect op) 'j)))
+                                           `(or (not ,op-var)      ; action not active
+                                                (and ,pre          ; precondition holds
+                                                     ,eff)))))))
+       (let ((ops (loop for i from 0 below (length concrete-actions)
+                     collect (format nil "o~D" i ))))
+         (list (smt-comment "Exclusion Function")
+               (bool-fun "exclude-1" ops
+                               `(=> ,(car ops)
+                                    (and ,@(loop for b in (cdr ops)
+                                              collect (list 'not b)))))
+               (bool-fun "exclude-step" ops
+                         `(and ,@(loop for op-a in ops
+                                    collect `("exclude-1" ,op-a ,@(remove op-a ops)))))))
+       (list (smt-comment "Frame Axioms")
+             (bool-fun "frame-axioms" op-vars
+                       (smt-frame-axioms-exp state-vars concrete-actions 'i 'j)))
+       (list (smt-comment "plan-step")
+             (bool-fun "plan-step" op-vars
+                       (smt-and (cons "exclude-step" op-i)
+                                (cons "op-step" op-vars)
+                                (cons "frame-axioms" op-vars))))))))
+
+(defun smt-plan-step-vars (state-vars i)
+  (loop for s in state-vars
+     for v = (format-state-variable s i)
+     collect (smt-declare-fun v () 'bool)))
+
+(defun smt-plan-step-stmts (state-vars concrete-actions i)
+  (append
+   ;; create the per-step state
+   (list (smt-comment "State Variables" ))
+   (smt-plan-step-vars state-vars (1+ i))
+
+   ;; per-step action variables
+   (list (smt-comment "Action Variables"))
+   (loop for op in concrete-actions
+      for v = (format-concrete-action op i)
+      collect (smt-declare-fun v () 'bool))
+   (list (smt-comment (format nil "Step ~D" i))
+         (smt-assert `("plan-step"
+                       ,@(smt-plan-step-fun-args state-vars concrete-actions i (1+ i)))))))
+
+(defun smt-plan-step-ops (concrete-actions steps)
+  (let ((step-ops))
+    (dotimes (i steps)
+      (dolist (op concrete-actions)
+        (let ((v (format-concrete-action op i)))
+          (push v step-ops))))
+    step-ops))
+
 (defun smt-plan-encode (state-vars concrete-actions
                         initial-state
                         goal
                         steps)
-  (let* ((smt-statements nil)
-         (step-ops))
-    (labels ((stmt (x)
-               (push x smt-statements))
-             (declare-step (x)
-               (stmt (smt-declare-fun  x () 'bool)))
-             (bool-args (list)
-               (loop for x in list
-                    collect (list x 'bool)))
-             (bool-fun (name args exp)
-               (smt-define-fun name
-                              (bool-args args)
-                              'bool
-                              exp))
-             (state-var-step (i)
-               (loop for s in state-vars
-                  collect (rewrite-exp s i)))
-             (op-step (i)
-               (loop for op in concrete-actions
-                  collect (format-concrete-action op i))))
-
-      ;; per-step state variables
-      ;; create the per-step state
-      (stmt (smt-comment "State Variables"))
-      (dotimes (i (1+ steps))
-        (dolist (v state-vars)
-          (declare-step (format-state-variable v i))))
-
-      ;; per-step action variables
-      (stmt (smt-comment "Action Variables"))
-      (dotimes (i steps)
-        (dolist (op concrete-actions)
-          (let ((v (format-concrete-action op i)))
-            (push v step-ops)
-            (declare-step v ))))
+  (let ((smt-statements nil))
+    (labels ((stmt (x) (push x smt-statements)))
+      ;; Per-step function
+      (map nil #'stmt (smt-plan-step-fun state-vars concrete-actions))
 
       ;; initial state
       (stmt (smt-comment "Initial State"))
+      (map nil #'stmt (smt-plan-step-vars state-vars 0))
       (stmt (smt-assert (rewrite-exp initial-state 0)))
-
-      ;; operator encodings
-      (stmt (smt-comment "Operator Function"))
-      (stmt (bool-fun "op-step"
-                      ;; args
-                      (append (op-step 'i)
-                              (state-var-step 'i)
-                              (state-var-step 'j))
-
-                      ;; exp
-                      (apply #'smt-and
-                             (loop for op-var in (op-step 'i)
-                                for op in concrete-actions
-                                collect
-                                  (let ((pre (rewrite-exp (concrete-action-precondition op) 'i))
-                                        (eff (rewrite-exp (concrete-action-effect op) 'j)))
-                                    `(or (not ,op-var)      ; action not active
-                                         (and ,pre          ; precondition holds
-                                              ,eff)))))))    ; effect holds
-
-      ;; exclusion axioms
-      (stmt (smt-comment "Exclusion Function"))
-      (let ((ops (loop for i from 0 below (length concrete-actions)
-                    collect (format nil "o~D" i ))))
-        (stmt (bool-fun "exclude-1" ops
-                        `(=> ,(car ops)
-                             (and ,@(loop for b in (cdr ops)
-                                       collect (list 'not b))))))
-        (stmt (bool-fun "exclude-step" ops
-                        `(and ,@(loop for op-a in ops
-                                   collect `("exclude-1" ,op-a ,@(remove op-a ops)))))))
-
-      ;; frame axioms
-      (stmt (smt-comment "Frame Axioms"))
-      (stmt (bool-fun "frame-axioms" (append (op-step 'i)
-                                             (state-var-step 'i)
-                                             (state-var-step 'j))
-                      (smt-frame-axioms-exp state-vars concrete-actions 'i 'j)))
 
       ;; Steps
       (dotimes (i steps)
-        (stmt (smt-comment (format nil "Step ~D" i)))
-        (let* ((ops (op-step i))
-               (state-i (state-var-step i))
-               (state-j (state-var-step (1+ i)))
-               (args (append ops state-i state-j)))
-          (stmt (smt-assert `("exclude-step" ,@ops)))
-          (stmt (smt-assert (cons "op-step" args)))
-          (stmt (smt-assert (cons "frame-axioms" args)))))
+        (map nil #'stmt (smt-plan-step-stmts state-vars concrete-actions i)))
 
       ;; goal state
       (stmt (smt-comment "Goal State"))
       (stmt (smt-assert (rewrite-exp goal steps))))
 
     (values (reverse smt-statements)
-            step-ops)))
+            (smt-plan-step-ops concrete-actions steps))))
 
 (defun smt-plan-parse (assignments)
   (let ((plan))
