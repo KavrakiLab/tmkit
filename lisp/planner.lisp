@@ -358,8 +358,11 @@
   (let ((plan))
     (dolist (x assignments)
       (destructuring-bind (var value) x
-        (when (eq 'true value)
-          (push (unmangle-op (string var)) plan))))
+        ;; TODO: non-boolean variables
+        (ecase value
+          ((true |true|)
+           (push (unmangle-op (string var)) plan))
+          ((false |false|)))))
     (map 'list #'cdr (sort plan (lambda (a b) (< (car a) (car b)))))))
 
 (defun smt-plan-batch ( &key
@@ -414,6 +417,132 @@
                         (rec (1+ steps)))
                        (t nil)))))
       (rec steps))))
+
+(defstruct smt-plan-context
+  smt
+  ground-variables
+  ground-actions
+  goal
+  step
+  )
+
+(defun smt-plan-check (cx &key max-steps)
+  "Check if a plan exists for the current step, recurse if not."
+  (let* ((i (smt-plan-context-step cx))
+         (smt (smt-plan-context-smt cx))
+         (is-sat (smt-eval smt '(|check-sat|))))
+    (print is-sat)
+    (case is-sat
+      ((sat |sat|)
+       (let ((values (smt-plan-result cx)))
+         (smt-plan-parse values)))
+      ((unsat |unsat|)
+       ;; pop
+       (smt-eval smt '(|pop| 1))
+       (when (< i max-steps)
+         (incf (smt-plan-context-step cx))
+         (smt-plan-step cx :max-steps max-steps)))
+      (otherwise
+       (error "Unrecognized (check-sat) result: ~A" is-sat)))))
+
+(defun smt-plan-step (cx &key
+                           (max-steps 10))
+  "Try to find a plan at the next step, recursively."
+  (let ((i (smt-plan-context-step cx))
+        (smt (smt-plan-context-smt cx)))
+    (labels ((stmt (exp)
+               (smt-eval smt exp))
+             (stmt-list (list)
+               (map nil #'stmt list)))
+      (format t "~&trying step ~D" i)
+      ;; step declarations
+      (stmt-list (smt-plan-step-stmts (smt-plan-context-ground-variables cx)
+                                      (smt-plan-context-ground-actions cx)
+                                      i))
+      ;; namespace
+      (stmt '(|push| 1))
+      ;; goal assertion
+      (stmt (smt-assert (rewrite-exp (smt-plan-context-goal cx)
+                                     (1+ i))))
+      ;; check-sat
+      (smt-plan-check cx :max-steps max-steps))))
+
+(defun smt-plan-result (cx)
+  "Retrive action variable assignments from SMT solver."
+  (let* ((i (smt-plan-context-step cx))
+         (step-ops (smt-plan-step-ops (smt-plan-context-ground-actions cx)
+                                      (1+ i))))
+    (smt-eval (smt-plan-context-smt cx)
+              `(|get-value| ,step-ops))))
+
+
+(defun smt-plan-context ( &key
+                    operators facts
+                    state-vars
+                    concrete-actions
+                    initial-true
+                    initial-false
+                    initial-state
+                    goal)
+  "Fork an SMT solver and initialize with base plan definitions."
+  (let* ((operators (when operators
+                      (load-operators operators)))
+         (facts (when facts (load-facts facts)))
+         (type-map (compute-type-map (pddl-operators-types operators)
+                                     (pddl-facts-objects facts)))
+         (state-vars (or state-vars
+                         (create-state-variables (pddl-operators-predicates operators)
+                                                 type-map)))
+         (concrete-actions (or concrete-actions
+                               (smt-concrete-actions (pddl-operators-actions operators)
+                                                      type-map)))
+         (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
+         (initial-false (unless initial-state (or initial-false
+                                                  (set-difference  state-vars initial-true :test #'equal))))
+         (initial-state (or initial-state
+                            `(and ,@initial-true
+                                  ,@(loop for v in initial-false collect `(not ,v)))))
+
+         (goal (or goal (pddl-facts-goal facts)))
+         (n-op (length concrete-actions))
+         (n-var (length state-vars)))
+    (format t "~&ground actions: ~D" n-op)
+    (format t "~&ground states: ~D" n-var)
+    (let ((smt (smt-start)))
+      (labels ((stmt (exp)
+                 ;(print (list 'eval exp))
+                 (smt-eval smt exp))
+               (stmt-list (list)
+                 (map nil #'stmt list)))
+        ;; Per-step function
+        (stmt-list (smt-plan-step-fun state-vars concrete-actions))
+        ;; initial state
+        (stmt-list (smt-plan-step-vars state-vars 0))
+        (stmt (smt-assert (rewrite-exp initial-state 0))))
+
+      (make-smt-plan-context :smt smt
+                             :ground-variables state-vars
+                             :ground-actions concrete-actions
+                             :goal goal
+                             :step 0))))
+
+(defun smt-plan-other (cx &key (max-steps 10))
+  "Try to find an alternate plan, recursively."
+  (let ((values (smt-plan-result cx)))
+    ;; Invalidate the current plan
+    ;; TODO: maybe we just need the true actions?
+    (let ((exp (smt-not (apply #'smt-and
+                               (loop for (variable truth) in values
+                                  collect (ecase truth
+                                            ((true |true|)
+                                             variable)
+                                            ((false |false|)
+                                             (smt-not variable))))))))
+      (smt-eval (smt-plan-context-smt cx)
+                (smt-assert exp)))
+    ;; Get another plan
+    (smt-plan-check cx :max-steps max-steps)))
+
 
 (defun smt-plan ( &key
                     operators facts
@@ -486,6 +615,8 @@
         (stmt (smt-assert (rewrite-exp initial-state 0)))
         (prog1 (plan-step 0)
           (smt-stop smt))))))
+
+
 
 (defun plan-automaton (&key operators facts)
   ;; 1. Generate Plan

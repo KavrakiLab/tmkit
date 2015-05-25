@@ -3,11 +3,21 @@
 (defstruct smt
   process)
 
+(defparameter *smt-readtable*
+  (let ((r (copy-readtable nil)))
+    (setf (readtable-case r) :preserve)
+    r))
+
+
 (defun smt-input (smt)
   (sb-ext:process-input (smt-process smt)))
 
 (defun smt-output (smt)
   (sb-ext:process-output (smt-process smt)))
+
+(defun smt-read (smt &optional (eof-error-p t) eof-value recursive-p)
+  (let ((*readtable* *smt-readtable*))
+    (read (smt-output smt) eof-error-p eof-value recursive-p)))
 
 (define-condition smt-runtime-error (error)
   ((message :initarg :message
@@ -20,6 +30,10 @@
     (with-slots (message expression) object
       (format stream "\"~A: '~A'\"" message expression))))
 
+(defun smt-symbol-eq (symbol upcase downcase)
+  (or (eq symbol upcase)
+      (eq symbol downcase)))
+
 (defun smt-eval (smt exp)
   (when (eq (car exp) 'comment)
     (return-from smt-eval t))
@@ -30,16 +44,17 @@
     (terpri (sb-ext:process-input process))
     (finish-output input)
     ;; Read
-    (let ((result (read (sb-ext:process-output process))))
+    (let ((result (smt-read smt)))
+      ;(print result)
       (cond
-        ((eq result 'unsupported)
+        ((smt-symbol-eq result 'unsupported '|unsupported|)
          (error 'smt-runtime-error
                 :message "Unsupported expression"
                 :expression exp))
-        ((eq result 'success)
+        ((smt-symbol-eq result 'success '|success|)
          t)
         ((and (consp result)
-              (eq 'error (car result)))
+              (or (smt-symbol-eq (car result) 'error  '|error|)))
          (error 'smt-runtime-error
                 :message (second result)
                 :expression exp))
