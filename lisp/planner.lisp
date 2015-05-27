@@ -424,6 +424,7 @@
   ground-actions
   goal
   step
+  values
   )
 
 (defun smt-plan-check (cx &key max-steps)
@@ -434,9 +435,11 @@
     (print is-sat)
     (case is-sat
       ((sat |sat|)
-       (let ((values (smt-plan-result cx)))
-         (smt-plan-parse values)))
+       (setf (smt-plan-context-values cx)
+             (smt-plan-result cx))
+       (smt-plan-parse (smt-plan-context-values cx)))
       ((unsat |unsat|)
+       (setf (smt-plan-context-values cx) nil)
        ;; pop
        (smt-eval smt '(|pop| 1))
        (when (< i max-steps)
@@ -466,6 +469,29 @@
                                      (1+ i))))
       ;; check-sat
       (smt-plan-check cx :max-steps max-steps))))
+
+(defun smt-plan-other (cx &key (max-steps 10))
+  "Try to find an alternate plan, recursively."
+  (let ((values (smt-plan-result cx)))
+    ;; Invalidate the current plan
+    ;; TODO: maybe we just need the true actions?
+    (let ((exp (smt-not (apply #'smt-and
+                               (loop for (variable truth) in values
+                                  collect (ecase truth
+                                            ((true |true|)
+                                             variable)
+                                            ((false |false|)
+                                             (smt-not variable))))))))
+      (smt-eval (smt-plan-context-smt cx)
+                (smt-assert exp)))
+    ;; Get another plan
+    (smt-plan-check cx :max-steps max-steps)))
+
+(defun smt-plan-next (cx &key (max-steps 10))
+  "Find the next valid plan."
+  (if (smt-plan-context-values cx)
+      (smt-plan-other cx :max-steps max-steps)
+      (smt-plan-step cx :max-steps max-steps)))
 
 (defun smt-plan-result (cx)
   "Retrive action variable assignments from SMT solver."
@@ -526,22 +552,7 @@
                              :goal goal
                              :step 0))))
 
-(defun smt-plan-other (cx &key (max-steps 10))
-  "Try to find an alternate plan, recursively."
-  (let ((values (smt-plan-result cx)))
-    ;; Invalidate the current plan
-    ;; TODO: maybe we just need the true actions?
-    (let ((exp (smt-not (apply #'smt-and
-                               (loop for (variable truth) in values
-                                  collect (ecase truth
-                                            ((true |true|)
-                                             variable)
-                                            ((false |false|)
-                                             (smt-not variable))))))))
-      (smt-eval (smt-plan-context-smt cx)
-                (smt-assert exp)))
-    ;; Get another plan
-    (smt-plan-check cx :max-steps max-steps)))
+
 
 
 (defun smt-plan ( &key
