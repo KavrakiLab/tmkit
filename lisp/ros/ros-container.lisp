@@ -128,9 +128,8 @@
 (defun container-group-configuration-map (container group q-group)
   (let ((map (make-tree-map #'string-compare)))
     (dotimes (i (length q-group))
-      (tree-map-insertf map
-                        (container-group-joint-name container group i)
-                        (vecref q-group i)))
+      (setf (tree-map-find map (container-group-joint-name container group i))
+            (vecref q-group i)))
     map))
 
 (cffi:defcfun tms-container-plan :int

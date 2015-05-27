@@ -12,7 +12,7 @@
                (robray::do-scene-graph-frames (frame scene
                                                      (tree-set-list frames))
                  (when (robray::scene-frame-geometry-isa frame type)
-                   (tree-set-insertf frames frame)))))
+                   (setf (tree-set-find frames) frame)))))
            (location-predicate (object parent x y)
              (list 'at object (encode-location parent x y)))
            (occupied-predicate (parent x y)

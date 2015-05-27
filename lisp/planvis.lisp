@@ -5,9 +5,8 @@
     (loop
        for q across point
        for i from 0
-       do (tree-map-insertf map
-                            (container-group-joint-name container group i)
-                            q))
+       for name = (container-group-joint-name container group i)
+       do (setf (tree-map-find map name) q))
     map))
 
 
