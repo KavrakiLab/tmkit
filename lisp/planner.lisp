@@ -442,7 +442,7 @@
        (setf (smt-plan-context-values cx) nil)
        ;; pop
        (smt-eval smt '(|pop| 1))
-       (when (< i max-steps)
+       (when (< (1+ i) max-steps)
          (incf (smt-plan-context-step cx))
          (smt-plan-step cx :max-steps max-steps)))
       (otherwise
@@ -610,7 +610,7 @@
                      (unsat
                       ;; pop
                       (stmt '(|pop| 1))
-                      (when (< i max-steps)
+                      (when (< (1+ i) max-steps)
                         (plan-step (1+ i))))
                      (otherwise
                       (error "Unrecognized (check-sat) result: ~A" is-sat)))))

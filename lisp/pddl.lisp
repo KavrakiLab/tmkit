@@ -51,17 +51,19 @@
 ;; Given: argument type, objects and type
 ;; Find:  set of objects that match the argument
 
-(defun load-operators (filename)
-  "Load operators from `FILENAME'."
-  (typecase filename
-    (pddl-operators filename)
-    ((or string pathname) (parse-operators (load-sexp filename)))))
+(defun load-operators (operators)
+  "Load operators from `operators'."
+  (etypecase operators
+    (pddl-operators operators)
+    (cons (parse-operators operators))
+    ((or string pathname) (parse-operators (load-sexp operators)))))
 
-(defun load-facts (filename)
-  "Load facts from `FILENAME'."
-  (etypecase filename
-    (pddl-facts filename)
-    ((or string pathname) (parse-facts (load-sexp filename)))))
+(defun load-facts (facts)
+  "Load facts from `facts'."
+  (etypecase facts
+    (pddl-facts facts)
+    (cons (parse-facts facts))
+    ((or string pathname) (parse-facts (load-sexp facts)))))
 
 (defun parse-typed-list (type-list)
   (labels ((collect-names (type-list)

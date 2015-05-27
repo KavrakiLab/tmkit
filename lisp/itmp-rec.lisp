@@ -63,3 +63,95 @@
                    ,@locations - location)
          (:init ,@initial-true)
          (:goal (and ,@goal-locations))))))
+
+
+(defun itmp-transfer-z (scene-graph object)
+  ;; todo: other shapes
+  (let ((g (robray::scene-frame-geometry-collision (robray::scene-graph-lookup scene-graph object))))
+    (assert (= 1 (length g)))
+    (let ((shape (robray::scene-geometry-shape (elt g 0))))
+      (etypecase shape
+        (robray::scene-box (* .5d0 (vec-z (robray::scene-box-dimension shape))))))))
+
+(defun itmp-transfer-action (scene-graph sexp
+                             &key
+                               q-all-start
+                               resolution
+                               (z-epsilon 1d-4)
+                               (plan-context *plan-context*)
+                               (link)
+                               (frame)
+                               (group))
+  (declare (type number resolution)
+           (type robray::scene-graph scene-graph))
+  ;(print sexp)
+  (destructuring-bind (transfer object
+                                 src-name src-i src-j
+                                 dst-name dst-i dst-j)
+      sexp
+    (assert (equalp "TRANSFER" transfer))
+    (let* ((dst-x (* dst-i resolution))
+           (dst-y (* dst-j resolution))
+           (tf-0 (robray::scene-graph-tf-relative scene-graph src-name object))
+           ;;(src-x (* src-i resolution))
+           ;;(src-y (* src-j resolution))
+           (act-x (vec-x (tf-translation tf-0)))
+           (act-y (vec-y (tf-translation tf-0)))
+           (tf-dst (tf* nil ; TODO: is identity correct?
+                        (vec3* dst-x dst-y (+ (itmp-transfer-z scene-graph object)
+                                              (itmp-transfer-z scene-graph dst-name)
+                                              z-epsilon)))))
+      (assert (and (= src-i (round act-x resolution))
+                   (= src-j (round act-y resolution))))
+      ;(print object)
+      ;(print tf-0)
+      ;(print tf-dst)
+      (context-apply-scene plan-context scene-graph)
+      (act-transfer-tf plan-context group q-all-start frame link object *tf-grasp-rel*
+                       dst-name tf-dst))))
+
+
+(defun itmp-rec (init-graph goal-graph operators
+                 &key
+                   (max-steps 3)
+                   (resolution 0.2d0)
+                   (plan-context *plan-context*)
+                   (frame "right_endpoint") ;; FIXME
+                   (link *link*)
+                   (group *group*))
+  (let* ((task-facts (scene-facts init-graph goal-graph :resolution resolution))
+         (smt-cx (smt-plan-context :operators operators
+                                   :facts task-facts))
+         (plan-steps))
+
+    (labels ((next ()
+               (setq plan-steps nil)
+               (let ((plan (smt-plan-next smt-cx :max-steps max-steps)))
+                 (print plan)
+                 (reify plan init-graph *q-all-start*)))
+             (reify (task-plan graph start)
+               (declare (type list task-plan)
+                        (type robray::scene-graph graph))
+               (when task-plan
+                 (multiple-value-bind (plan graph)
+                     (itmp-transfer-action graph (car task-plan)
+                                           :resolution resolution
+                                           :plan-context plan-context
+                                           :link link
+                                           :frame frame
+                                           :group group
+                                           :q-all-start start)
+                   (declare (type list plan)
+                            (type robray::scene-graph graph))
+                   (if plan
+                       (progn
+                         (push plan plan-steps)
+                         (let* ((group-start (container-plan-endpoint (third plan)))
+                                (all-start (container-merge-group *moveit-container* *group*
+                                                                  group-start start)))
+                           (reify (cdr task-plan) graph all-start)))
+                       (progn
+                         (break)
+                         (next)))))))
+      (next))
+    (apply #'append (reverse plan-steps))))
