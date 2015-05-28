@@ -37,7 +37,12 @@
             :facts "/home/ntd/git/tmsmt/pddl/placement-graph/scene-0.pddl"
             :steps 3
             :max-steps 3))
+ ;(sb-sprof:with-profiling  (:loop t :report :flat :max-samples 500)
 
-(sb-sprof:with-profiling  (:loop t :report :flat :max-samples 500)
-  (smt-plan :operators "/home/ntd/git/tmsmt/pddl/itmp/itmp-0.pddl"
-            :facts "/home/ntd/git/tmsmt/pddl/itmp/scene-0.pddl"))
+  (with-smt (smt)
+    (let ((cx (smt-plan-context
+               :operators "/home/ntd/git/tmsmt/pddl/itmp/itmp-0.pddl"
+               :facts "/home/ntd/git/tmsmt/pddl/itmp/scene-0.pddl"
+               :smt smt)))
+      (smt-plan-next cx)
+      ))

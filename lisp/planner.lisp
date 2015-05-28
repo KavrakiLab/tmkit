@@ -503,13 +503,14 @@
 
 
 (defun smt-plan-context ( &key
-                    operators facts
-                    state-vars
-                    concrete-actions
-                    initial-true
-                    initial-false
-                    initial-state
-                    goal)
+                            operators facts
+                            state-vars
+                            concrete-actions
+                            initial-true
+                            initial-false
+                            initial-state
+                            goal
+                            smt)
   "Fork an SMT solver and initialize with base plan definitions."
   (let* ((operators (when operators
                       (load-operators operators)))
@@ -534,7 +535,7 @@
          (n-var (length state-vars)))
     (format t "~&ground actions: ~D" n-op)
     (format t "~&ground states: ~D" n-var)
-    (let ((smt (smt-start)))
+    (let ((smt (or smt (smt-start))))
       (labels ((stmt (exp)
                  ;(print (list 'eval exp))
                  (smt-eval smt exp))

@@ -92,3 +92,9 @@
 (defun smt-stop (smt)
   (smt-process-kill (smt-process smt))
   (setf (smt-process smt) nil))
+
+(defmacro with-smt ((variable &optional (smt-solver '*smt-solver*)) &body body)
+  `(let ((,variable (smt-start :smt-solver ,smt-solver)))
+     (unwind-protect
+          (progn ,@body)
+       (smt-stop ,variable))))
