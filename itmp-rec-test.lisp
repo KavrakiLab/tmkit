@@ -54,10 +54,14 @@
 (render-group-itmp *plan-context* *group*
                      *plan*
                      :render-options  (render-options-default :use-collision nil
-                                                              :options (render-options-fast))
+                                                              :options (render-options-full-hd))
                      :scene-graph (robray::scene-graph-merge (plan-context-robot-graph *plan-context*)
                                                              *object-graph*)
                      :frame-name "right_endpoint")
 
-;; (render-group-config *plan-context* *group* (container-plan-endpoint (third *plan*))
-;;                      :options (render-options-medium))
+
+(context-apply-scene *plan-context* *object-graph*)
+(render-group-config *plan-context* *group*
+                     ;(container-plan-endpoint (third *plan*))
+                     *q-all-start*
+                     :options (render-options-medium))

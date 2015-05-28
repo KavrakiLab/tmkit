@@ -25,6 +25,15 @@ class block {
     dimension [.1, .1, .1];
 }
 
+
+class fixedblock {
+    shape box;
+    isa red;
+    alpha 1.0;
+    dimension [.1, .1, .1];
+}
+
+
 /**********/
 /* Tables */
 /**********/
@@ -45,7 +54,7 @@ frame block_a {
     translation [0, 0, 0.0551];
     geometry {
         isa block;
-        isa red;
+        isa green;
     }
 }
 
@@ -55,5 +64,14 @@ frame block_b {
     geometry {
         isa block;
         isa blue;
+    }
+}
+
+frame block_f {
+    parent front_table;
+    translation [-.2, -.2, 0.0551];
+    geometry {
+        isa fixedblock;
+        dimension [.1, .1, .5];
     }
 }

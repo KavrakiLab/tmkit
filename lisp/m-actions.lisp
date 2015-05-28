@@ -40,11 +40,12 @@
                                           destination-name
                                           dst-rel-tf
                                           object-name)))
-            (context-dettach-object context group (container-plan-endpoint plan-place) object-name)
+            (context-dettach-object context group
+                                    (container-plan-endpoint (or plan-place plan-pick))
+                                    object-name)
             (if plan-place
-                (progn
-                  ;; TODO: parent on the destination thing
-                  (values (list plan-pick `(:pick ,object-name)
-                                plan-place `(:place ,object-name))
-                          (plan-context-object-graph context)))
+                ;; TODO: parent on the destination thing
+                (values (list plan-pick `(:pick ,object-name)
+                              plan-place `(:place ,object-name))
+                        (plan-context-object-graph context))
                 (values nil object-graph-0)))))))

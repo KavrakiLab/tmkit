@@ -151,7 +151,6 @@
                                                                   group-start start)))
                            (reify (cdr task-plan) graph all-start)))
                        (progn
-                         (break)
                          (next)))))))
       (next))
     (apply #'append (reverse plan-steps))))
