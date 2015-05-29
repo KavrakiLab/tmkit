@@ -253,6 +253,26 @@
         (op-i (smt-plan-op-step concrete-actions i)))
     (append op-i vars-i vars-j)))
 
+(defun smt-plan-exclude-exp (vars)
+  (labels ((fmt (v)
+             (smt-mangle "let" v))
+           (ite (vars)
+             (if (cdr vars)
+                 (smt-ite (first vars)
+                          (fmt (second vars))
+                          (ite (cdr vars)))
+                 '|true|)))
+    (let ((bindings (loop for x on (cdr vars)
+                       collect (list (fmt (first x))
+                                     (if (cdr x)
+                                         (smt-and (smt-not (first x))
+                                                  (fmt (second x)))
+                                         (smt-not (first x)))))))
+      (smt-let* (reverse bindings)
+                (ite vars)))))
+
+
+
 (defun smt-plan-step-fun (state-vars concrete-actions)
   "Generate the per-step assertion for a planning problem"
   (labels ((bool-args (list)
@@ -265,6 +285,8 @@
                              exp)))
     (let* ((op-i (smt-plan-op-step concrete-actions 'i))
            (op-vars (smt-plan-step-fun-args state-vars concrete-actions 'i 'j)))
+      ;(print op-i)
+      ;(print op-vars)
       (append
        (list (smt-comment "Operator Function")
              (smt-define-fun "op-step"
@@ -282,22 +304,19 @@
                                            `(or (not ,op-var)      ; action not active
                                                 (and ,pre          ; precondition holds
                                                      ,eff)))))))
-       (let ((ops (loop for i from 0 below (length concrete-actions)
-                     collect (format nil "o~D" i ))))
-         (list (smt-comment "Exclusion Function")
-               (bool-fun "exclude-1" ops
-                               `(=> ,(car ops)
-                                    (and ,@(loop for b in (cdr ops)
-                                              collect (list 'not b)))))
-               (bool-fun "exclude-step" ops
-                         `(and ,@(loop for op-a in ops
-                                    collect `("exclude-1" ,op-a ,@(remove op-a ops)))))))
+       ;; exclusion
+       (list (smt-comment "Exclusion Function")
+             (bool-fun "exclude-step" op-i
+                       (smt-plan-exclude-exp op-i)))
+
+       ;; frame
        (list (smt-comment "Frame Axioms")
              (bool-fun "frame-axioms" op-vars
                        (smt-frame-axioms-exp state-vars concrete-actions 'i 'j)))
+       ;; Step
        (list (smt-comment "plan-step")
              (bool-fun "plan-step" op-vars
-                       (smt-and (cons "exclude-step" op-i)
+                       (smt-and (cons "exclude-step" op-i  )
                                 (cons "op-step" op-vars)
                                 (cons "frame-axioms" op-vars))))))))
 
@@ -437,6 +456,7 @@
       ((sat |sat|)
        (setf (smt-plan-context-values cx)
              (smt-plan-result cx))
+       ;(print (smt-plan-context-values cx))
        (smt-plan-parse (smt-plan-context-values cx)))
       ((unsat |unsat|)
        (setf (smt-plan-context-values cx) nil)

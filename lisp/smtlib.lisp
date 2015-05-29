@@ -10,6 +10,8 @@
               (if s
                   (case s
                     (or        '|or|)
+                    (xor       '|xor|)
+                    (let       '|let|)
                     (not       '|not|)
                     (ite       '|ite|)
                     (assert    '|assert|)
@@ -55,6 +57,9 @@
 (defun smt-or (&rest args)
   (cons 'or args))
 
+(defun smt-xor (&rest args)
+  (cons 'xor args))
+
 (defun smt-and (&rest args)
   (cons 'and args))
 
@@ -63,6 +68,12 @@
 
 (defun smt-ite (test then else)
   (list 'ite test then else))
+
+(defun smt-let* (bindings expr)
+  (if bindings
+      `(let (,(car bindings))
+         ,(smt-let* (cdr bindings) expr))
+      expr))
 
 (defun smt-comment (x)
   (list 'comment x))
