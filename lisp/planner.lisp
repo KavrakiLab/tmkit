@@ -30,16 +30,16 @@
              collect
              a))))
 
-(defun create-state-variables (predicates type-map)
+(defun create-state-variables (predicates type-objects)
   "Create all state variables from `PREDICATES' applied to `OBJECTS'"
-  (let ((vars))
+  (let ((variable-type (make-hash-table :test #'equal)))
     (dolist (p predicates)
       ;; apply p to all valid arguments
       (dolist (args (collect-args (pddl-predicate-arguments p)
-                                  type-map))
-        (push (cons (pddl-predicate-name p) args)
-              vars)))
-    vars))
+                                  type-objects))
+        (let ((var (cons (pddl-predicate-name p) args)))
+          (setf (gethash var variable-type) 'bool))))
+    variable-type))
 
 (defstruct ground-action
   name
@@ -107,26 +107,29 @@
             exp)))))
 
 (defstruct ground-domain
-  variables
-  operators
-  axioms
-  start
-  goal)
+  (variables nil :type list)
+  (variable-type nil :type hash-table)
+  (operators nil :type list)
+  (axioms nil :type list)
+  (start nil :type list)
+  (goal nil :type list))
 
 (defun ground-domain (operators facts
                       &key
                         goal)
   (let* ((operators (load-operators operators))
          (facts (load-facts facts))
-         (type-map (compute-type-map (pddl-operators-types operators)
-                                     (pddl-facts-objects facts)))
-         (ground-variables (create-state-variables (pddl-operators-predicates operators)
-                                                   type-map))
+         (type-objects (compute-type-map (pddl-operators-types operators)
+                                         (pddl-facts-objects facts)))
+         (variable-type (create-state-variables (pddl-operators-predicates operators)
+                                                type-objects))
+         (ground-variables (hash-table-keys variable-type))
          (ground-operators (smt-ground-actions (pddl-operators-actions operators)
-                                               type-map))
+                                               type-objects))
          (initial-true (pddl-facts-init facts))
          (initial-false (set-difference  ground-variables initial-true :test #'equal)))
     (make-ground-domain :variables ground-variables
+                        :variable-type variable-type
                         :operators ground-operators
                         :axioms nil
                         :start  `(and ,@initial-true
@@ -243,25 +246,32 @@
                                 (cons "op-step" op-vars)
                                 (cons "frame-axioms" op-vars))))))))
 
-(defun smt-plan-step-vars (state-vars i)
-  (loop for s in state-vars
+(defun smt-plan-step-vars (domain i)
+  (loop
+     with types = (ground-domain-variable-type domain)
+     for s in (ground-domain-variables domain)
      for v = (format-state-variable s i)
-     collect (smt-declare-fun v () 'bool)))
+     collect (multiple-value-bind (type contains)
+                 (gethash s types)
+               (assert contains)
+               (smt-declare-fun v () type))))
 
-(defun smt-plan-step-stmts (state-vars ground-actions i)
-  (append
-   ;; create the per-step state
-   (list (smt-comment "State Variables" ))
-   (smt-plan-step-vars state-vars (1+ i))
+(defun smt-plan-step-stmts (domain i)
+  (let ((state-vars (ground-domain-variables domain))
+        (ground-actions (ground-domain-operators domain)))
+    (append
+     ;; create the per-step state
+     (list (smt-comment "State Variables" ))
+     (smt-plan-step-vars domain (1+ i))
 
-   ;; per-step action variables
-   (list (smt-comment "Action Variables"))
-   (loop for op in ground-actions
-      for v = (format-ground-action op i)
-      collect (smt-declare-fun v () 'bool))
-   (list (smt-comment (format nil "Step ~D" i))
-         (smt-assert `("plan-step"
-                       ,@(smt-plan-step-fun-args state-vars ground-actions i (1+ i)))))))
+     ;; per-step action variables
+     (list (smt-comment "Action Variables"))
+     (loop for op in ground-actions
+        for v = (format-ground-action op i)
+        collect (smt-declare-fun v () 'bool))
+     (list (smt-comment (format nil "Step ~D" i))
+           (smt-assert `("plan-step"
+                         ,@(smt-plan-step-fun-args state-vars ground-actions i (1+ i))))))))
 
 (defun smt-plan-step-ops (ground-actions steps)
   (let ((step-ops))
@@ -324,7 +334,8 @@
 (defun smt-plan-step (cx &key
                            (max-steps 10))
   "Try to find a plan at the next step, recursively."
-  (let ((i (smt-plan-context-step cx))
+  (let ((domain (smt-plan-context-domain cx))
+        (i (smt-plan-context-step cx))
         (smt (smt-plan-context-smt cx)))
     (labels ((stmt (exp)
                (smt-eval smt exp))
@@ -332,9 +343,7 @@
                (map nil #'stmt list)))
       (format t "~&trying step ~D" i)
       ;; step declarations
-      (stmt-list (smt-plan-step-stmts (smt-plan-context-ground-variables cx)
-                                      (smt-plan-context-ground-actions cx)
-                                      i))
+      (stmt-list (smt-plan-step-stmts domain i))
       ;; namespace
       (stmt '(|push| 1))
       ;; goal assertion
@@ -399,7 +408,7 @@
         ;; Per-step function
         (stmt-list (smt-plan-step-fun domain))
         ;; initial state
-        (stmt-list (smt-plan-step-vars state-vars 0))
+        (stmt-list (smt-plan-step-vars domain 0))
         (stmt (smt-assert (rewrite-exp initial-state 0))))
 
       (make-smt-plan-context :smt smt
