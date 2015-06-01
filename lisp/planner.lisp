@@ -106,6 +106,33 @@
            ((t &rest rest) (declare (ignore rest))
             exp)))))
 
+(defstruct ground-domain
+  variables
+  operators
+  axioms
+  start
+  goal)
+
+(defun ground-domain (operators facts
+                      &key
+                        goal)
+  (let* ((operators (load-operators operators))
+         (facts (load-facts facts))
+         (type-map (compute-type-map (pddl-operators-types operators)
+                                     (pddl-facts-objects facts)))
+         (ground-variables (create-state-variables (pddl-operators-predicates operators)
+                                                   type-map))
+         (ground-operators (smt-ground-actions (pddl-operators-actions operators)
+                                               type-map))
+         (initial-true (pddl-facts-init facts))
+         (initial-false (set-difference  ground-variables initial-true :test #'equal)))
+    (make-ground-domain :variables ground-variables
+                        :operators ground-operators
+                        :axioms nil
+                        :start  `(and ,@initial-true
+                                      ,@(loop for v in initial-false collect `(not ,v)))
+                        :goal (or goal (pddl-facts-goal facts)))))
+
 (defun smt-frame-axioms-exp (state-vars ground-actions i j)
   ;(print ground-operators)
   (let ((hash (make-hash-table :test #'equal))  ;; hash: variable => (list modifiying-operators)
@@ -167,7 +194,7 @@
 
 
 
-(defun smt-plan-step-fun (state-vars ground-actions)
+(defun smt-plan-step-fun (domain)
   "Generate the per-step assertion for a planning problem"
   (labels ((bool-args (list)
              (loop for x in list
@@ -177,7 +204,9 @@
                              (bool-args args)
                              'bool
                              exp)))
-    (let* ((op-i (smt-plan-op-step ground-actions 'i))
+    (let* ((state-vars (ground-domain-variables domain))
+           (ground-actions (ground-domain-operators domain))
+           (op-i (smt-plan-op-step ground-actions 'i))
            (op-vars (smt-plan-step-fun-args state-vars ground-actions 'i 'j)))
       (print op-i)
       ;(print op-vars)
@@ -242,30 +271,7 @@
           (push v step-ops))))
     step-ops))
 
-(defun smt-plan-encode (state-vars ground-actions
-                        initial-state
-                        goal
-                        steps)
-  (let ((smt-statements nil))
-    (labels ((stmt (x) (push x smt-statements)))
-      ;; Per-step function
-      (map nil #'stmt (smt-plan-step-fun state-vars ground-actions))
 
-      ;; initial state
-      (stmt (smt-comment "Initial State"))
-      (map nil #'stmt (smt-plan-step-vars state-vars 0))
-      (stmt (smt-assert (rewrite-exp initial-state 0)))
-
-      ;; Steps
-      (dotimes (i steps)
-        (map nil #'stmt (smt-plan-step-stmts state-vars ground-actions i)))
-
-      ;; goal state
-      (stmt (smt-comment "Goal State"))
-      (stmt (smt-assert (rewrite-exp goal steps))))
-
-    (values (reverse smt-statements)
-            (smt-plan-step-ops ground-actions steps))))
 
 (defun smt-plan-parse (assignments)
   (let ((plan))
@@ -278,67 +284,20 @@
           ((false |false|)))))
     (map 'list #'cdr (sort plan (lambda (a b) (< (car a) (car b)))))))
 
-(defun smt-plan-batch ( &key
-                          operators facts
-                          state-vars
-                          ground-actions
-                          initial-true
-                          initial-false
-                          initial-state
-                          goal
-                          (steps 1)
-                          (max-steps 10))
-  (let* ((operators (when operators
-                      (load-operators operators)))
-         (facts (when facts (load-facts facts)))
-         (type-map (compute-type-map (pddl-operators-types operators)
-                                     (pddl-facts-objects facts)))
-         (state-vars (or state-vars
-                         (create-state-variables (pddl-operators-predicates operators)
-                                                 type-map)))
-         (ground-actions (or ground-actions
-                               (smt-ground-actions (pddl-operators-actions operators)
-                                                      type-map)))
-         (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
-         (initial-false (unless initial-state (or initial-false
-                                                  (set-difference  state-vars initial-true :test #'equal))))
-         (initial-state (or initial-state
-                            `(and ,@initial-true
-                                  ,@(loop for v in initial-false collect `(not ,v)))))
 
-         (goal (or goal (pddl-facts-goal facts)))
-         (n-op (length ground-actions))
-         (n-var (length state-vars)))
-    (format t "~&ground actions: ~D" n-op)
-    (format t "~&ground states: ~D" n-var)
-    (labels ((rec (steps)
-               (format t "~&Trying for ~D steps (~D vars)"
-                       steps
-                       (+ (* steps n-op)
-                          (* (1+ steps) n-var)))
-               (multiple-value-bind (assignments is-sat)
-                   (multiple-value-bind (stmts vars)
-                       (smt-plan-encode state-vars ground-actions
-                                        initial-state
-                                        goal
-                                        steps)
-                     (smt-run stmts vars))
-                     (cond
-                       (is-sat
-                        (smt-plan-parse assignments))
-                       ((< steps max-steps)
-                        (rec (1+ steps)))
-                       (t nil)))))
-      (rec steps))))
 
 (defstruct smt-plan-context
   smt
-  ground-variables
-  ground-actions
-  goal
+  domain
   step
-  values
-  )
+  values)
+
+(defun smt-plan-context-ground-variables (instance)
+  (ground-domain-variables (smt-plan-context-domain instance)))
+(defun smt-plan-context-ground-actions (instance)
+  (ground-domain-operators (smt-plan-context-domain instance)))
+(defun smt-plan-context-goal (instance)
+  (ground-domain-goal (smt-plan-context-domain instance)))
 
 (defun smt-plan-check (cx &key max-steps)
   "Check if a plan exists for the current step, recurse if not."
@@ -416,35 +375,17 @@
               `(|get-value| ,step-ops))))
 
 
-(defun smt-plan-context ( &key
-                            operators facts
-                            state-vars
-                            ground-actions
-                            initial-true
-                            initial-false
-                            initial-state
-                            goal
-                            smt)
+(defun smt-plan-context (&key
+                           operators
+                           facts
+                           domain
+                           goal
+                           smt)
   "Fork an SMT solver and initialize with base plan definitions."
-  (let* ((operators (when operators
-                      (load-operators operators)))
-         (facts (when facts (load-facts facts)))
-         (type-map (compute-type-map (pddl-operators-types operators)
-                                     (pddl-facts-objects facts)))
-         (state-vars (or state-vars
-                         (create-state-variables (pddl-operators-predicates operators)
-                                                 type-map)))
-         (ground-actions (or ground-actions
-                               (smt-ground-actions (pddl-operators-actions operators)
-                                                      type-map)))
-         (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
-         (initial-false (unless initial-state (or initial-false
-                                                  (set-difference  state-vars initial-true :test #'equal))))
-         (initial-state (or initial-state
-                            `(and ,@initial-true
-                                  ,@(loop for v in initial-false collect `(not ,v)))))
-
-         (goal (or goal (pddl-facts-goal facts)))
+  (let* ((domain (or domain (ground-domain operators facts :goal goal)))
+         (state-vars (ground-domain-variables domain))
+         (ground-actions (ground-domain-operators domain))
+         (initial-state (ground-domain-start domain))
          (n-op (length ground-actions))
          (n-var (length state-vars)))
     (format t "~&ground actions: ~D" n-op)
@@ -456,93 +397,164 @@
                (stmt-list (list)
                  (map nil #'stmt list)))
         ;; Per-step function
-        (stmt-list (smt-plan-step-fun state-vars ground-actions))
+        (stmt-list (smt-plan-step-fun domain))
         ;; initial state
         (stmt-list (smt-plan-step-vars state-vars 0))
         (stmt (smt-assert (rewrite-exp initial-state 0))))
 
       (make-smt-plan-context :smt smt
-                             :ground-variables state-vars
-                             :ground-actions ground-actions
-                             :goal goal
+                             :domain domain
                              :step 0))))
 
+;; (defun smt-plan-single ( &key
+;;                     operators facts
+;;                     state-vars
+;;                     ground-actions
+;;                     initial-true
+;;                     initial-false
+;;                     initial-state
+;;                     goal
+;;                     (max-steps 10))
+;;   (let* ((operators (when operators
+;;                       (load-operators operators)))
+;;          (facts (when facts (load-facts facts)))
+;;          (type-map (compute-type-map (pddl-operators-types operators)
+;;                                      (pddl-facts-objects facts)))
+;;          (state-vars (or state-vars
+;;                          (create-state-variables (pddl-operators-predicates operators)
+;;                                                  type-map)))
+;;          (ground-actions (or ground-actions
+;;                                (smt-ground-actions (pddl-operators-actions operators)
+;;                                                       type-map)))
+;;          (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
+;;          (initial-false (unless initial-state (or initial-false
+;;                                                   (set-difference  state-vars initial-true :test #'equal))))
+;;          (initial-state (or initial-state
+;;                             `(and ,@initial-true
+;;                                   ,@(loop for v in initial-false collect `(not ,v)))))
 
+;;          (goal (or goal (pddl-facts-goal facts)))
+;;          (n-op (length ground-actions))
+;;          (n-var (length state-vars)))
+;;     (format t "~&ground actions: ~D" n-op)
+;;     (format t "~&ground states: ~D" n-var)
+;;     (let ((smt (smt-start)))
+;;       (labels ((stmt (exp)
+;;                  ;(print (list 'eval exp))
+;;                  (smt-eval smt exp))
+;;                (stmt-list (list)
+;;                  (map nil #'stmt list))
+;;                (plan-step (i)
+;;                  (format t "~&trying step ~D" i)
+;;                  ;; step declarations
+;;                  (stmt-list (smt-plan-step-stmts state-vars ground-actions i))
+;;                  ;; namespace
+;;                  (stmt '(|push| 1))
+;;                  ;; goal assertion
+;;                  (stmt (smt-assert (rewrite-exp goal (1+ i))))
+;;                  ;; check-sat
+;;                  (let ((is-sat (smt-eval smt '(|check-sat|))))
+;;                    (print is-sat)
+;;                    (case is-sat
+;;                      (sat
+;;                       (result i))
+;;                      (unsat
+;;                       ;; pop
+;;                       (stmt '(|pop| 1))
+;;                       (when (< (1+ i) max-steps)
+;;                         (plan-step (1+ i))))
+;;                      (otherwise
+;;                       (error "Unrecognized (check-sat) result: ~A" is-sat)))))
+;;                (result (i)
+;;                  (let* ((step-ops (smt-plan-step-ops ground-actions (1+ i)))
+;;                         (values (stmt `(|get-value| ,step-ops)))
+;;                         (plan (smt-plan-parse values)))
+;;                    plan)))
+;;         ;; Per-step function
+;;         (stmt-list (smt-plan-step-fun state-vars ground-actions))
+;;         ;; initial state
+;;         (stmt-list (smt-plan-step-vars state-vars 0))
+;;         (stmt (smt-assert (rewrite-exp initial-state 0)))
+;;         (prog1 (plan-step 0)
+;;           (smt-stop smt))))))
 
+;; (defun smt-plan-encode (state-vars ground-actions
+;;                         initial-state
+;;                         goal
+;;                         steps)
+;;   (let ((smt-statements nil))
+;;     (labels ((stmt (x) (push x smt-statements)))
+;;       ;; Per-step function
+;;       (map nil #'stmt (smt-plan-step-fun state-vars ground-actions))
 
-(defun smt-plan ( &key
-                    operators facts
-                    state-vars
-                    ground-actions
-                    initial-true
-                    initial-false
-                    initial-state
-                    goal
-                    (max-steps 10))
-  (let* ((operators (when operators
-                      (load-operators operators)))
-         (facts (when facts (load-facts facts)))
-         (type-map (compute-type-map (pddl-operators-types operators)
-                                     (pddl-facts-objects facts)))
-         (state-vars (or state-vars
-                         (create-state-variables (pddl-operators-predicates operators)
-                                                 type-map)))
-         (ground-actions (or ground-actions
-                               (smt-ground-actions (pddl-operators-actions operators)
-                                                      type-map)))
-         (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
-         (initial-false (unless initial-state (or initial-false
-                                                  (set-difference  state-vars initial-true :test #'equal))))
-         (initial-state (or initial-state
-                            `(and ,@initial-true
-                                  ,@(loop for v in initial-false collect `(not ,v)))))
+;;       ;; initial state
+;;       (stmt (smt-comment "Initial State"))
+;;       (map nil #'stmt (smt-plan-step-vars state-vars 0))
+;;       (stmt (smt-assert (rewrite-exp initial-state 0)))
 
-         (goal (or goal (pddl-facts-goal facts)))
-         (n-op (length ground-actions))
-         (n-var (length state-vars)))
-    (format t "~&ground actions: ~D" n-op)
-    (format t "~&ground states: ~D" n-var)
-    (let ((smt (smt-start)))
-      (labels ((stmt (exp)
-                 ;(print (list 'eval exp))
-                 (smt-eval smt exp))
-               (stmt-list (list)
-                 (map nil #'stmt list))
-               (plan-step (i)
-                 (format t "~&trying step ~D" i)
-                 ;; step declarations
-                 (stmt-list (smt-plan-step-stmts state-vars ground-actions i))
-                 ;; namespace
-                 (stmt '(|push| 1))
-                 ;; goal assertion
-                 (stmt (smt-assert (rewrite-exp goal (1+ i))))
-                 ;; check-sat
-                 (let ((is-sat (smt-eval smt '(|check-sat|))))
-                   (print is-sat)
-                   (case is-sat
-                     (sat
-                      (result i))
-                     (unsat
-                      ;; pop
-                      (stmt '(|pop| 1))
-                      (when (< (1+ i) max-steps)
-                        (plan-step (1+ i))))
-                     (otherwise
-                      (error "Unrecognized (check-sat) result: ~A" is-sat)))))
-               (result (i)
-                 (let* ((step-ops (smt-plan-step-ops ground-actions (1+ i)))
-                        (values (stmt `(|get-value| ,step-ops)))
-                        (plan (smt-plan-parse values)))
-                   plan)))
-        ;; Per-step function
-        (stmt-list (smt-plan-step-fun state-vars ground-actions))
-        ;; initial state
-        (stmt-list (smt-plan-step-vars state-vars 0))
-        (stmt (smt-assert (rewrite-exp initial-state 0)))
-        (prog1 (plan-step 0)
-          (smt-stop smt))))))
+;;       ;; Steps
+;;       (dotimes (i steps)
+;;         (map nil #'stmt (smt-plan-step-stmts state-vars ground-actions i)))
 
+;;       ;; goal state
+;;       (stmt (smt-comment "Goal State"))
+;;       (stmt (smt-assert (rewrite-exp goal steps))))
 
+;;     (values (reverse smt-statements)
+;;             (smt-plan-step-ops ground-actions steps))))
+
+;; (defun smt-plan-batch ( &key
+;;                           operators facts
+;;                           state-vars
+;;                           ground-actions
+;;                           initial-true
+;;                           initial-false
+;;                           initial-state
+;;                           goal
+;;                           (steps 1)
+;;                           (max-steps 10))
+;;   (let* ((operators (when operators
+;;                       (load-operators operators)))
+;;          (facts (when facts (load-facts facts)))
+;;          (type-map (compute-type-map (pddl-operators-types operators)
+;;                                      (pddl-facts-objects facts)))
+;;          (state-vars (or state-vars
+;;                          (create-state-variables (pddl-operators-predicates operators)
+;;                                                  type-map)))
+;;          (ground-actions (or ground-actions
+;;                                (smt-ground-actions (pddl-operators-actions operators)
+;;                                                       type-map)))
+;;          (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
+;;          (initial-false (unless initial-state (or initial-false
+;;                                                   (set-difference  state-vars initial-true :test #'equal))))
+;;          (initial-state (or initial-state
+;;                             `(and ,@initial-true
+;;                                   ,@(loop for v in initial-false collect `(not ,v)))))
+
+;;          (goal (or goal (pddl-facts-goal facts)))
+;;          (n-op (length ground-actions))
+;;          (n-var (length state-vars)))
+;;     (format t "~&ground actions: ~D" n-op)
+;;     (format t "~&ground states: ~D" n-var)
+;;     (labels ((rec (steps)
+;;                (format t "~&Trying for ~D steps (~D vars)"
+;;                        steps
+;;                        (+ (* steps n-op)
+;;                           (* (1+ steps) n-var)))
+;;                (multiple-value-bind (assignments is-sat)
+;;                    (multiple-value-bind (stmts vars)
+;;                        (smt-plan-encode state-vars ground-actions
+;;                                         initial-state
+;;                                         goal
+;;                                         steps)
+;;                      (smt-run stmts vars))
+;;                      (cond
+;;                        (is-sat
+;;                         (smt-plan-parse assignments))
+;;                        ((< steps max-steps)
+;;                         (rec (1+ steps)))
+;;                        (t nil)))))
+;;       (rec steps))))
 
 
 
