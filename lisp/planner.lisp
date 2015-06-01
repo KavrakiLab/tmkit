@@ -41,16 +41,16 @@
               vars)))
     vars))
 
-(defstruct concrete-action
+(defstruct ground-action
   name
   actual-arguments
   precondition
   effect)
 
 
-(defun format-concrete-action (op step)
-  (format-op (concrete-action-name op)
-             (concrete-action-actual-arguments op)
+(defun format-ground-action (op step)
+  (format-op (ground-action-name op)
+             (ground-action-actual-arguments op)
              step))
 
 (defun exp-args-alist (dummy-args actual-args)
@@ -61,14 +61,14 @@
      for a in actual-args
      collect (cons (pddl-typed-name d) a)))
 
-(defun smt-concrete-actions (actions type-map)
+(defun smt-ground-actions (actions type-map)
   (let ((result))
     (dolist (action actions)
       (dolist (args (collect-args (pddl-action-parameters action)
                                   type-map))
         (let ((arg-alist (exp-args-alist (pddl-action-parameters action)
                                          args)))
-          (push (make-concrete-action
+          (push (make-ground-action
                  :name (pddl-action-name action)
                  :actual-arguments args
                  :precondition (sublis arg-alist (pddl-action-precondition action))
@@ -83,9 +83,9 @@
   ;; exclusion axioms
   ;; frame axioms
 
-(defun concrete-action-modifies-varable-p (action variable)
+(defun ground-action-modifies-varable-p (action variable)
   (let ((not-variable (list 'not variable)))
-    (destructuring-bind (-and &rest things) (concrete-action-effect action)
+    (destructuring-bind (-and &rest things) (ground-action-effect action)
       (check-symbol -and 'and)
       (labels ((rec (rest)
                  (when rest
@@ -96,8 +96,8 @@
                          (rec (cdr rest)))))))
         (rec things)))))
 
-(defun concrete-action-modified-variables (action)
-  (destructuring-bind (-and &rest things) (concrete-action-effect action)
+(defun ground-action-modified-variables (action)
+  (destructuring-bind (-and &rest things) (ground-action-effect action)
     (check-symbol -and 'and)
     (loop for exp in things
        collect
@@ -106,14 +106,14 @@
            ((t &rest rest) (declare (ignore rest))
             exp)))))
 
-(defun smt-frame-axioms-exp (state-vars concrete-actions i j)
-  ;(print concrete-operators)
+(defun smt-frame-axioms-exp (state-vars ground-actions i j)
+  ;(print ground-operators)
   (let ((hash (make-hash-table :test #'equal))  ;; hash: variable => (list modifiying-operators)
         (empty-set (make-tree-set #'gsymbol-compare)))
     ;; note modified variables
-    (dolist (op concrete-actions)
-      (let ((fmt-op (format-concrete-action op i)))
-        (dolist (v (concrete-action-modified-variables op))
+    (dolist (op ground-actions)
+      (let ((fmt-op (format-ground-action op i)))
+        (dolist (v (ground-action-modified-variables op))
           (setf (gethash v hash)
                 (tree-set-insert (gethash v hash empty-set)
                                  fmt-op)))))
@@ -129,22 +129,22 @@
                     (smt-or eq (apply #'smt-or actions))
                     eq)))))
 
-(defun smt-frame-axioms (state-vars concrete-actions step)
-  (smt-assert (smt-frame-axioms-exp state-vars concrete-actions step (1+ step))))
+(defun smt-frame-axioms (state-vars ground-actions step)
+  (smt-assert (smt-frame-axioms-exp state-vars ground-actions step (1+ step))))
 
 
 (defun smt-plan-var-step (state-vars i)
   (loop for s in state-vars
      collect (rewrite-exp s i)))
 
-(defun smt-plan-op-step (concrete-actions i)
-  (loop for op in concrete-actions
-     collect (format-concrete-action op i)))
+(defun smt-plan-op-step (ground-actions i)
+  (loop for op in ground-actions
+     collect (format-ground-action op i)))
 
-(defun smt-plan-step-fun-args (state-vars concrete-actions i j)
+(defun smt-plan-step-fun-args (state-vars ground-actions i j)
   (let ((vars-i (smt-plan-var-step state-vars i))
         (vars-j (smt-plan-var-step state-vars j))
-        (op-i (smt-plan-op-step concrete-actions i)))
+        (op-i (smt-plan-op-step ground-actions i)))
     (append op-i vars-i vars-j)))
 
 (defun smt-plan-exclude-exp (vars)
@@ -167,7 +167,7 @@
 
 
 
-(defun smt-plan-step-fun (state-vars concrete-actions)
+(defun smt-plan-step-fun (state-vars ground-actions)
   "Generate the per-step assertion for a planning problem"
   (labels ((bool-args (list)
              (loop for x in list
@@ -177,8 +177,8 @@
                              (bool-args args)
                              'bool
                              exp)))
-    (let* ((op-i (smt-plan-op-step concrete-actions 'i))
-           (op-vars (smt-plan-step-fun-args state-vars concrete-actions 'i 'j)))
+    (let* ((op-i (smt-plan-op-step ground-actions 'i))
+           (op-vars (smt-plan-step-fun-args state-vars ground-actions 'i 'j)))
       (print op-i)
       ;(print op-vars)
       (append
@@ -190,11 +190,11 @@
                              ;; exp
                              (apply #'smt-and
                                     (loop
-                                       for op in concrete-actions
+                                       for op in ground-actions
                                        for op-var in op-i
                                        collect
-                                         (let ((pre (rewrite-exp (concrete-action-precondition op) 'i))
-                                               (eff (rewrite-exp (concrete-action-effect op) 'j)))
+                                         (let ((pre (rewrite-exp (ground-action-precondition op) 'i))
+                                               (eff (rewrite-exp (ground-action-effect op) 'j)))
                                            `(or (not ,op-var)      ; action not active
                                                 (and ,pre          ; precondition holds
                                                      ,eff)))))))
@@ -206,7 +206,7 @@
        ;; frame
        (list (smt-comment "Frame Axioms")
              (bool-fun "frame-axioms" op-vars
-                       (smt-frame-axioms-exp state-vars concrete-actions 'i 'j)))
+                       (smt-frame-axioms-exp state-vars ground-actions 'i 'j)))
        ;; Step
        (list (smt-comment "plan-step")
              (bool-fun "plan-step" op-vars
@@ -219,7 +219,7 @@
      for v = (format-state-variable s i)
      collect (smt-declare-fun v () 'bool)))
 
-(defun smt-plan-step-stmts (state-vars concrete-actions i)
+(defun smt-plan-step-stmts (state-vars ground-actions i)
   (append
    ;; create the per-step state
    (list (smt-comment "State Variables" ))
@@ -227,29 +227,29 @@
 
    ;; per-step action variables
    (list (smt-comment "Action Variables"))
-   (loop for op in concrete-actions
-      for v = (format-concrete-action op i)
+   (loop for op in ground-actions
+      for v = (format-ground-action op i)
       collect (smt-declare-fun v () 'bool))
    (list (smt-comment (format nil "Step ~D" i))
          (smt-assert `("plan-step"
-                       ,@(smt-plan-step-fun-args state-vars concrete-actions i (1+ i)))))))
+                       ,@(smt-plan-step-fun-args state-vars ground-actions i (1+ i)))))))
 
-(defun smt-plan-step-ops (concrete-actions steps)
+(defun smt-plan-step-ops (ground-actions steps)
   (let ((step-ops))
     (dotimes (i steps)
-      (dolist (op concrete-actions)
-        (let ((v (format-concrete-action op i)))
+      (dolist (op ground-actions)
+        (let ((v (format-ground-action op i)))
           (push v step-ops))))
     step-ops))
 
-(defun smt-plan-encode (state-vars concrete-actions
+(defun smt-plan-encode (state-vars ground-actions
                         initial-state
                         goal
                         steps)
   (let ((smt-statements nil))
     (labels ((stmt (x) (push x smt-statements)))
       ;; Per-step function
-      (map nil #'stmt (smt-plan-step-fun state-vars concrete-actions))
+      (map nil #'stmt (smt-plan-step-fun state-vars ground-actions))
 
       ;; initial state
       (stmt (smt-comment "Initial State"))
@@ -258,14 +258,14 @@
 
       ;; Steps
       (dotimes (i steps)
-        (map nil #'stmt (smt-plan-step-stmts state-vars concrete-actions i)))
+        (map nil #'stmt (smt-plan-step-stmts state-vars ground-actions i)))
 
       ;; goal state
       (stmt (smt-comment "Goal State"))
       (stmt (smt-assert (rewrite-exp goal steps))))
 
     (values (reverse smt-statements)
-            (smt-plan-step-ops concrete-actions steps))))
+            (smt-plan-step-ops ground-actions steps))))
 
 (defun smt-plan-parse (assignments)
   (let ((plan))
@@ -281,7 +281,7 @@
 (defun smt-plan-batch ( &key
                           operators facts
                           state-vars
-                          concrete-actions
+                          ground-actions
                           initial-true
                           initial-false
                           initial-state
@@ -296,8 +296,8 @@
          (state-vars (or state-vars
                          (create-state-variables (pddl-operators-predicates operators)
                                                  type-map)))
-         (concrete-actions (or concrete-actions
-                               (smt-concrete-actions (pddl-operators-actions operators)
+         (ground-actions (or ground-actions
+                               (smt-ground-actions (pddl-operators-actions operators)
                                                       type-map)))
          (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
          (initial-false (unless initial-state (or initial-false
@@ -307,7 +307,7 @@
                                   ,@(loop for v in initial-false collect `(not ,v)))))
 
          (goal (or goal (pddl-facts-goal facts)))
-         (n-op (length concrete-actions))
+         (n-op (length ground-actions))
          (n-var (length state-vars)))
     (format t "~&ground actions: ~D" n-op)
     (format t "~&ground states: ~D" n-var)
@@ -318,7 +318,7 @@
                           (* (1+ steps) n-var)))
                (multiple-value-bind (assignments is-sat)
                    (multiple-value-bind (stmts vars)
-                       (smt-plan-encode state-vars concrete-actions
+                       (smt-plan-encode state-vars ground-actions
                                         initial-state
                                         goal
                                         steps)
@@ -419,7 +419,7 @@
 (defun smt-plan-context ( &key
                             operators facts
                             state-vars
-                            concrete-actions
+                            ground-actions
                             initial-true
                             initial-false
                             initial-state
@@ -434,8 +434,8 @@
          (state-vars (or state-vars
                          (create-state-variables (pddl-operators-predicates operators)
                                                  type-map)))
-         (concrete-actions (or concrete-actions
-                               (smt-concrete-actions (pddl-operators-actions operators)
+         (ground-actions (or ground-actions
+                               (smt-ground-actions (pddl-operators-actions operators)
                                                       type-map)))
          (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
          (initial-false (unless initial-state (or initial-false
@@ -445,7 +445,7 @@
                                   ,@(loop for v in initial-false collect `(not ,v)))))
 
          (goal (or goal (pddl-facts-goal facts)))
-         (n-op (length concrete-actions))
+         (n-op (length ground-actions))
          (n-var (length state-vars)))
     (format t "~&ground actions: ~D" n-op)
     (format t "~&ground states: ~D" n-var)
@@ -456,14 +456,14 @@
                (stmt-list (list)
                  (map nil #'stmt list)))
         ;; Per-step function
-        (stmt-list (smt-plan-step-fun state-vars concrete-actions))
+        (stmt-list (smt-plan-step-fun state-vars ground-actions))
         ;; initial state
         (stmt-list (smt-plan-step-vars state-vars 0))
         (stmt (smt-assert (rewrite-exp initial-state 0))))
 
       (make-smt-plan-context :smt smt
                              :ground-variables state-vars
-                             :ground-actions concrete-actions
+                             :ground-actions ground-actions
                              :goal goal
                              :step 0))))
 
@@ -473,7 +473,7 @@
 (defun smt-plan ( &key
                     operators facts
                     state-vars
-                    concrete-actions
+                    ground-actions
                     initial-true
                     initial-false
                     initial-state
@@ -487,8 +487,8 @@
          (state-vars (or state-vars
                          (create-state-variables (pddl-operators-predicates operators)
                                                  type-map)))
-         (concrete-actions (or concrete-actions
-                               (smt-concrete-actions (pddl-operators-actions operators)
+         (ground-actions (or ground-actions
+                               (smt-ground-actions (pddl-operators-actions operators)
                                                       type-map)))
          (initial-true (unless initial-state (or initial-true (pddl-facts-init facts))))
          (initial-false (unless initial-state (or initial-false
@@ -498,7 +498,7 @@
                                   ,@(loop for v in initial-false collect `(not ,v)))))
 
          (goal (or goal (pddl-facts-goal facts)))
-         (n-op (length concrete-actions))
+         (n-op (length ground-actions))
          (n-var (length state-vars)))
     (format t "~&ground actions: ~D" n-op)
     (format t "~&ground states: ~D" n-var)
@@ -511,7 +511,7 @@
                (plan-step (i)
                  (format t "~&trying step ~D" i)
                  ;; step declarations
-                 (stmt-list (smt-plan-step-stmts state-vars concrete-actions i))
+                 (stmt-list (smt-plan-step-stmts state-vars ground-actions i))
                  ;; namespace
                  (stmt '(|push| 1))
                  ;; goal assertion
@@ -530,12 +530,12 @@
                      (otherwise
                       (error "Unrecognized (check-sat) result: ~A" is-sat)))))
                (result (i)
-                 (let* ((step-ops (smt-plan-step-ops concrete-actions (1+ i)))
+                 (let* ((step-ops (smt-plan-step-ops ground-actions (1+ i)))
                         (values (stmt `(|get-value| ,step-ops)))
                         (plan (smt-plan-parse values)))
                    plan)))
         ;; Per-step function
-        (stmt-list (smt-plan-step-fun state-vars concrete-actions))
+        (stmt-list (smt-plan-step-fun state-vars ground-actions))
         ;; initial state
         (stmt-list (smt-plan-step-vars state-vars 0))
         (stmt (smt-assert (rewrite-exp initial-state 0)))
