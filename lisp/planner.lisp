@@ -211,8 +211,6 @@
            (ground-actions (ground-domain-operators domain))
            (op-i (smt-plan-op-step ground-actions 'i))
            (op-vars (smt-plan-step-fun-args state-vars ground-actions 'i 'j)))
-      (print op-i)
-      ;(print op-vars)
       (append
        (list (smt-comment "Operator Function")
              (smt-define-fun "op-step"

@@ -1,35 +1,43 @@
 (in-package :tmsmt)
 
-(defun smt-print-1 (stmt &optional (stream *standard-output*))
+(let ((keyword-package (find-package :keyword))
+      (hash (alist-hash-table
+             '((or     . |or|)
+               (xor    . |xor|)
+               (let    . |let|)
+               (not    . |not|)
+               (ite    . |ite|)
+               (assert . |assert|)
+               (bool   . |Bool|)
+               (and    . |and|)))))
+  (defun smt-symbol-substitute (s)
+    (cond
+      ((null s) '|()|)
+      ((eq keyword-package (symbol-package s))
+       (rope '|:| s))
+      (t (gethash s hash s)))))
+
+(defun smt-rope (stmt)
+  "Return a rope representing the SMTLib statement STMT."
   (destructuring-case stmt
     ((comment x)
-     (format stream "~&;; ~A" x))
+     (rope '|;; | x))
     ((t &rest ignore)
      (declare (ignore ignore))
-     (flet ((symbol-substitute (s)
-              (if s
-                  (case s
-                    (or        '|or|)
-                    (xor       '|xor|)
-                    (let       '|let|)
-                    (not       '|not|)
-                    (ite       '|ite|)
-                    (assert    '|assert|)
-                    (bool      '|Bool|)
-                    (and       '|and|)
-                    (otherwise s))
-                  '|()|)))
-     (print-sexp stmt #'symbol-substitute stream)))))
+     (sexp-rope stmt :symbol-function #'smt-symbol-substitute))))
 
-(defun smt-print (stmts &optional (stream *standard-output*))
-  (let ((str
-         (with-output-to-string (stream)
-           (dolist (s stmts)
-             (smt-print-1 s stream)
-             (terpri stream)))))
-    (write-sequence str stream))
-  nil)
+(defun smt-print-1 (stmt &optional (stream *standard-output*))
+    (write-sequence (rope-string (smt-rope stmt))
+                    stream))
 
+(let ((newline (format nil "~%")))
+  (defun smt-print-accum (rope stmt)
+    (rope rope (smt-rope stmt) newline))
+  (defun smt-print (stmts &optional (stream *standard-output*))
+    "Write a sequence of SMTLib statements STMTS."
+    (let ((rope (reduce #'smt-print-accum stmts)))
+      (write-sequence (rope-string rope) stream))
+    (values)))
 
 (defun smt-set-option (option value)
   (list '|set-option|
