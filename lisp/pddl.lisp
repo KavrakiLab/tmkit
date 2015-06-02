@@ -16,19 +16,23 @@
   type
   )
 
-(defstruct pddl-predicate
-  "A PDDL predicate"
-  name
-  arity
-  arguments)
+;; (defstruct pddl-predicate
+;;   "A PDDL predicate"
+;;   name
+;;   arity
+;;   arguments)
 
 (defstruct pddl-operators
   "A PDDL set of operators"
   name
   types
   supertypes
-  predicates
+  functions
+  derived
   actions)
+
+(defstruct (pddl-function (:include pddl-typed))
+  arguments)
 
 (defun pddl-operators-supertype (operators type)
   "Return the supertype of type as defined in operators"
@@ -123,9 +127,17 @@
 (defun parse-predicate (sexp)
   (destructuring-bind (name &rest arg-list) sexp
     (let ((type-list (parse-typed-list arg-list)))
-      (make-pddl-predicate :name name
-                           :arity (length type-list)
-                           :arguments type-list))))
+      (make-pddl-function :name name
+                          :type 'bool
+                          :arguments type-list))))
+
+(defun parse-pddl-functions (sexp)
+  (let ((typed (parse-typed-list sexp)))
+    (loop for x in typed
+       for function = (pddl-typed-name x)
+       collect (make-pddl-function :name (car function)
+                                   :arguments (parse-typed-list (cdr function))
+                                   :type (pddl-typed-type x)))))
 
 (defun parse-operators (sexp)
   (destructuring-bind (-define (-domain name) &rest clauses)
@@ -139,8 +151,9 @@
            ;; TODO: handle this
            (declare (ignore ignore)))
           ((:predicates &rest predicates)
-           (setf (pddl-operators-predicates ops)
-                 (map 'list #'parse-predicate predicates)))
+           (setf (pddl-operators-functions ops)
+                 (append (pddl-operators-functions ops)
+                         (map 'list #'parse-predicate predicates))))
           ((:action name &key parameters uncontrollable precondition effect)
            (push (make-pddl-action :name name
                               :parameters (parse-typed-list  parameters)
@@ -148,6 +161,11 @@
                               :precondition precondition
                               :effect effect)
                  (pddl-operators-actions ops)))
+          ((:functions &rest sexp)
+           (setf (pddl-operators-functions ops)
+                 (parse-pddl-functions sexp)))
+          ((:derived &rest rest)
+           (declare (ignore rest)))
           ((:types &rest type-list)
            (let ((typed-list (parse-typed-list type-list))
                  (hash (make-hash-table :test #'equal)))

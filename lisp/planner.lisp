@@ -30,15 +30,15 @@
              collect
              a))))
 
-(defun create-state-variables (predicates type-objects)
+(defun create-state-variables (functions type-objects)
   "Create all state variables from `PREDICATES' applied to `OBJECTS'"
   (let ((variable-type (make-hash-table :test #'equal)))
-    (dolist (p predicates)
+    (dolist (f functions)
       ;; apply p to all valid arguments
-      (dolist (args (collect-args (pddl-predicate-arguments p)
+      (dolist (args (collect-args (pddl-function-arguments f)
                                   type-objects))
-        (let ((var (cons (pddl-predicate-name p) args)))
-          (setf (gethash var variable-type) 'bool))))
+        (let ((var (cons (pddl-function-name f) args)))
+          (setf (gethash var variable-type) (pddl-function-type f)))))
     variable-type))
 
 (defstruct ground-action
@@ -121,7 +121,7 @@
          (facts (load-facts facts))
          (type-objects (compute-type-map (pddl-operators-types operators)
                                          (pddl-facts-objects facts)))
-         (variable-type (create-state-variables (pddl-operators-predicates operators)
+         (variable-type (create-state-variables (pddl-operators-functions operators)
                                                 type-objects))
          (ground-variables (hash-table-keys variable-type))
          (ground-operators (smt-ground-actions (pddl-operators-actions operators)
