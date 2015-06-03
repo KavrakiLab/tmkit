@@ -139,6 +139,24 @@
                                    :arguments (parse-typed-list (cdr function))
                                    :type (pddl-typed-type x)))))
 
+(defstruct (pddl-derived (:include pddl-function))
+  body)
+
+(defstruct pddl-quantifier
+  head
+  parameters
+  body)
+
+(defun parse-pddl-exp (exp)
+  ;; TODO: recurse
+  (destructuring-case exp
+    (((exists forall) arglist body)
+     (make-pddl-quantifier :head (car exp)
+                           :parameters (parse-typed-list arglist)
+                           :body body))
+    ((&rest exp)
+     exp)))
+
 (defun parse-operators (sexp)
   (destructuring-bind (-define (-domain name) &rest clauses)
       sexp
@@ -164,8 +182,13 @@
           ((:functions &rest sexp)
            (setf (pddl-operators-functions ops)
                  (parse-pddl-functions sexp)))
-          ((:derived &rest rest)
-           (declare (ignore rest)))
+          ((:derived predicate body)
+           (let ((fun (parse-predicate predicate)))
+             (push (make-pddl-derived :name (pddl-function-name fun)
+                                      :type (pddl-function-type fun)
+                                      :arguments (pddl-function-arguments fun)
+                                      :body (parse-pddl-exp body))
+                   (pddl-operators-derived ops))))
           ((:types &rest type-list)
            (let ((typed-list (parse-typed-list type-list))
                  (hash (make-hash-table :test #'equal)))
