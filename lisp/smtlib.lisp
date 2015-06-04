@@ -30,14 +30,12 @@
     (write-sequence (rope-string (smt-rope stmt))
                     stream))
 
-(let ((newline (format nil "~%")))
-  (defun smt-print-accum (rope stmt)
-    (rope rope (smt-rope stmt) newline))
-  (defun smt-print (stmts &optional (stream *standard-output*))
-    "Write a sequence of SMTLib statements STMTS."
-    (let ((rope (reduce #'smt-print-accum stmts)))
-      (write-sequence (rope-string rope) stream))
-    (values)))
+(defun smt-print (stmts &optional (stream *standard-output*))
+  "Write a sequence of SMTLib statements STMTS."
+  (let ((rope (rope (rope-map #'smt-rope stmts :separator #\Newline)
+                    #\Newline)))
+    (write-sequence (rope-string rope) stream))
+  (values))
 
 (defun smt-set-option (option value)
   (list '|set-option|
