@@ -32,14 +32,27 @@
 
 (defun create-state-variables (functions type-objects)
   "Create all state variables from `PREDICATES' applied to `OBJECTS'"
-  (let ((variable-type (make-hash-table :test #'equal)))
-    (dolist (f functions)
-      ;; apply p to all valid arguments
-      (dolist (args (collect-args (pddl-function-arguments f)
-                                  type-objects))
-        (let ((var (cons (pddl-function-name f) args)))
-          (setf (gethash var variable-type) (pddl-function-type f)))))
-    variable-type))
+  (fold (lambda (map f)
+          (fold (lambda (map args)
+                  (tree-map-insert map
+                                   (cons (pddl-function-name f) args)
+                                   (pddl-function-type f)))
+                map
+                (collect-args (pddl-function-arguments f)
+                              type-objects)))
+        (make-tree-map #'gsymbol-compare)
+        functions))
+
+
+
+  ;; (let ((variable-type (make-hash-table :test #'equal)))
+  ;;   (dolist (f functions)
+  ;;     ;; apply p to all valid arguments
+  ;;     (dolist (args (collect-args (pddl-function-arguments f)
+  ;;                                 type-objects))
+  ;;       (let ((var (cons (pddl-function-name f) args)))
+  ;;         (setf (gethash var variable-type) (pddl-function-type f)))))
+  ;;   variable-type))
 
 (defun ground-derived-body (derived actual-args type-map)
   (labels ((arg-alist (dummies actuals)
@@ -79,7 +92,7 @@
           ;(print (list var args (pddl-derived-body d)))
           (setf (gethash var variable-type) (pddl-function-type d)
                 (gethash var variable-body) (ground-derived-body d args type-objects)))))
-    (values variable-type
+    (values (hash-table-tree-map variable-type #'gsymbol-compare)
             (loop for k being the hash-keys in variable-body
                  collect `(= ,k ,(gethash k variable-body))))))
 
@@ -152,14 +165,19 @@
 
 (defstruct ground-domain
   (variables nil :type list)
-  (variable-type nil :type hash-table)
+  (variable-type nil :type tree-map)
   (derived-variables nil :type list)
-  (derived-type nil :type hash-table)
+  (derived-type nil :type tree-map)
   (operators nil :type list)
   (axioms nil :type list)
   (start nil :type list)
   (goal nil :type list))
 
+(defun type-map-keys (map)
+  (map-tree-map :inorder 'list (lambda (key value)
+                                 (declare (ignore value))
+                                 key)
+                map))
 
 ;; TODO: ground derived types
 ;;       - add to variables (separate slot for derived variables)
@@ -174,7 +192,7 @@
                                          (pddl-facts-objects facts)))
          (variable-type (create-state-variables (pddl-operators-functions operators)
                                                 type-objects))
-         (ground-variables (hash-table-keys variable-type))
+         (ground-variables (type-map-keys variable-type))
          (ground-operators (smt-ground-actions (pddl-operators-actions operators)
                                                type-objects))
          (initial-true (pddl-facts-init facts))
@@ -183,7 +201,7 @@
         (ground-derived type-objects (pddl-operators-derived operators))
       (make-ground-domain :variables ground-variables
                           :variable-type variable-type
-                          :derived-variables (hash-table-keys derived-type)
+                          :derived-variables (type-map-keys derived-type)
                           :derived-type derived-type
                           :operators ground-operators
                           :axioms derived-axioms
@@ -305,7 +323,7 @@
      for s in (ground-domain-variables domain)
      for v = (format-state-variable s i)
      collect (multiple-value-bind (type contains)
-                 (gethash s types)
+                 (tree-map-find types s)
                (assert contains)
                (smt-declare-fun v () type))))
 
