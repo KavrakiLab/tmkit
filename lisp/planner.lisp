@@ -109,11 +109,18 @@
 (defstruct ground-domain
   (variables nil :type list)
   (variable-type nil :type hash-table)
+  (derived-variables nil :type list)
+  (derived-type nil :type hash-table)
   (operators nil :type list)
   (axioms nil :type list)
   (start nil :type list)
   (goal nil :type list))
 
+
+;; TODO: ground derived types
+;;       - add to variables (separate slot for derived variables)
+;;       - add axioms indicating state
+;;       - need to omit derived variables from frame axioms
 (defun ground-domain (operators facts
                       &key
                         goal)
@@ -123,6 +130,8 @@
                                          (pddl-facts-objects facts)))
          (variable-type (create-state-variables (pddl-operators-functions operators)
                                                 type-objects))
+         (derived-type (create-state-variables (pddl-operators-derived operators)
+                                               type-objects))
          (ground-variables (hash-table-keys variable-type))
          (ground-operators (smt-ground-actions (pddl-operators-actions operators)
                                                type-objects))
@@ -130,6 +139,8 @@
          (initial-false (set-difference  ground-variables initial-true :test #'equal)))
     (make-ground-domain :variables ground-variables
                         :variable-type variable-type
+                        :derived-variables (hash-table-keys derived-type)
+                        :derived-type derived-type
                         :operators ground-operators
                         :axioms nil
                         :start  `(and ,@initial-true
