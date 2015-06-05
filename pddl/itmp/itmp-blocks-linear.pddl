@@ -4,7 +4,8 @@
   (:predicates)
   (:functions (position ?obj - block) - location)
   (:derived (occupied ?loc - location)
-            (exists (?obj - block) (= (position ?obj) location)))
+            (exists (?obj - block) (= (position ?obj)
+                                      ?loc)))
   (:action transfer
            :parameters (?obj - block
                         ?loc-1 - location)

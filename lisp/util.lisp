@@ -171,3 +171,7 @@
        (when (cdr rest)
          (write-char #\space stream)))
   (write-char #\) stream))
+
+(defun assoc-value-default (item alist &key default (test #'eql))
+  (let ((cons (assoc item alist :test test)))
+    (if cons (cdr cons) default)))

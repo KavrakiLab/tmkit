@@ -41,6 +41,48 @@
           (setf (gethash var variable-type) (pddl-function-type f)))))
     variable-type))
 
+(defun ground-derived-body (derived actual-args type-map)
+  (labels ((arg-alist (dummies actuals)
+             (loop for act in actuals
+                for dummy in dummies
+                collect (cons (pddl-typed-name dummy)
+                              act)))
+             (rec (e alist)
+               (etypecase e
+                 (pddl-quantifier
+                  (let ((fun (ecase (pddl-quantifier-head e)
+                               (exists 'or)
+                               (forall 'and))))
+                    `(,fun
+                      ,@(loop for a in (collect-args (pddl-quantifier-parameters e)
+                                                     type-map)
+                           for sub-alist = (append (arg-alist (pddl-quantifier-parameters e)
+                                                              a)
+                                                   alist)
+                           collect (rec (pddl-quantifier-body e) sub-alist)))))
+                 (symbol
+                  (assoc-value-default e alist :test #'eq :default e))
+                 (cons
+                  (map 'list (lambda (e) (rec e alist)) e)))))
+      (rec (pddl-derived-body derived)
+           (arg-alist (pddl-derived-arguments derived)
+                      actual-args))))
+
+(defun ground-derived (type-objects derived)
+  (let ((variable-type (make-hash-table :test #'equal))
+        (variable-body (make-hash-table :test #'equal)))
+    (dolist (d derived)
+      ;; apply p to all valid arguments
+      (dolist (args (collect-args (pddl-function-arguments d)
+                                  type-objects))
+        (let ((var (cons (pddl-function-name d) args)))
+          ;(print (list var args (pddl-derived-body d)))
+          (setf (gethash var variable-type) (pddl-function-type d)
+                (gethash var variable-body) (ground-derived-body d args type-objects)))))
+    (values variable-type
+            (loop for k being the hash-keys in variable-body
+                 collect `(= ,k ,(gethash k variable-body))))))
+
 (defstruct ground-action
   name
   actual-arguments
@@ -106,6 +148,8 @@
            ((t &rest rest) (declare (ignore rest))
             exp)))))
 
+
+
 (defstruct ground-domain
   (variables nil :type list)
   (variable-type nil :type hash-table)
@@ -130,22 +174,22 @@
                                          (pddl-facts-objects facts)))
          (variable-type (create-state-variables (pddl-operators-functions operators)
                                                 type-objects))
-         (derived-type (create-state-variables (pddl-operators-derived operators)
-                                               type-objects))
          (ground-variables (hash-table-keys variable-type))
          (ground-operators (smt-ground-actions (pddl-operators-actions operators)
                                                type-objects))
          (initial-true (pddl-facts-init facts))
          (initial-false (set-difference  ground-variables initial-true :test #'equal)))
-    (make-ground-domain :variables ground-variables
-                        :variable-type variable-type
-                        :derived-variables (hash-table-keys derived-type)
-                        :derived-type derived-type
-                        :operators ground-operators
-                        :axioms nil
-                        :start  `(and ,@initial-true
-                                      ,@(loop for v in initial-false collect `(not ,v)))
-                        :goal (or goal (pddl-facts-goal facts)))))
+    (multiple-value-bind (derived-type derived-axioms)
+        (ground-derived type-objects (pddl-operators-derived operators))
+      (make-ground-domain :variables ground-variables
+                          :variable-type variable-type
+                          :derived-variables (hash-table-keys derived-type)
+                          :derived-type derived-type
+                          :operators ground-operators
+                          :axioms derived-axioms
+                          :start  `(and ,@initial-true
+                                        ,@(loop for v in initial-false collect `(not ,v)))
+                          :goal (or goal (pddl-facts-goal facts))))))
 
 (defun smt-frame-axioms-exp (state-vars ground-actions i j)
   ;(print ground-operators)
