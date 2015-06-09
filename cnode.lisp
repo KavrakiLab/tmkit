@@ -100,8 +100,8 @@
                              *plan-2*)
                      :render-options  (render-options-default :use-collision nil
                                                               :options (render-options-fast))
-                     :scene-graph (robray::scene-graph-merge (plan-context-robot-graph *plan-context*)
-                                                             *object-graph*)
+                     :scene-graph (robray::scene-graph (plan-context-robot-graph *plan-context*)
+                                                       *object-graph*)
                      :frame-name "right_endpoint"))
 
 ;;(render-group-config *plan-context* *group* (container-plan-endpoint (third *plan-2*))

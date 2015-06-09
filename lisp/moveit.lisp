@@ -89,7 +89,7 @@
 (defun context-attach-object (context group q-group frame link object)
   (let* ((container (plan-context-moveit-container context))
          (configuration-map (container-group-configuration-map container group q-group))
-         (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
+         (scene-graph (robray::scene-graph (plan-context-robot-graph context)
                                                   (plan-context-object-graph context)))
          (object-frame (robray::scene-graph-lookup scene-graph object))
          (collision (loop for g in (robray::scene-frame-geometry object-frame)
@@ -110,8 +110,8 @@
 (defun context-dettach-object (context group q-group object)
   (let* ((container (plan-context-moveit-container context))
          (configuration-map (container-group-configuration-map container group q-group))
-         (scene-graph (robray::scene-graph-merge  (plan-context-robot-graph context)
-                                                  (plan-context-object-graph context)))
+         (scene-graph (robray::scene-graph (plan-context-robot-graph context)
+                                           (plan-context-object-graph context)))
          (tf (robray::scene-graph-tf-absolute scene-graph object
                                               :configuration-map configuration-map)))
     ;; Reparent in graph
@@ -131,8 +131,8 @@
         (context-add-plan-collision context object-graph name
                                     (gethash name tf-abs)))))
   (setf (plan-context-object-graph context)
-        (robray::scene-graph-merge (plan-context-object-graph context)
-                                   object-graph)))
+        (robray::scene-graph (plan-context-object-graph context)
+                             object-graph)))
 
 (defun context-apply-scene (context object-graph)
   (context-remove-all-objects context)

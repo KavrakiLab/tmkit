@@ -23,8 +23,8 @@
                (append (list (point-config-map container group points))
                        (when next
                              (list (point-config-map container group (g* 0.5 (g+ points next))))))))
-         (scene-graph (robray::scene-graph-merge (plan-context-robot-graph context)
-                                                 (plan-context-object-graph context))))
+         (scene-graph (robray::scene-graph (plan-context-robot-graph context)
+                                           (plan-context-object-graph context))))
     (flet ((frame-config-fun (frame)
              (if (< frame (length config-map-list))
                  (elt config-map-list frame)
@@ -95,8 +95,8 @@
                                                    (options (render-options-medium)))
   (let* ((container (plan-context-moveit-container context))
          (config-map (point-config-map container group config))
-         (scene-graph (robray::scene-graph-merge (plan-context-robot-graph context)
-                                                 (plan-context-object-graph context))))
+         (scene-graph (robray::scene-graph (plan-context-robot-graph context)
+                                           (plan-context-object-graph context))))
     (robray::pov-render (robray::scene-graph-pov-frame scene-graph
                                                        :options options
                                                        :configuration-map config-map
