@@ -69,8 +69,8 @@
                                           name (robray::scene-sphere-radius shape)
                                           (translation tf))))
            (let* ((options (robray::scene-geometry-options geometry))
-                  (color (robray::scene-geometry-option options :color))
-                  (alpha (robray::scene-geometry-option options :alpha)))
+                  (color (robray::draw-option options :color))
+                  (alpha (robray::draw-option options :alpha)))
              (container-scene-set-color container name color alpha))))))
 
 
