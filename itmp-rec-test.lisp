@@ -1,28 +1,12 @@
 (require :tmsmt)
-
-(in-package :robray)
-
-(setq *urdf-package-alist*
-      `(("baxter_description" . ,(concatenate 'string (namestring (user-homedir-pathname))
-                                              "ros_ws/src/baxter_common/baxter_description"))))
-(setq *render-host-alist*
-      '(("localhost"  ; 4 core (HT), 3.6GHz
-         :jobs 8 :threads 1 :nice 0)
-        ("dione"      ; 12 core, 1.4GHz
-         :jobs 6 :threads 2 :nice 0)
-        ("zeus"       ; 16 core, 2.4GHz
-         :jobs 8 :threads 2 :nice 1 :povray "/home/ndantam/local/bin/povray")
-        ))
-
 (in-package :tmsmt)
-
 
 (defparameter *scene-directory*
   (concatenate 'string
                (namestring (asdf:system-source-directory :tmsmt))
                "../scene/"))
 
-(moveit-init "/home/ntd/ros_ws/src/baxter_common/baxter_description/urdf/baxter.urdf")
+(moveit-init (robray::format-pathname "~A/urdf/baxter.urdf" robray::*baxter-description*))
 
 (defparameter *group* "right_arm")
 (defparameter *link* (container-group-endlink *moveit-container* *group*))
@@ -54,14 +38,14 @@
 (render-group-itmp *plan-context* *group*
                      *plan*
                      :render-options  (render-options-default :use-collision nil
-                                                              :options (render-options-full-hd))
-                     :scene-graph (robray::scene-graph-merge (plan-context-robot-graph *plan-context*)
-                                                             *object-graph*)
+                                                              :options (render-options-fast))
+                     :scene-graph (scene-graph (plan-context-robot-graph *plan-context*)
+                                               *object-graph*)
                      :frame-name "right_endpoint")
 
 
-(context-apply-scene *plan-context* *object-graph*)
-(render-group-config *plan-context* *group*
-                     ;(container-plan-endpoint (third *plan*))
-                     *q-all-start*
-                     :options (render-options-medium))
+;; (context-apply-scene *plan-context* *object-graph*)
+;; (render-group-config *plan-context* *group*
+;;                      ;(container-plan-endpoint (third *plan*))
+;;                      *q-all-start*
+;;                      :options (render-options-medium))
