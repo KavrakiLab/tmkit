@@ -84,6 +84,10 @@
 (defun smt-comment (x)
   (list 'comment x))
 
+(defun smt-declare-enum (typename values)
+  `(|declare-datatypes| () ((,typename ,@values))))
+  ;`(|declare-datatypes| ((,typename ,@(loop for v in values collect (list v))))))
+
 (defparameter +smt-separator+ "__")
 (defparameter +smt-left-paren+ "-LP-")
 (defparameter +smt-right-paren+ "-RP-")

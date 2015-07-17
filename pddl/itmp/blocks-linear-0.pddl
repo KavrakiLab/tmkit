@@ -5,4 +5,4 @@
   (:init (= loc-0 (position block-a))
          (= loc-1 (position block-b)))
   (:goal (and (= loc-1 (position block-a))
-              (= loc-1 (position block-a)))))
+              (= loc-0 (position block-b)))))

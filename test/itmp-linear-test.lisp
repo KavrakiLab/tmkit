@@ -13,4 +13,11 @@
 
 (defparameter *ground* (ground-domain *operators* *facts*))
 
-*ground*
+
+(with-smt (smt)
+    (let ((cx (smt-plan-context
+               :operators *operators*
+               :facts *facts*
+               :smt smt)))
+      (smt-plan-next cx :max-steps 3)
+      ))

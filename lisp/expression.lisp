@@ -6,7 +6,7 @@
     (atom (funcall function exp))
     (list
      (destructuring-case exp
-       (((and or not) &rest rest)
+       (((and or not =) &rest rest)
         (cons (car exp)
               (loop for exp in rest collect (apply-rewrite-exp function exp))))
        ((t &rest rest) (declare (ignore rest))

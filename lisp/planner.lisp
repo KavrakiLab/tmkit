@@ -15,8 +15,11 @@
               collect (cons o args)))))
 
 
+;; TODO: should we assume that atomic predicates are constants?
 (defun format-state-variable (predicate step)
-  (smt-mangle-list `(,@predicate ,step)))
+  (if (consp predicate)
+      (smt-mangle-list `(,@predicate ,step))
+      predicate))
 
 (defun format-op (op args step)
   (smt-mangle-list `(,op ,@args ,step)))
@@ -158,6 +161,7 @@
        collect
          (destructuring-case exp
            ((not x) x)
+           ((= x y) (if (atom x) y x)) ;; TODO: maybe not general
            ((t &rest rest) (declare (ignore rest))
             exp)))))
 
@@ -168,6 +172,7 @@
   (variable-type nil :type tree-map)
   (derived-variables nil :type list)
   (derived-type nil :type tree-map)
+  (type-objects nil :type tree-map)
   (operators nil :type list)
   (axioms nil :type list)
   (start nil :type list)
@@ -196,13 +201,17 @@
          (ground-operators (smt-ground-actions (pddl-operators-actions operators)
                                                type-objects))
          (initial-true (pddl-facts-init facts))
-         (initial-false (set-difference  ground-variables initial-true :test #'equal)))
+         (bool-vars (loop for g in ground-variables
+                       when (eq 'bool (tree-map-find variable-type g))
+                       collect g))
+         (initial-false (set-difference  bool-vars initial-true :test #'equal)))
     (multiple-value-bind (derived-type derived-axioms)
         (ground-derived type-objects (pddl-operators-derived operators))
       (make-ground-domain :variables ground-variables
                           :variable-type variable-type
                           :derived-variables (type-map-keys derived-type)
                           :derived-type derived-type
+                          :type-objects type-objects
                           :operators ground-operators
                           :axioms derived-axioms
                           :start  `(and ,@initial-true
@@ -244,11 +253,18 @@
   (loop for op in ground-actions
      collect (format-ground-action op i)))
 
-(defun smt-plan-step-fun-args (state-vars ground-actions i j)
+(defun smt-plan-step-fun-args (state-vars ground-actions derived i j)
   (let ((vars-i (smt-plan-var-step state-vars i))
         (vars-j (smt-plan-var-step state-vars j))
+        (derived-i (smt-plan-var-step derived j))
         (op-i (smt-plan-op-step ground-actions i)))
-    (append op-i vars-i vars-j)))
+    (append op-i vars-i vars-j derived-i)))
+
+(defun smt-plan-var-type (vars map)
+  (loop for v in vars collect (tree-map-find map v)))
+
+(defun smt-plan-bool-type (vars)
+  (loop for v in vars collect 'bool))
 
 (defun smt-plan-exclude-exp (vars)
   (labels ((fmt (v)
@@ -268,68 +284,97 @@
       (smt-let* (reverse bindings)
                 (ite vars)))))
 
-
+(defun smt-plan-datatypes (domain)
+  (labels ((tree-set-add-type (set name type)
+             (declare (ignore name))
+             (tree-set-insert set type)))
+    (let* ((object-types (fold-tree-map #'tree-set-add-type (tree-set #'gsymbol-compare)
+                                        (ground-domain-variable-type domain)))
+           (type-objects (ground-domain-type-objects domain)))
+      (fold-tree-set (lambda (list type)
+                       (case type
+                         ((bool object t) list)
+                         (otherwise
+                          (cons (smt-declare-enum type (tree-set-list (tree-map-find type-objects type)))
+                                 list))))
+                     nil
+                     object-types))))
 
 (defun smt-plan-step-fun (domain)
   "Generate the per-step assertion for a planning problem"
-  (labels ((bool-args (list)
-             (loop for x in list
-                collect (list x 'bool)))
-           (bool-fun (name args exp)
+  (labels ((arg-list (args types)
+             (map 'list #'list args types))
+           (bool-fun (name args types exp)
              (smt-define-fun name
-                             (bool-args args)
+                             (arg-list args types)
                              'bool
                              exp)))
     (let* ((state-vars (ground-domain-variables domain))
            (ground-actions (ground-domain-operators domain))
            (op-i (smt-plan-op-step ground-actions 'i))
-           (op-vars (smt-plan-step-fun-args state-vars ground-actions 'i 'j)))
+           (op-type (smt-plan-bool-type ground-actions))
+           (vars-i (smt-plan-var-step state-vars 'i))
+           (vars-j (smt-plan-var-step state-vars 'j))
+           (var-type (smt-plan-var-type state-vars (ground-domain-variable-type domain)))
+           (derived-i (smt-plan-var-step (ground-domain-derived-variables domain) 'i))
+           (derived-type (smt-plan-var-type (ground-domain-derived-variables domain)
+                                            (ground-domain-derived-type domain)))
+           (frame-vars (append op-i vars-i vars-j))
+           (frame-vars-type (append op-type var-type var-type))
+           (op-vars (append op-i vars-i vars-j derived-i))
+           (op-vars-type (append op-type var-type var-type derived-type)))
+      ;(print (smt-plan-step-fun-types domain state-vars ground-actions))
       (append
        (list (smt-comment "Operator Function")
-             (smt-define-fun "op-step"
-                             ;; args
-                             (bool-args op-vars)
-                             'bool
-                             ;; exp
-                             (apply #'smt-and
-                                    (loop
-                                       for op in ground-actions
-                                       for op-var in op-i
-                                       collect
-                                         (let ((pre (rewrite-exp (ground-action-precondition op) 'i))
-                                               (eff (rewrite-exp (ground-action-effect op) 'j)))
-                                           `(or (not ,op-var)      ; action not active
-                                                (and ,pre          ; precondition holds
-                                                     ,eff)))))))
+             (bool-fun "op-step" op-vars op-vars-type
+                       (apply #'smt-and
+                              (loop
+                                 for op in ground-actions
+                                 for op-var in op-i
+                                 collect
+                                   (let ((pre (rewrite-exp (ground-action-precondition op) 'i))
+                                         (eff (rewrite-exp (ground-action-effect op) 'j)))
+                                     `(or (not ,op-var)      ; action not active
+                                          (and ,pre          ; precondition holds
+                                               ,eff)))))))
        ;; exclusion
        (list (smt-comment "Exclusion Function")
-             (bool-fun "exclude-step" op-i
+             (bool-fun "exclude-step" op-i op-type
                        (smt-plan-exclude-exp op-i)))
 
        ;; frame
        (list (smt-comment "Frame Axioms")
-             (bool-fun "frame-axioms" op-vars
+             (bool-fun "frame-axioms" frame-vars frame-vars-type
                        (smt-frame-axioms-exp state-vars ground-actions 'i 'j)))
+
+
        ;; Step
        (list (smt-comment "plan-step")
-             (bool-fun "plan-step" op-vars
-                       (smt-and (cons "exclude-step" op-i  )
-                                (cons "op-step" op-vars)
-                                (cons "frame-axioms" op-vars))))))))
+             (bool-fun "plan-step" op-vars op-vars-type
+                       (apply #'smt-and
+                              (cons "exclude-step" op-i  )
+                              (cons "op-step" op-vars)
+                              (cons "frame-axioms" frame-vars)
+                              ;; direct axioms
+                              (loop for axiom in (ground-domain-axioms domain)
+                                 collect (rewrite-exp axiom 'i)))))))))
 
 (defun smt-plan-step-vars (domain i)
-  (loop
-     with types = (ground-domain-variable-type domain)
-     for s in (ground-domain-variables domain)
-     for v = (format-state-variable s i)
-     collect (multiple-value-bind (type contains)
-                 (tree-map-find types s)
-               (assert contains)
-               (smt-declare-fun v () type))))
+  (labels ((helper (vars types)
+             (loop
+                for s in vars
+                for v = (format-state-variable s i)
+                collect (multiple-value-bind (type contains)
+                            (tree-map-find types s)
+                          (assert contains)
+                          (smt-declare-fun v () type)))))
+    (append (helper (ground-domain-variables domain)
+                    (ground-domain-variable-type domain))
+            (helper (ground-domain-derived-variables domain)
+                    (ground-domain-derived-type domain)))))
 
 (defun smt-plan-step-stmts (domain i)
-  (let ((state-vars (ground-domain-variables domain))
-        (ground-actions (ground-domain-operators domain)))
+  (let ((ground-actions (ground-domain-operators domain)))
     (append
      ;; create the per-step state
      (list (smt-comment "State Variables" ))
@@ -342,7 +387,10 @@
         collect (smt-declare-fun v () 'bool))
      (list (smt-comment (format nil "Step ~D" i))
            (smt-assert `("plan-step"
-                         ,@(smt-plan-step-fun-args state-vars ground-actions i (1+ i))))))))
+                         ,@(smt-plan-step-fun-args (ground-domain-variables domain)
+                                                   ground-actions
+                                                   (ground-domain-derived-variables domain)
+                                                   i (1+ i))))))))
 
 (defun smt-plan-step-ops (ground-actions steps)
   (let ((step-ops))
@@ -393,6 +441,7 @@
        ;(print (smt-plan-context-values cx))
        (smt-plan-parse (smt-plan-context-values cx)))
       ((unsat |unsat|)
+       ;(print (smt-eval smt '(|get-unsat-core|)))
        (setf (smt-plan-context-values cx) nil)
        ;; pop
        (smt-eval smt '(|pop| 1))
@@ -476,6 +525,8 @@
                  (smt-eval smt exp))
                (stmt-list (list)
                  (map nil #'stmt list)))
+        ;; Datatypes
+        (stmt-list (smt-plan-datatypes domain))
         ;; Per-step function
         (stmt-list (smt-plan-step-fun domain))
         ;; initial state

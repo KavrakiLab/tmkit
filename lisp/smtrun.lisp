@@ -43,6 +43,8 @@
     (smt-print-1 exp (sb-ext:process-input process))
     (terpri (sb-ext:process-input process))
     (finish-output input)
+    ;(terpri)
+    ;(smt-print-1 exp *standard-output*)
     ;; Read
     (let ((result (smt-read smt)))
       ;(print result)
@@ -87,6 +89,7 @@
     (sb-ext:finalize smt (lambda () (smt-process-kill process)))
     (setf (smt-process smt) process)
     (smt-eval smt (smt-set-option ":print-success" '|true|))
+    ;(smt-eval smt (smt-set-option ":produce-unsat-cores" '|true|))
     smt))
 
 (defun smt-stop (smt)
