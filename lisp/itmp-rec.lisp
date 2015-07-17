@@ -1,7 +1,14 @@
 (in-package :tmsmt)
 
+
+(defun itmp-encode-location (object x y resolution)
+  (smt-mangle object
+              (round (/ x resolution))
+              (round (/ y resolution))))
+
 (defun scene-facts (init-scene goal-scene
                     &key
+                      (encoding :quadratic)
                       (resolution 0.1)
                       (problem 'itmp)
                       (domain 'itmp))
@@ -14,9 +21,11 @@
                  (when (robray::scene-frame-geometry-isa frame type)
                    (setf (tree-set-find frames) frame)))))
            (location-predicate (object parent x y)
-             (list 'at object (encode-location parent x y)))
+             (ecase encoding
+               (:quadratic (list 'at object (itmp-encode-location parent x y resolution)))
+               (:linear `(= (position ,object) ,(itmp-encode-location parent x y resolution)))))
            (occupied-predicate (parent x y)
-             (list 'occupied (encode-location parent x y)))
+             (list 'occupied (itmp-encode-location parent x y resolution)))
            (frame-predicates (frame &optional goal)
              (let* ((name  (robray::scene-frame-name frame))
                     (tf  (robray::scene-frame-fixed-tf frame))
@@ -25,13 +34,9 @@
                     (x  (vec-x translation))
                     (y  (vec-y translation))
                     (loc (location-predicate name parent x y)))
-               (if goal
+               (if (or goal (eq encoding :linear))
                    (list loc)
-               (list loc (occupied-predicate parent x y)))))
-           (encode-location (obj x y)
-             (smt-mangle obj
-                         (round (/ x resolution))
-                           (round (/ y resolution)))))
+                   (list loc (occupied-predicate parent x y))))))
     (let* ((moveable-frames (collect-type init-scene "moveable"))
            (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
            (stackable-frames (collect-type init-scene "stackable"))
@@ -51,7 +56,7 @@
                                    append (loop for x from x-min to x-max by resolution
                                              append (loop for y from y-min to y-max by resolution
                                                        collect
-                                                         (encode-location name x y))))))
+                                                         (itmp-encode-location name x y resolution))))))
            (initial-true (loop for frame in moveable-frames
                             nconc (frame-predicates frame)))
            (goal-locations (loop for frame in (collect-type goal-scene "moveable")
@@ -75,6 +80,7 @@
 
 (defun itmp-transfer-action (scene-graph sexp
                              &key
+                               encoding
                                q-all-start
                                resolution
                                (z-epsilon 1d-4)
@@ -85,41 +91,52 @@
   (declare (type number resolution)
            (type robray::scene-graph scene-graph))
   ;(print sexp)
-  (destructuring-bind (transfer object
-                                 src-name src-i src-j
-                                 dst-name dst-i dst-j)
+  (destructuring-bind (-transfer object &rest rest)
       sexp
-    (assert (equalp "TRANSFER" transfer))
-    (let* ((dst-x (* dst-i resolution))
-           (dst-y (* dst-j resolution))
-           (tf-0 (robray::scene-graph-tf-relative scene-graph src-name object))
-           ;;(src-x (* src-i resolution))
-           ;;(src-y (* src-j resolution))
-           (act-x (vec-x (tf-translation tf-0)))
-           (act-y (vec-y (tf-translation tf-0)))
-           (tf-dst (tf* nil ; TODO: is identity correct?
-                        (vec3* dst-x dst-y (+ (itmp-transfer-z scene-graph object)
-                                              (itmp-transfer-z scene-graph dst-name)
-                                              z-epsilon)))))
-      (assert (and (= src-i (round act-x resolution))
-                   (= src-j (round act-y resolution))))
-      ;(print object)
-      ;(print tf-0)
-      ;(print tf-dst)
-      (context-apply-scene plan-context scene-graph)
-      (act-transfer-tf plan-context group q-all-start frame link object *tf-grasp-rel*
-                       dst-name tf-dst))))
+    (assert (equalp "TRANSFER" -transfer))
+    (multiple-value-bind (src-name src-i src-j dst-name dst-i dst-j)
+        (ecase encoding
+          (:quadratic
+           (values (first rest) (second rest) (third rest)
+                   (fourth rest) (fifth rest) (sixth rest)))
+          (:linear
+           (let* ((frame (robray::scene-graph-lookup scene-graph object))
+                  (parent (robray::scene-frame-parent frame))
+                  (tf (robray::scene-frame-tf frame))
+                  (v (tf-translation tf)))
+             (values parent (round (vec-x v) resolution) (round (vec-y v) resolution)
+                     (first rest) (second rest) (third rest)))))
+      (let* ((dst-x (* dst-i resolution))
+             (dst-y (* dst-j resolution))
+             (tf-0 (robray::scene-graph-tf-relative scene-graph src-name object))
+             ;;(src-x (* src-i resolution))
+             ;;(src-y (* src-j resolution))
+             (act-x (vec-x (tf-translation tf-0)))
+             (act-y (vec-y (tf-translation tf-0)))
+             (tf-dst (tf* nil ; TODO: is identity correct?
+                          (vec3* dst-x dst-y (+ (itmp-transfer-z scene-graph object)
+                                                (itmp-transfer-z scene-graph dst-name)
+                                                z-epsilon)))))
+        (assert (and (= src-i (round act-x resolution))
+                     (= src-j (round act-y resolution))))
+                                        ;(print object)
+                                        ;(print tf-0)
+                                        ;(print tf-dst)
+        (context-apply-scene plan-context scene-graph)
+        (act-transfer-tf plan-context group q-all-start frame link object *tf-grasp-rel*
+                         dst-name tf-dst)))))
 
 
 (defun itmp-rec (init-graph goal-graph operators
                  &key
+                   (encoding :linear)
                    (max-steps 3)
                    (resolution 0.2d0)
                    (plan-context *plan-context*)
                    (frame "right_endpoint") ;; FIXME
                    (link *link*)
                    (group *group*))
-  (let* ((task-facts (scene-facts init-graph goal-graph :resolution resolution))
+  (let* ((task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution))
          (smt-cx (smt-plan-context :operators operators
                                    :facts task-facts))
          (plan-steps))
@@ -135,6 +152,7 @@
                (when task-plan
                  (multiple-value-bind (plan graph)
                      (itmp-transfer-action graph (car task-plan)
+                                           :encoding encoding
                                            :resolution resolution
                                            :plan-context plan-context
                                            :link link

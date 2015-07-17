@@ -28,10 +28,14 @@
 
 (defvar *plan*)
 
-(setq *plan*
-      (itmp-rec *object-graph* *object-goal*
-                (rope *tmsmt-root* "pddl/itmp/itmp-blocks-domain.pddl")
-                :max-steps 3 :resolution .2))
+(time
+ (progn
+   (setq *plan*
+         (itmp-rec *object-graph* *object-goal*
+                   (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
+                   :encoding :linear
+                   :max-steps 3 :resolution .2))
+   nil))
 
 (render-group-itmp *plan-context* *group*
                      *plan*

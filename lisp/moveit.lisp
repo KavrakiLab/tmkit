@@ -107,7 +107,7 @@
                                 :tf tf))))
 
 ;; TODO: reset moveit color
-(defun context-dettach-object (context group q-group object)
+(defun context-dettach-object (context group q-group object &optional parent)
   (let* ((container (plan-context-moveit-container context))
          (configuration-map (container-group-configuration-map container group q-group))
          (scene-graph (robray::scene-graph (plan-context-robot-graph context)
@@ -116,9 +116,12 @@
                                               :configuration-map configuration-map)))
     ;; Reparent in graph
     ;; TODO: what about placing objects?
-    (setf (plan-context-object-graph context)
-          (scene-graph-reparent (plan-context-object-graph context) nil object
-                                :tf tf))
+    (let ((graph-0 (scene-graph-reparent (plan-context-object-graph context) nil object
+                                         :tf tf)))
+      (setf (plan-context-object-graph context)
+            (if parent
+                (scene-graph-reparent graph-0 parent object)
+                graph-0)))
     ;; Set in planning scene
     (container-scene-rm container object)
     (context-add-plan-collision context (plan-context-object-graph context) object)))

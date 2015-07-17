@@ -42,7 +42,8 @@
                                           object-name)))
             (context-dettach-object context group
                                     (container-plan-endpoint (or plan-place plan-pick))
-                                    object-name)
+                                    object-name
+                                    destination-name)
             (if plan-place
                 ;; TODO: parent on the destination thing
                 (values (list plan-pick `(:pick ,object-name)
