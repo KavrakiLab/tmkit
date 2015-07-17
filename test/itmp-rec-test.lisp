@@ -2,9 +2,7 @@
 (in-package :tmsmt)
 
 (defparameter *scene-directory*
-  (concatenate 'string
-               (namestring (asdf:system-source-directory :tmsmt))
-               "../scene/"))
+  (rope *tmsmt-root* "/scene/"))
 
 (moveit-init (robray::format-pathname "~A/urdf/baxter.urdf" robray::*baxter-description*))
 
@@ -21,18 +19,18 @@
 (container-set-group *moveit-container* *group*)
 
 (defparameter *object-graph*
-  (load-scene-file (concatenate 'string *scene-directory* "scene.robray")))
-
+  (load-scene-file (rope *scene-directory* "scene.robray")))
 
 (defparameter *object-goal*
-  (load-scene-file (concatenate 'string *scene-directory* "goal1.robray")))
+  (load-scene-file (rope *scene-directory* "goal1.robray")))
 
 (defparameter *tf-grasp-rel* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .10)))
 
 (defvar *plan*)
 
 (setq *plan*
-      (itmp-rec *object-graph* *object-goal* "/home/ntd/git/tmsmt/pddl/itmp/itmp-blocks-domain.pddl"
+      (itmp-rec *object-graph* *object-goal*
+                (rope *tmsmt-root* "pddl/itmp/itmp-blocks-domain.pddl")
                 :max-steps 3 :resolution .2))
 
 (render-group-itmp *plan-context* *group*

@@ -60,14 +60,14 @@
   (etypecase operators
     (pddl-operators operators)
     (cons (parse-operators operators))
-    ((or string pathname) (parse-operators (load-sexp operators)))))
+    ((or rope pathname) (parse-operators (load-sexp operators)))))
 
 (defun load-facts (facts)
   "Load facts from `facts'."
   (etypecase facts
     (pddl-facts facts)
     (cons (parse-facts facts))
-    ((or string pathname) (parse-facts (load-sexp facts)))))
+    ((or rope pathname) (parse-facts (load-sexp facts)))))
 
 (defun parse-typed-list (type-list)
   (labels ((collect-names (type-list)

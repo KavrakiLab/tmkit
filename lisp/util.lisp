@@ -1,8 +1,13 @@
 (in-package :tmsmt)
 
+(defparameter *tmsmt-root*
+  (concatenate 'string
+               (namestring (asdf:system-source-directory :tmsmt))
+               "../"))
+
 (defun load-sexp (filename)
   "Read a single s-expression from a file"
-  (with-open-file (s filename :direction :input)
+  (with-open-file (s (rope-string (rope filename)) :direction :input)
     (read s)))
 
 (defun load-all-sexp (filename)
