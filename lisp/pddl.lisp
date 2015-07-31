@@ -27,6 +27,7 @@
   name
   types
   supertypes
+  constants
   functions
   derived
   actions)
@@ -189,6 +190,9 @@
                                       :arguments (pddl-function-arguments fun)
                                       :body (parse-pddl-exp body))
                    (pddl-operators-derived ops))))
+          ((:constants &rest objs)
+           (setf (pddl-operators-constants ops)
+                 (parse-typed-list objs)))
           ((:types &rest type-list)
            (let ((typed-list (parse-typed-list type-list))
                  (hash (make-hash-table :test #'equal)))

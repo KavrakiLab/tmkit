@@ -1,5 +1,9 @@
 (in-package :tmsmt)
 
+(defparameter *itmp-pddl-dir*
+  (rope-string (rope (asdf:system-source-directory :tmsmt)
+                     "../pddl/itmp/")))
+
 (smt-plan :operators "/home/ntd/git/tmsmt/pddl/blocksworld/blocks-domain.pddl"
           :facts "/home/ntd/git/tmsmt/pddl/blocksworld/sussman-anomaly.pddl")
 
@@ -46,3 +50,5 @@
                :smt smt)))
       (smt-plan-next cx)
       ))
+
+(load-operators (concatenate 'string *itmp-pddl-dir* "trash-domain.pddl"))
