@@ -178,9 +178,9 @@
            ;; TODO: handle this
            (declare (ignore ignore)))
           ((:predicates &rest predicates)
-           (setf (pddl-operators-functions ops)
-                 (append (pddl-operators-functions ops)
-                         (map 'list #'parse-predicate predicates))))
+           (loop for p in predicates do
+                (push (parse-predicate p)
+                      (pddl-operators-functions ops))))
           ((:action name &key parameters uncontrollable precondition effect)
            (push (make-pddl-action :name name
                               :parameters (parse-typed-list  parameters)
@@ -190,7 +190,8 @@
                  (pddl-operators-actions ops)))
           ((:functions &rest sexp)
            (setf (pddl-operators-functions ops)
-                 (parse-pddl-functions sexp)))
+                 (append (pddl-operators-functions ops)
+                         (parse-pddl-functions sexp))))
           ((:derived predicate body)
            (let ((fun (parse-predicate predicate)))
              (push (make-pddl-derived :name (pddl-function-name fun)
