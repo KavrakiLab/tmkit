@@ -150,13 +150,21 @@
 
 (defun parse-pddl-exp (exp)
   ;; TODO: recurse
-  (destructuring-case exp
-    (((exists forall) arglist body)
-     (make-pddl-quantifier :head (car exp)
-                           :parameters (parse-typed-list arglist)
-                           :body body))
-    ((&rest exp)
-     exp)))
+  (etypecase exp
+    (atom exp)
+    (list
+     (destructuring-case exp
+       (((exists forall) arglist body)
+        (make-pddl-quantifier :head (car exp)
+                              :parameters (parse-typed-list arglist)
+                              :body body))
+       (((or and not =) &rest rest)
+        (cons (car exp)
+              (map 'list #'parse-pddl-exp rest)))
+       ((t &rest rest)
+        (declare (ignore rest))
+        exp)))))
+
 
 (defun parse-operators (sexp)
   (destructuring-bind (-define (-domain name) &rest clauses)

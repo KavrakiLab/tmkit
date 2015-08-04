@@ -9,7 +9,9 @@
       (list nil)
       (loop
          with type =  (pddl-typed-type (car typed-list))
-         for o in (tree-set-list (tree-map-find type-map type))
+         with objects = (tree-map-find type-map type)
+         with list = (when objects (tree-set-list objects))
+         for o in list
          nconc
            (loop for args in (collect-args (cdr typed-list) type-map)
               collect (cons o args)))))
