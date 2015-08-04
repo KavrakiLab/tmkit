@@ -1,9 +1,4 @@
-class moveable { }
-class stackable { }
-
-class red   { color [1,0,0]; }
-class green { color [0,1,0]; }
-class blue  { color [0,0,1]; }
+include "class.robray"
 
 class block {
     shape box;
