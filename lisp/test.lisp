@@ -51,4 +51,15 @@
       (smt-plan-next cx)
       ))
 
+(with-smt (smt)
+  (let ((cx (smt-plan-context
+             :operators (concatenate 'string *itmp-pddl-dir* "trash-domain.pddl")
+             :facts  (concatenate 'string *itmp-pddl-dir* "trash-facts.pddl")
+             :smt smt)))
+    (smt-plan-next cx)
+    ))
+
+(ground-domain (concatenate 'string *itmp-pddl-dir* "trash-domain.pddl")
+               (concatenate 'string *itmp-pddl-dir* "trash-facts.pddl"))
+
 (load-operators (concatenate 'string *itmp-pddl-dir* "trash-domain.pddl"))

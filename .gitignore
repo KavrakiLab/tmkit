@@ -7,3 +7,4 @@ catkin_generated
 /devel
 /cmake_install.cmake
 /CMakeFiles
+/install_manifest.txt
