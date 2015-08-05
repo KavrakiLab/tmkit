@@ -1,0 +1,60 @@
+
+include "class.robray"
+
+/**********/
+/* Tables */
+/**********/
+
+def table_depth .78;
+def table_length1 2.1;
+def table_length2 1.3;
+def table_thickness 0.01;
+
+class big_table {
+    shape box;
+    isa stackable;
+    color [.6, .3, .6];
+    alpha 0.5;
+    dimension [table_depth, table_length1, table_thickness];
+}
+
+class little_table {
+    shape box;
+    isa stackable;
+    color [.6, .3, .6];
+    alpha 0.5;
+    dimension [table_depth, table_length2, table_thickness];
+}
+
+
+
+frame front_table {
+    translation [.8, -.5, 0];
+    geometry {
+        isa big_table;
+    }
+}
+
+frame left_table {
+    parent front_table;
+    rpy [0, 0, π/2];
+    translation [-table_length1/2 + table_depth/2,
+                 table_length1/2 + table_depth/2,
+                 0];
+    geometry {
+        isa big_table;
+        isa red;
+    }
+}
+
+frame right_table {
+    parent front_table;
+    translation [-table_length1/2 - table_depth/2,
+                 -table_length1/2 + table_depth/2,
+                 0];
+    rpy [0, 0, π/2];
+    geometry {
+        isa big_table;
+        isa green;
+    }
+}

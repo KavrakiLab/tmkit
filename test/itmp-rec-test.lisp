@@ -1,10 +1,17 @@
 (require :tmsmt)
 (in-package :tmsmt)
 
+(defparameter *baxter-source-directory*
+  (concatenate 'string
+               (namestring (asdf:system-source-directory :robray))
+               "/demo/baxter/"))
+(uiop/stream:copy-file (robray::output-file "baxter.inc" *baxter-source-directory*)
+                       (robray::output-file "baxter.inc" robray::*robray-tmp-directory*))
+
 (defparameter *scene-directory*
   (rope *tmsmt-root* "/scene/"))
 
-(moveit-init (robray::format-pathname "~A/urdf/baxter.urdf" robray::*baxter-description*))
+(moveit-init (robray::urdf-resolve-file "package://baxter_description/urdf/baxter.urdf"))
 
 (defparameter *group* "right_arm")
 (defparameter *link* (container-group-endlink *moveit-container* *group*))
