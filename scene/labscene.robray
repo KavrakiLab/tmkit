@@ -43,7 +43,6 @@ frame left_table {
                  0];
     geometry {
         isa big_table;
-        isa red;
     }
 }
 
@@ -52,9 +51,103 @@ frame right_table {
     translation [-table_length1/2 - table_depth/2,
                  -table_length1/2 + table_depth/2,
                  0];
-    rpy [0, 0, π/2];
+    rpy [0, 0, -π/2];
     geometry {
         isa big_table;
-        isa green;
+    }
+}
+
+def shelf_depth .25;
+def shelf_width .68;
+def shelf_thickness 0.02;
+def shelf_sep .25;
+def shelf_count 4;
+def shelf_height shelf_count * shelf_sep;
+def shelf_side shelf_height + .88;
+def shelf_side_off shelf_height - shelf_side/2;
+
+class shelf {
+    shape box;
+    dimension [shelf_depth, shelf_width, shelf_thickness];
+    color [.5,.5,.5];
+    alpha .5;
+}
+
+
+class bookcase_side {
+    shape box;
+    dimension [shelf_depth, shelf_thickness, shelf_side];
+    color [.5,.5,.5];
+    alpha .5;
+}
+
+class bookcase_back {
+    shape box;
+    dimension [shelf_thickness, shelf_width, shelf_side];
+    color [.5,.5,.5];
+    alpha .5;
+}
+
+frame shelf0 {
+    parent right_table;
+    translation [shelf_depth/2 + table_depth/2, 0, 0];
+    geometry {
+        isa shelf;
+    }
+}
+
+frame side1 {
+    parent shelf0;
+    translation [0, shelf_width/2, shelf_side_off];
+    geometry {
+        isa bookcase_side;
+    }
+}
+
+frame side2 {
+    parent shelf0;
+    translation [0, -shelf_width/2, shelf_side_off];
+    geometry {
+        isa bookcase_side;
+    }
+}
+
+frame back {
+    parent shelf0;
+    translation [shelf_depth/2, 0, shelf_side_off];
+    geometry {
+        isa bookcase_back;
+    }
+}
+
+frame shelf1 {
+    parent shelf0;
+    translation [0, 0, shelf_sep];
+    geometry {
+        isa shelf;
+    }
+}
+
+frame shelf2 {
+    parent shelf1;
+    translation [0, 0, shelf_sep];
+    geometry {
+        isa shelf;
+    }
+}
+
+frame shelf3 {
+    parent shelf2;
+    translation [0, 0, shelf_sep];
+    geometry {
+        isa shelf;
+    }
+}
+
+frame shelf4 {
+    parent shelf3;
+    translation [0, 0, shelf_sep];
+    geometry {
+        isa shelf;
     }
 }

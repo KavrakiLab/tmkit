@@ -33,7 +33,7 @@
  :include "baxter.inc"
  :render t
  :options (render-options-default :use-collision nil
-                                  :options (render-options-fast))
+                                  :options (render-options-full-hd))
  :output "robray.pov")
 
 
