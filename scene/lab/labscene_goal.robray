@@ -1,0 +1,11 @@
+
+include "labscene.robray"
+
+frame block_a {
+    parent front_table_place;
+    translation [0, 0, block_z ];
+    geometry {
+        isa block;
+        isa red;
+    }
+}

@@ -1,4 +1,4 @@
-(in-package :tmsmt)
+gpackage :tmsmt)
 
 
 (defun itmp-encode-location (object x y resolution)

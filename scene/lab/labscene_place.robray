@@ -1,0 +1,48 @@
+include "labscene.robray"
+
+frame right_place {
+    parent right_table;
+    translation [-.1,.8,0];
+    geometry {
+        //isa shelf;
+        shape box;
+        dimension [.25,.25,table_thickness];
+        isa stackable;
+        isa green;
+        alpha 1;
+    }
+}
+
+frame front_table_place {
+    parent front_table;
+    geometry {
+        shape box;
+        dimension [.25,.25,table_thickness];
+        isa stackable;
+        isa green;
+        alpha 1;
+    }
+}
+
+/**********/
+/* Blocks */
+/**********/
+
+
+frame block_a {
+    parent right_place;
+    translation [0, 0, block_z ];
+    geometry {
+        isa block;
+        isa red;
+    }
+}
+
+/* frame block_b { */
+/*     parent front_table; */
+/*     translation [0, -.25, 0.0551]; */
+/*     geometry { */
+/*         isa block; */
+/*         isa blue; */
+/*     } */
+/* } */

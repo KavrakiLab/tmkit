@@ -5,31 +5,10 @@ include "class.robray"
 /* Tables */
 /**********/
 
-def table_depth .78;
-def table_length1 2.1;
-def table_length2 1.3;
-def table_thickness 0.01;
-
-class big_table {
-    shape box;
-    isa stackable;
-    color [.6, .3, .6];
-    alpha 0.5;
-    dimension [table_depth, table_length1, table_thickness];
-}
-
-class little_table {
-    shape box;
-    isa stackable;
-    color [.6, .3, .6];
-    alpha 0.5;
-    dimension [table_depth, table_length2, table_thickness];
-}
-
 
 
 frame front_table {
-    translation [.8, -.5, 0];
+    translation [.8, -.2, 0];
     geometry {
         isa big_table;
     }
@@ -90,7 +69,7 @@ class bookcase_back {
 
 frame shelf0 {
     parent right_table;
-    translation [shelf_depth/2 + table_depth/2, 0, 0];
+    translation [shelf_depth/2 + table_depth/2, .25, 0];
     geometry {
         isa shelf;
     }
@@ -131,9 +110,9 @@ frame shelf1 {
 frame shelf2 {
     parent shelf1;
     translation [0, 0, shelf_sep];
-    geometry {
-        isa shelf;
-    }
+    //geometry {
+        //isa shelf;
+    //}
 }
 
 frame shelf3 {

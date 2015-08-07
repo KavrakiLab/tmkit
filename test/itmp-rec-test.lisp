@@ -44,13 +44,13 @@
                    :max-steps 3 :resolution .2))
    nil))
 
-(render-group-itmp *plan-context* *group*
-                     *plan*
-                     :render-options  (render-options-default :use-collision nil
-                                                              :options (render-options-fast))
-                     :scene-graph (scene-graph (plan-context-robot-graph *plan-context*)
-                                               *object-graph*)
-                     :frame-name "right_endpoint")
+;; (render-group-itmp *plan-context* *group*
+;;                      *plan*
+;;                      :render-options  (render-options-default :use-collision nil
+;;                                                               :options (render-options-fast))
+;;                      :scene-graph (scene-graph (plan-context-robot-graph *plan-context*)
+;;                                                *object-graph*)
+;;                      :frame-name "right_endpoint")
 
 
 ;; (context-apply-scene *plan-context* *object-graph*)

@@ -1,13 +1,5 @@
 include "class.robray"
 
-class block {
-    shape box;
-    isa moveable;
-    color [0, 1, 0];
-    alpha 0.5;
-    dimension [.1, .1, .1];
-}
-
 frame block_b {
     parent front_table;
     translation [0, 0, 0.0551];

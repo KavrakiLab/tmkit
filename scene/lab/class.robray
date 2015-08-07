@@ -39,3 +39,25 @@ class fixedblock {
     alpha 1.0;
     dimension [.1, .1, .1];
 }
+
+def table_depth .5;
+def table_length1 1.5;
+def table_length2 1.3;
+def table_thickness 0.01;
+def table_top table_thickness / 2 + 1*mm;
+
+class big_table {
+    shape box;
+    color [.6, .3, .6];
+    alpha 0.5;
+    dimension [table_depth, table_length1, table_thickness];
+}
+
+class little_table {
+    shape box;
+    color [.6, .3, .6];
+    alpha 0.5;
+    dimension [table_depth, table_length2, table_thickness];
+}
+
+def block_z table_top + block_size/2;
