@@ -38,7 +38,7 @@ frame right_table {
 
 def shelf_depth .25;
 def shelf_width .68;
-def shelf_thickness 0.02;
+def shelf_thickness table_thickness;
 def shelf_sep .25;
 def shelf_count 4;
 def shelf_height shelf_count * shelf_sep;

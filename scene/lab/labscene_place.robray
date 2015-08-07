@@ -1,8 +1,9 @@
 include "labscene.robray"
 
 frame right_place {
-    parent right_table;
-    translation [-.1,.8,0];
+    //parent right_table;
+    //translation [-.1,.8,0];
+    parent shelf1;
     geometry {
         //isa shelf;
         shape box;
