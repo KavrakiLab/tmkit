@@ -15,6 +15,7 @@ frame right_place {
 
 frame front_table_place {
     parent front_table;
+    translation [.1,0,0];
     geometry {
         shape box;
         dimension [.25,.25,table_thickness];
