@@ -7,7 +7,7 @@ frame right_place {
     geometry {
         //isa shelf;
         shape box;
-        dimension [.25,.25,table_thickness];
+        dimension [.4,.4,table_thickness];
         isa stackable;
         isa green;
         alpha 1;
@@ -39,6 +39,35 @@ frame block_a {
         isa red;
     }
 }
+
+
+frame block_b {
+    parent right_place;
+    translation [0, .2, block_z ];
+    geometry {
+        isa block;
+        isa red;
+    }
+}
+
+
+/* frame block_c { */
+/*     parent right_place; */
+/*     translation [.2, 0, block_z ]; */
+/*     geometry { */
+/*         isa block; */
+/*         isa blue; */
+/*     } */
+/* } */
+
+/* frame block_d { */
+/*     parent right_place; */
+/*     translation [.2, .2, block_z ]; */
+/*     geometry { */
+/*         isa block; */
+/*         isa blue; */
+/*     } */
+/* } */
 
 /* frame block_b { */
 /*     parent front_table; */

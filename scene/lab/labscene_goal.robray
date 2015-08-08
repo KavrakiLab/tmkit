@@ -6,6 +6,6 @@ frame block_a {
     translation [0, 0, block_z ];
     geometry {
         isa block;
-        isa red;
+        //isa red;
     }
 }

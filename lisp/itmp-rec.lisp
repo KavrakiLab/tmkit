@@ -1,4 +1,4 @@
-gpackage :tmsmt)
+(in-package :tmsmt)
 
 
 (defun itmp-encode-location (object x y resolution)
@@ -6,10 +6,17 @@ gpackage :tmsmt)
               (round (/ x resolution))
               (round (/ y resolution))))
 
+(defun collect-range (dim increment)
+  ;(print (list dim increment))
+  (let ((a (loop for i from 0 to (/ dim 2) by increment collect i)))
+    ;(print a)
+    (append (reverse (cdr a))
+            a)))
+
 (defun scene-facts (init-scene goal-scene
                     &key
-                      (encoding :quadratic)
-                      (resolution 0.1)
+                      (encoding :linear)
+                      (resolution 0.2d0)
                       (problem 'itmp)
                       (domain 'itmp))
   (labels ((collect-type (scene type)
@@ -40,23 +47,22 @@ gpackage :tmsmt)
     (let* ((moveable-frames (collect-type init-scene "moveable"))
            (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
            (stackable-frames (collect-type init-scene "stackable"))
-           (stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
+           ;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
            (locations (loop for frame in stackable-frames
                          for name = (robray::scene-frame-name frame)
                          append (loop for g in (robray::scene-frame-geometry frame)
                                    for shape = (robray::scene-geometry-shape g)
                                    for dimension = (robray::scene-box-dimension shape)
-                                   for x-max = (/ (- (elt dimension 0) resolution)
-                                                  2)
-                                   for x-min = (- x-max)
-                                   for y-max = (/ (- (elt dimension 1) resolution)
-                                                  2)
-                                   for y-min = (- y-max)
+                                   for xrange = (collect-range (elt dimension 0) resolution)
+                                   for yrange = (collect-range (elt dimension 1) resolution)
                                    when (robray::scene-geometry-collision g)
-                                   append (loop for x from x-min to x-max by resolution
-                                             append (loop for y from y-min to y-max by resolution
-                                                       collect
-                                                         (itmp-encode-location name x y resolution))))))
+                                   append
+                                     (progn
+                                       ;(print (list name dimension xrange yrange))
+                                     (loop for x in xrange
+                                        append (loop for y in yrange
+                                                  collect
+                                                    (itmp-encode-location name x y resolution)))))))
            (initial-true (loop for frame in moveable-frames
                             nconc (frame-predicates frame)))
            (goal-locations (loop for frame in (collect-type goal-scene "moveable")
@@ -64,7 +70,7 @@ gpackage :tmsmt)
       `(define (problem ,problem)
            (:domain ,domain)
          (:objects ,@moveable-objects - block
-                   ,@stackable-objects - table
+                   ;,@stackable-objects - table
                    ,@locations - location)
          (:init ,@initial-true)
          (:goal (and ,@goal-locations))))))

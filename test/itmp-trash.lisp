@@ -33,17 +33,18 @@
   (scene-graph *robot* *object-graph*
                (scene-frame-fixed "block_a" "block_a_grasp" :tf *tf-grasp-back*)
                ;(scene-frame-fixed "block_a" "block_a_grasp" :tf *tf-grasp-top*)
-               (robray::item-frame-marker "block_a_grasp" (robray::draw-subframe "block_a" "marker")
-                                          :length .15
-                                          :width .015
-                                          :options (robray::draw-options :no-shadow t :alpha .5
-                                                                         :visual t :collision nil))
+               ;; (robray::item-frame-marker "block_a_grasp" (robray::draw-subframe "block_a" "marker")
+               ;;                            :length .15
+               ;;                            :width .015
+               ;;                            :options (robray::draw-options :no-shadow t :alpha .5
+               ;;                                                           :visual t :collision nil))
 
                (robray::item-frame-marker "right_endpoint" (robray::draw-subframe "right_endpoint" "marker")
                                           :length .15
                                           :width .015
                                           :options (robray::draw-options :no-shadow t :alpha .5
-                                                                         :visual t :collision nil))))
+                                                                         :visual t :collision nil))
+               ))
 
 (robray::scene-graph-pov-frame
  *draw-scene*
@@ -82,7 +83,7 @@
          (itmp-rec *object-graph* *object-goal*
                    (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
                    :encoding :linear
-                   :max-steps 1 :resolution .2))
+                   :max-steps 1 :resolution .2d0))
    nil))
 
 (render-group-itmp *plan-context* *group*
