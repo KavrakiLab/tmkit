@@ -10,7 +10,7 @@
   ;(print (list dim increment))
   (let ((a (loop for i from 0 to (/ dim 2) by increment collect i)))
     ;(print a)
-    (append (reverse (cdr a))
+    (append (map 'list #'- (reverse (cdr a)))
             a)))
 
 (defun scene-facts (init-scene goal-scene
