@@ -202,6 +202,7 @@ tms_container_set_ws_goal( struct container * c, const char *link, const double 
 
 int
 tms_container_plan( struct container * c,
+                    double timeout,
                     size_t *n_vars, size_t *n_points, double **points)
 {
     /**********/
@@ -209,6 +210,7 @@ tms_container_plan( struct container * c,
     /**********/
     moveit_msgs::MoveItErrorCodes err;
     planning_interface::MotionPlanResponse res;
+    c->req.allowed_planning_time = timeout;
     planning_interface::PlanningContextPtr context =
         c->planner_instance->getPlanningContext(c->planning_scene, c->req, err);
     context->solve(res);

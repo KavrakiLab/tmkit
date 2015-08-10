@@ -71,6 +71,7 @@ tms_container_set_ws_goal( struct container * c, const char *link, const double 
  */
 int
 tms_container_plan( struct container * c,
+                    double timeout,
                     size_t *n_vars, size_t *n_points, double **points);
 
 /**

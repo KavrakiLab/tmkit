@@ -134,6 +134,7 @@
 
 (cffi:defcfun tms-container-plan :int
   (container moveit-container-t)
+  (timeout :double)
   (n-vars :pointer)
   (n-points :pointer)
   (points :pointer))
@@ -156,11 +157,12 @@
                                    n-group q-group
                                    n-all q-all)))))
 
-(defun container-plan (container)
+(defun container-plan (container &key
+                                   (timeout *motion-timeout*))
   (cffi:with-foreign-objects ((n-vars 'amino-ffi:size-t)
                               (n-points 'amino-ffi::size-t)
                               (points :pointer))
-    (let ((result (tms-container-plan container n-vars n-points points)))
+    (let ((result (tms-container-plan container timeout n-vars n-points points)))
       (if (< result 0)
           (progn
             (format t "~&CL: Planning failed: ~D~%" result)
