@@ -349,12 +349,13 @@
        ;; early termination
        (list (smt-comment "Early Termination")
              (bool-fun "early-term" (append op-i vars-i) (append op-type var-type)
-                       (list '=>
-                             ;;goal
-                             (rewrite-exp (ground-domain-goal domain)
-                                          'i)
-                             ;; ops
-                             (smt-not (apply #'smt-or op-i)))))
+                       (smt-ite
+                        ;; if goal
+                        (rewrite-exp (ground-domain-goal domain) 'i)
+                        ;; then no op
+                        (smt-not (apply #'smt-or op-i))
+                        ;; else op
+                        (apply #'smt-or op-i))))
        ;; frame
        (list (smt-comment "Frame Axioms")
              (bool-fun "frame-axioms" frame-vars frame-vars-type
