@@ -1,5 +1,7 @@
 (in-package :tmsmt)
 
+(defvar *smt-trace-command* nil)
+
 (defstruct smt
   process)
 
@@ -37,31 +39,31 @@
 (defun smt-eval (smt exp)
   (when (eq (car exp) 'comment)
     (return-from smt-eval t))
-  (let* ((process (smt-process smt))
-         (input (sb-ext:process-input process)))
-    ;; Write
-    (smt-print-1 exp (sb-ext:process-input process))
-    (terpri (sb-ext:process-input process))
-    (finish-output input)
-    ;(terpri)
-    ;(smt-print-1 exp *standard-output*)
-    ;; Read
-    (let ((result (smt-read smt)))
-      ;(print result)
-      (cond
-        ((smt-symbol-eq result 'unsupported '|unsupported|)
-         (error 'smt-runtime-error
-                :message "Unsupported expression"
-                :expression exp))
-        ((smt-symbol-eq result 'success '|success|)
-         t)
-        ((and (consp result)
-              (or (smt-symbol-eq (car result) 'error  '|error|)))
-         (error 'smt-runtime-error
-                :message (second result)
-                :expression exp))
-        (t
-         result)))))
+  ;; Write
+  (labels ((command (stream)
+             (smt-print-1 exp stream)
+             (terpri stream)
+             (finish-output stream)))
+    (when *smt-trace-command*
+      (command *smt-trace-command*))
+    (command (smt-input smt)))
+  ;; Read
+  (let ((result (smt-read smt)))
+                                        ;;(print result)
+    (cond
+      ((smt-symbol-eq result 'unsupported '|unsupported|)
+       (error 'smt-runtime-error
+              :message "Unsupported expression"
+              :expression exp))
+      ((smt-symbol-eq result 'success '|success|)
+       t)
+      ((and (consp result)
+            (or (smt-symbol-eq (car result) 'error  '|error|)))
+       (error 'smt-runtime-error
+              :message (second result)
+              :expression exp))
+      (t
+       result))))
 
 (defparameter *smt-solver-z3*
   (list "z3" "-smt2" "-in"))
@@ -96,8 +98,18 @@
   (smt-process-kill (smt-process smt))
   (setf (smt-process smt) nil))
 
-(defmacro with-smt ((variable &optional (smt-solver '*smt-solver*)) &body body)
+(defmacro with-smt ((variable &key
+                              (smt-solver '*smt-solver*)
+                              (trace-command "/tmp/smt-command"))
+                    &body body)
   `(let ((,variable (smt-start :smt-solver ,smt-solver)))
-     (unwind-protect
-          (progn ,@body)
-       (smt-stop ,variable))))
+     (labels ((runit ()
+                (unwind-protect
+                     (progn ,@body)
+                  (smt-stop ,variable))))
+       ,(if trace-command
+            `(progn
+               (format *standard-output* "~&Tracing SMT to ~A~%" ,trace-command)
+               (with-open-file (*smt-trace-command* ,trace-command :direction :output :if-exists :supersede)
+                 (runit)))
+            `(runit)))))

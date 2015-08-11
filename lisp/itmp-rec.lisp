@@ -44,7 +44,9 @@
                (if (or goal (eq encoding :linear))
                    (list loc)
                    (list loc (occupied-predicate parent x y))))))
-    (let* ((moveable-frames (collect-type init-scene "moveable"))
+    (let* ((init-scene (scene-graph init-scene))
+           (goal-scene (scene-graph goal-scene))
+           (moveable-frames (collect-type init-scene "moveable"))
            (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
            (stackable-frames (collect-type init-scene "stackable"))
            ;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
@@ -142,39 +144,43 @@
                    (frame "right_endpoint") ;; FIXME
                    (link *link*)
                    (group *group*))
-  (let* ((task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution))
-         (smt-cx (smt-plan-context :operators operators
-                                   :facts task-facts))
-         (plan-steps))
+  (with-smt (smt)
+    (let* ((init-graph (scene-graph init-graph))
+           (goal-graph (scene-graph goal-graph))
+           (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution))
+           (smt-cx (smt-plan-context :operators operators
+                                     :facts task-facts
+                                     :smt smt))
+           (plan-steps))
 
-    (labels ((next ()
-               (setq plan-steps nil)
-               (let ((plan (smt-plan-next smt-cx :max-steps max-steps)))
-                 (print plan)
-                 (reify plan init-graph *q-all-start*)))
-             (reify (task-plan graph start)
-               (declare (type list task-plan)
-                        (type robray::scene-graph graph))
-               (when task-plan
-                 (multiple-value-bind (plan graph)
-                     (itmp-transfer-action graph (car task-plan)
-                                           :encoding encoding
-                                           :resolution resolution
-                                           :plan-context plan-context
-                                           :link link
-                                           :frame frame
-                                           :group group
-                                           :q-all-start start)
-                   (declare (type list plan)
-                            (type robray::scene-graph graph))
-                   (if plan
-                       (progn
-                         (push plan plan-steps)
-                         (let* ((group-start (container-plan-endpoint (third plan)))
-                                (all-start (container-merge-group *moveit-container* *group*
-                                                                  group-start start)))
-                           (reify (cdr task-plan) graph all-start)))
-                       (progn
-                         (next)))))))
-      (next))
-    (apply #'append (reverse plan-steps))))
+      (labels ((next ()
+                 (setq plan-steps nil)
+                 (let ((plan (smt-plan-next smt-cx :max-steps max-steps)))
+                   (print plan)
+                   (reify plan init-graph *q-all-start*)))
+               (reify (task-plan graph start)
+                 (declare (type list task-plan)
+                          (type robray::scene-graph graph))
+                 (when task-plan
+                   (multiple-value-bind (plan graph)
+                       (itmp-transfer-action graph (car task-plan)
+                                             :encoding encoding
+                                             :resolution resolution
+                                             :plan-context plan-context
+                                             :link link
+                                             :frame frame
+                                             :group group
+                                             :q-all-start start)
+                     (declare (type list plan)
+                              (type robray::scene-graph graph))
+                     (if plan
+                         (progn
+                           (push plan plan-steps)
+                           (let* ((group-start (container-plan-endpoint (third plan)))
+                                  (all-start (container-merge-group *moveit-container* *group*
+                                                                    group-start start)))
+                             (reify (cdr task-plan) graph all-start)))
+                         (progn
+                           (next)))))))
+        (next))
+      (apply #'append (reverse plan-steps)))))
