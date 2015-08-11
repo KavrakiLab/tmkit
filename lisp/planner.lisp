@@ -346,6 +346,15 @@
              (bool-fun "exclude-step" op-i op-type
                        (smt-plan-exclude-exp op-i)))
 
+       ;; early termination
+       (list (smt-comment "Early Termination")
+             (bool-fun "early-term" (append op-i vars-i) (append op-type var-type)
+                       (list '=>
+                             ;;goal
+                             (rewrite-exp (ground-domain-goal domain)
+                                          'i)
+                             ;; ops
+                             (smt-not (apply #'smt-or op-i)))))
        ;; frame
        (list (smt-comment "Frame Axioms")
              (bool-fun "frame-axioms" frame-vars frame-vars-type
@@ -356,7 +365,8 @@
        (list (smt-comment "plan-step")
              (bool-fun "plan-step" op-vars op-vars-type
                        (apply #'smt-and
-                              (cons "exclude-step" op-i  )
+                              (cons "exclude-step" op-i)
+                              (cons "early-term" (append op-i vars-i))
                               (cons "op-step" op-vars)
                               (cons "frame-axioms" frame-vars)
                               ;; direct axioms
