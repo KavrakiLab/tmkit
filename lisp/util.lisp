@@ -1,9 +1,9 @@
 (in-package :tmsmt)
 
 (defparameter *tmsmt-root*
-  (concatenate 'string
-               (namestring (asdf:system-source-directory :tmsmt))
-               "../"))
+  (make-pathname :directory (let ((tmp (pathname-directory (asdf:system-source-directory :tmsmt))))
+                              (subseq tmp 0 (1- (length tmp))))))
+
 
 (defun load-sexp (filename)
   "Read a single s-expression from a file"

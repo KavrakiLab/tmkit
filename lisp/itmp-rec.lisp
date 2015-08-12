@@ -65,8 +65,9 @@
                                         append (loop for y in yrange
                                                   collect
                                                     (itmp-encode-location name x y resolution)))))))
-           (initial-true (loop for frame in moveable-frames
-                            nconc (frame-predicates frame)))
+           (initial-true (cons '(= (last-transfer) no-object)
+                               (loop for frame in moveable-frames
+                                  nconc (frame-predicates frame))))
            (goal-locations (loop for frame in (collect-type goal-scene "moveable")
                             nconc (frame-predicates frame t))))
       `(define (problem ,problem)

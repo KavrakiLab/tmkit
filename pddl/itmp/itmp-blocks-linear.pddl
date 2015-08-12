@@ -1,14 +1,20 @@
 (define (domain itmp)
   (:requirements :typing)
-  (:types block location - object)
+  (:types location - object
+          abstract-block - object
+          block - abstract-block)
   (:predicates)
-  (:functions (position ?obj - block) - location)
+  (:constants no-object - abstract-block)
+  (:functions (position ?obj - block) - location
+              (last-transfer) - abstract-block)
   (:derived (occupied ?loc - location)
             (exists (?obj - block) (= (position ?obj)
                                       ?loc)))
   (:action transfer
            :parameters (?obj - block
                         ?loc-1 - location)
-           :precondition (not (occupied ?loc-1))
+           :precondition (and (not (occupied ?loc-1))
+                              (not (= ?obj (last-transfer))))
            :effect (and (= (position ?obj)
-                           ?loc-1))))
+                           ?loc-1)
+                        (= (last-transfer) ?obj))))
