@@ -1,6 +1,8 @@
 (in-package :tmsmt)
 
 
+;(defvar *itmp-cache*)
+
 (defun itmp-encode-location (object x y resolution)
   (smt-mangle object
               (round (/ x resolution))
@@ -134,7 +136,11 @@
         (context-apply-scene plan-context scene-graph)
         (act-transfer-tf plan-context group q-all-start frame link object *tf-grasp-rel*
                          dst-name tf-dst)))))
+(defun itmp-abort ()
+ ;(break)
+  )
 
+(defvar *itmp-cache*)
 
 (defun itmp-rec (init-graph goal-graph operators
                  &key
@@ -146,42 +152,83 @@
                    (link *link*)
                    (group *group*))
   (with-smt (smt)
-    (let* ((init-graph (scene-graph init-graph))
+    (let* ((cache (make-hash-table :test #'equal))
+           (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
            (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution))
            (smt-cx (smt-plan-context :operators operators
                                      :facts task-facts
                                      :smt smt))
            (plan-steps))
-
+      (setq *itmp-cache* cache)
       (labels ((next ()
+                 (itmp-abort)
                  (setq plan-steps nil)
                  (let ((plan (smt-plan-next smt-cx :max-steps max-steps)))
                    (print plan)
-                   (reify plan init-graph *q-all-start*)))
-               (reify (task-plan graph start)
+                   (cache plan)))
+               (cache (plan)
+                 ;(print (hash-table-alist cache))
+                 (let* ((prefixes (reverse (loop
+                                              for trail on (reverse plan)
+                                              collect trail)))
+                                        ;(format t "~&keys: ~A" (hash-table-keys cache))
+                        (prefix
+                         (loop for p in prefixes
+                            for n in (cdr prefixes)
+                            for has-p = (gethash p cache)
+                            for has-n = (gethash n cache)
+                            until (not has-n)
+                            finally (return p))))
+                   (if (gethash prefix cache)
+                       (let ((c (gethash prefix cache)))
+                         (format t "~&prefix: ~A" prefix)
+                         (setq plan-steps (first c))
+                         (rec (subseq plan (length prefix))
+                              (car plan-steps)
+                              (second c)
+                              prefix
+                              *q-all-start*))
+                       (progn
+                         (format t "~&prefix: none")
+                         (reify plan
+                                init-graph *q-all-start*
+                                nil)))))
+                 ;; Find a prefix
+               (rec (task-plan plan graph trail start)
+                 (let* ((group-start (container-plan-endpoint (third plan)))
+                        (all-start (container-merge-group *moveit-container* *group*
+                                                          group-start start)))
+                   (reify task-plan graph all-start trail)))
+               (reify (task-plan graph start trail)
                  (declare (type list task-plan)
                           (type robray::scene-graph graph))
+                 (itmp-abort)
                  (when task-plan
-                   (multiple-value-bind (plan graph)
-                       (itmp-transfer-action graph (car task-plan)
-                                             :encoding encoding
-                                             :resolution resolution
-                                             :plan-context plan-context
-                                             :link link
-                                             :frame frame
-                                             :group group
-                                             :q-all-start start)
-                     (declare (type list plan)
-                              (type robray::scene-graph graph))
-                     (if plan
-                         (progn
-                           (push plan plan-steps)
-                           (let* ((group-start (container-plan-endpoint (third plan)))
-                                  (all-start (container-merge-group *moveit-container* *group*
-                                                                    group-start start)))
-                             (reify (cdr task-plan) graph all-start)))
-                         (progn
-                           (next)))))))
+                   (let* ((op (car task-plan))
+                          (task-plan (cdr task-plan))
+                          (trail (cons op trail)))
+                     (format t "~&Reify: ~A..." op)
+                     (multiple-value-bind (plan graph)
+                         (itmp-transfer-action graph op
+                                               :encoding encoding
+                                               :resolution resolution
+                                               :plan-context plan-context
+                                               :link link
+                                               :frame frame
+                                               :group group
+                                               :q-all-start start)
+                       (declare (type list plan)
+                                (type robray::scene-graph graph))
+                       (if plan
+                           (progn
+                             (format t "success.~%")
+                             (push plan plan-steps)
+                             (setf (gethash trail cache)
+                                   (list plan-steps graph))
+                             (rec task-plan plan graph trail start))
+                           (progn
+                             (format t "failure.~%")
+                             (next))))))))
         (next))
       (apply #'append (reverse plan-steps)))))

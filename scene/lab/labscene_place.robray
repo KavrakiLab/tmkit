@@ -1,16 +1,14 @@
 include "labscene.robray"
 
+def shelf_place_depth .4;
+
 frame right_place {
     //parent right_table;
-    //translation [-.1,.8,0];
+    translation [-shelf_depth/2 + shelf_place_depth/2,0,0];
     parent shelf1;
     geometry {
-        //isa shelf;
-        shape box;
-        dimension [.4,.4,table_thickness];
-        isa stackable;
-        isa green;
-        alpha 1;
+        isa goal_surface;
+        dimension [.4,shelf_place_depth,1*mm];
     }
 }
 
@@ -18,11 +16,8 @@ frame front_table_place {
     parent front_table;
     translation [.1,0,0];
     geometry {
-        shape box;
-        dimension [.25,.25,table_thickness];
-        isa stackable;
-        isa green;
-        alpha 1;
+        isa goal_surface;
+        dimension [.2,.4,1*mm];
     }
 }
 
@@ -33,7 +28,7 @@ frame front_table_place {
 
 frame block_a {
     parent right_place;
-    translation [0, 0, block_z ];
+    translation [-.2, 0, block_z ];
     geometry {
         isa block;
         isa red;
@@ -41,33 +36,33 @@ frame block_a {
 }
 
 
-frame block_b {
+/* frame block_b { */
+/*     parent right_place; */
+/*     translation [-.2, .2, block_z ]; */
+/*     geometry { */
+/*         isa block; */
+/*         isa red; */
+/*     } */
+/* } */
+
+
+frame block_c {
+    parent right_place;
+    translation [0, 0, block_z ];
+    geometry {
+        isa block;
+        isa blue;
+    }
+}
+
+frame block_d {
     parent right_place;
     translation [0, .2, block_z ];
     geometry {
         isa block;
-        isa red;
+        isa blue;
     }
 }
-
-
-/* frame block_c { */
-/*     parent right_place; */
-/*     translation [.2, 0, block_z ]; */
-/*     geometry { */
-/*         isa block; */
-/*         isa blue; */
-/*     } */
-/* } */
-
-/* frame block_d { */
-/*     parent right_place; */
-/*     translation [.2, .2, block_z ]; */
-/*     geometry { */
-/*         isa block; */
-/*         isa blue; */
-/*     } */
-/* } */
 
 /* frame block_b { */
 /*     parent front_table; */

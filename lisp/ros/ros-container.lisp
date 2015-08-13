@@ -165,7 +165,7 @@
     (let ((result (tms-container-plan container timeout n-vars n-points points)))
       (if (< result 0)
           (progn
-            (format t "~&CL: Planning failed: ~D~%" result)
+            ;(format t "~&CL: Planning failed: ~D~%" result)
              nil)
           (let ((n-vars (cffi:mem-ref n-vars 'amino-ffi:size-t))
                 (n-points (cffi:mem-ref n-points 'amino-ffi:size-t))

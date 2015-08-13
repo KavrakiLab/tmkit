@@ -1,11 +1,22 @@
 
-include "labscene.robray"
+include "class.robray"
 
-frame block_a {
+frame block_c {
     parent front_table_place;
-    translation [0, 0, block_z ];
+    //parent right_place;
+    translation [0, .2, block_z ];
     geometry {
         isa block;
-        //isa red;
+        isa goal_pos;
+    }
+}
+
+frame block_d {
+    parent front_table_place;
+    //parent right_place;
+    translation [0, -.2, block_z ];
+    geometry {
+        isa block;
+        isa goal_pos;
     }
 }

@@ -21,7 +21,7 @@ class table {
     shape box;
     isa stackable;
     color [.6, .3, .6];
-    alpha 0.5;
+    alpha 1.0;
 }
 
 class block {
@@ -49,15 +49,29 @@ def table_top table_thickness / 2 + 1*mm;
 class big_table {
     shape box;
     color [.6, .3, .6];
-    alpha 0.5;
+    alpha 1;
     dimension [table_depth, table_length1, table_thickness];
 }
 
 class little_table {
     shape box;
     color [.6, .3, .6];
-    alpha 0.5;
+    alpha 1;
     dimension [table_depth, table_length2, table_thickness];
 }
 
+
 def block_z table_top + block_size/2;
+
+
+class goal_surface {
+    color [0,1,0];
+    alpha 0;
+    isa stackable;
+    shape box;
+}
+
+class goal_pos {
+    color [1,1,1];
+    alpha .15;
+}

@@ -36,7 +36,7 @@ frame right_table {
     }
 }
 
-def shelf_depth .5;
+def shelf_depth .75;
 def shelf_width .68;
 def shelf_thickness table_thickness;
 def shelf_sep .25;
@@ -45,26 +45,25 @@ def shelf_height shelf_count * shelf_sep;
 def shelf_side shelf_height + .88;
 def shelf_side_off shelf_height - shelf_side/2;
 
-class shelf {
-    shape box;
-    dimension [shelf_depth, shelf_width, shelf_thickness];
+class bookcase {
     color [.5,.5,.5];
-    alpha .5;
+    alpha .4;
+    shape box;
+}
+class shelf {
+    isa bookcase;
+    dimension [shelf_depth, shelf_width, shelf_thickness];
 }
 
 
 class bookcase_side {
-    shape box;
+    isa bookcase;
     dimension [shelf_depth, shelf_thickness, shelf_side];
-    color [.5,.5,.5];
-    alpha .5;
 }
 
 class bookcase_back {
-    shape box;
+    isa bookcase;
     dimension [shelf_thickness, shelf_width, shelf_side];
-    color [.5,.5,.5];
-    alpha .5;
 }
 
 frame shelf0 {
