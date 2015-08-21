@@ -75,6 +75,9 @@
 (defun smt-ite (test then else)
   (list 'ite test then else))
 
+(defun smt-implies (a b)
+  (list '=> a b))
+
 (defun smt-let* (bindings expr)
   (if bindings
       `(let (,(car bindings))

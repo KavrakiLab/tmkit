@@ -249,6 +249,11 @@
                              (rec task-plan plan graph trail start))
                            (progn
                              (format t "failure.~%")
+                             (smt-plan-invalidate-op smt-cx
+                                                     (scene-state graph resolution
+                                                                  :encoding encoding
+                                                                  :goal nil)
+                                                     op)
                              (next))))))))
         (next))
       (format t "~&IDITMP -- task time: ~F~&"

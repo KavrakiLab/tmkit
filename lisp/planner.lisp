@@ -18,13 +18,19 @@
 
 
 ;; TODO: should we assume that atomic predicates are constants?
+;; TODO: refactor smtlib mangling
+
 (defun format-state-variable (predicate step)
   (if (consp predicate)
       (smt-mangle-list `(,@predicate ,step))
       predicate))
 
-(defun format-op (op args step)
-  (smt-mangle-list `(,op ,@args ,step)))
+(defun mangle-var (thing &key args step)
+  (let ((base (append (ensure-list thing)
+                      args)))
+    (if step
+        (smt-mangle-list (append base (list step)))
+        (smt-mangle-list base))))
 
 (defun unmangle-op (mangled)
   (let ((list (smt-unmangle mangled)))
@@ -34,6 +40,7 @@
              when (cdr x)
              collect
              a))))
+
 
 (defun create-state-variables (functions type-objects)
   "Create all state variables from `PREDICATES' applied to `OBJECTS'"
@@ -109,9 +116,9 @@
 
 
 (defun format-ground-action (op step)
-  (format-op (ground-action-name op)
-             (ground-action-actual-arguments op)
-             step))
+  (mangle-var (ground-action-name op)
+              :args (ground-action-actual-arguments op)
+              :step step))
 
 (defun exp-args-alist (dummy-args actual-args)
   "Find alist for argument replacement"
@@ -489,7 +496,7 @@
 
 (defun smt-plan-other (cx &key (max-steps 10))
   "Try to find an alternate plan, recursively."
-  (let ((values (smt-plan-result cx)))
+  (let ((values (smt-plan-context-values cx)))
     ;; Invalidate the current plan
     ;; TODO: maybe we just need the true actions?
     (let ((exp (smt-not (apply #'smt-and
@@ -499,8 +506,10 @@
                                              variable)
                                             ((false |false|)
                                              (smt-not variable))))))))
+      ;; TODO: don't need this assertion when invalidating operators
       (smt-eval (smt-plan-context-smt cx)
                 (smt-assert exp)))
+
     ;; Get another plan
     (smt-plan-check cx :max-steps max-steps)))
 
@@ -517,6 +526,23 @@
                                       (1+ i))))
     (smt-eval (smt-plan-context-smt cx)
               `(|get-value| ,step-ops))))
+
+
+(defun smt-plan-invalidate-op (cx state op)
+  (let* ((stmts (loop for i below (smt-plan-context-step cx)
+                   collect
+                     (smt-implies (apply #'smt-and
+                                         (loop for s in state
+                                            collect (rewrite-exp s i)))
+                                  (smt-not (mangle-var op :step i)))))
+         (e (apply #'smt-and stmts)))
+    (smt-eval (smt-plan-context-smt cx)
+              (smt-assert e))))
+
+    ;; (dotimes (i (smt-plan-context-step cx))
+    ;; (format t "~&state: ~A" state)
+    ;; (format t "~&op: ~A" op)
+    ;; (format t "~&step: ~A" step)))
 
 
 (defun smt-plan-context (&key
