@@ -37,25 +37,25 @@
 (uiop/stream:copy-file (robray::output-file "baxter.inc" (rope *tmsmt-root* "/test/"))
                        (robray::output-file "baxter.inc" robray::*robray-tmp-directory*))
 
-(robray::scene-graph-pov-frame
- (scene-graph (robray::prefix-scene-graph "goal-" *goal-graph*
-                                          :prefix-parents nil)
-              *robot* *object-graph* *draw-scene*)
- :configuration-map
- (alist-tree-map `(;("right_s0" . ,(* .25 pi))
-                                        ;("right_s1" . ,(* -0.25 pi))
-                                        ;("right_e0" . ,(* 0.0 pi))
-                                        ;("right_e1" . ,(* 0.25 pi))
-                                        ;("right_w0" . ,(* 0.0 pi))
-                                        ;("right_w1" . ,(* 0.5 pi))
-                                        ;("right_w2" . ,(* 0.0 pi))
-                   )
-                 #'string-compare)
- :include "baxter.inc"
- :render t
- :options (render-options-default :use-collision nil
-                                  :options (render-options-medium))
- :output "robray.pov")
+;; (robray::scene-graph-pov-frame
+;;  (scene-graph (robray::prefix-scene-graph "goal-" *goal-graph*
+;;                                           :prefix-parents nil)
+;;               *robot* *object-graph* *draw-scene*)
+;;  :configuration-map
+;;  (alist-tree-map `(;("right_s0" . ,(* .25 pi))
+;;                                         ;("right_s1" . ,(* -0.25 pi))
+;;                                         ;("right_e0" . ,(* 0.0 pi))
+;;                                         ;("right_e1" . ,(* 0.25 pi))
+;;                                         ;("right_w0" . ,(* 0.0 pi))
+;;                                         ;("right_w1" . ,(* 0.5 pi))
+;;                                         ;("right_w2" . ,(* 0.0 pi))
+;;                    )
+;;                  #'string-compare)
+;;  :include "baxter.inc"
+;;  :render t
+;;  :options (render-options-default :use-collision nil
+;;                                   :options (render-options-medium))
+;;  :output "robray.pov")
 
 
 
@@ -77,15 +77,15 @@
          (itmp-rec *object-graph* (rope *scene-directory* "labscene_goal.robray")
                    (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
                    :encoding :linear
-                   :max-steps 1 :resolution .2d0))
+                   :max-steps 3 :resolution .2d0))
   nil))
 
-(render-group-itmp *plan-context* *group*
-                   *plan*
-                   :render-options  (render-options-default :use-collision nil
-                                                            :options (render-options-fast))
-                   :scene-graph
-                   (scene-graph (robray::prefix-scene-graph "goal-" *goal-graph*
-                                                            :prefix-parents nil)
-                                *robot* *object-graph* *draw-scene*)
-                   :frame-name "right_endpoint")
+;; (render-group-itmp *plan-context* *group*
+;;                    *plan*
+;;                    :render-options  (render-options-default :use-collision nil
+;;                                                             :options (render-options-fast))
+;;                    :scene-graph
+;;                    (scene-graph (robray::prefix-scene-graph "goal-" *goal-graph*
+;;                                                             :prefix-parents nil)
+;;                                 *robot* *object-graph* *draw-scene*)
+;;                    :frame-name "right_endpoint")

@@ -153,6 +153,7 @@
                    (group *group*))
   (with-smt (smt)
     (let* ((cache (make-hash-table :test #'equal))
+           (motion-time 0d0)
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
            (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution))
@@ -210,14 +211,19 @@
                           (trail (cons op trail)))
                      (format t "~&Reify: ~A..." op)
                      (multiple-value-bind (plan graph)
-                         (itmp-transfer-action graph op
-                                               :encoding encoding
-                                               :resolution resolution
-                                               :plan-context plan-context
-                                               :link link
-                                               :frame frame
-                                               :group group
-                                               :q-all-start start)
+                         (multiple-value-bind (result run-time)
+                             (sycamore-util:with-timing
+                               (multiple-value-list
+                                (itmp-transfer-action graph op
+                                                      :encoding encoding
+                                                      :resolution resolution
+                                                      :plan-context plan-context
+                                                      :link link
+                                                      :frame frame
+                                                      :group group
+                                                      :q-all-start start)))
+                           (incf motion-time run-time)
+                           (apply #'values result))
                        (declare (type list plan)
                                 (type robray::scene-graph graph))
                        (if plan
@@ -231,4 +237,8 @@
                              (format t "failure.~%")
                              (next))))))))
         (next))
+      (format t "~&IDITMP -- task time: ~F~&"
+              (smt-runtime smt))
+      (format t "~&IDITMP -- motion time: ~F~&"
+              motion-time)
       (apply #'append (reverse plan-steps)))))

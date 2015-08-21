@@ -3,6 +3,7 @@
 (defvar *smt-trace-command* nil)
 
 (defstruct smt
+  (runtime 0d0 :type double-float)
   process)
 
 (defparameter *smt-readtable*
@@ -44,26 +45,32 @@
              (smt-print-1 exp stream)
              (terpri stream)
              (finish-output stream)))
+    ;; Maybe trace commands
     (when *smt-trace-command*
       (command *smt-trace-command*))
-    (command (smt-input smt)))
-  ;; Read
-  (let ((result (smt-read smt)))
-                                        ;;(print result)
-    (cond
-      ((smt-symbol-eq result 'unsupported '|unsupported|)
-       (error 'smt-runtime-error
-              :message "Unsupported expression"
-              :expression exp))
-      ((smt-symbol-eq result 'success '|success|)
-       t)
-      ((and (consp result)
-            (or (smt-symbol-eq (car result) 'error  '|error|)))
-       (error 'smt-runtime-error
-              :message (second result)
-              :expression exp))
-      (t
-       result))))
+    ;; Read
+    (let ((result
+           (multiple-value-bind (result run-time real-time)
+               (sycamore-util::with-timing
+                 (command (smt-input smt))
+                 (smt-read smt))
+             (declare (ignore run-time))
+             (incf (smt-runtime smt) real-time)
+             result)))
+      (cond
+        ((smt-symbol-eq result 'unsupported '|unsupported|)
+         (error 'smt-runtime-error
+                :message "Unsupported expression"
+                :expression exp))
+        ((smt-symbol-eq result 'success '|success|)
+         t)
+        ((and (consp result)
+              (or (smt-symbol-eq (car result) 'error  '|error|)))
+         (error 'smt-runtime-error
+                :message (second result)
+                :expression exp))
+        (t
+         result)))))
 
 (defparameter *smt-solver-z3*
   (list "z3" "-smt2" "-in"))
