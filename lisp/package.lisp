@@ -1,3 +1,3 @@
 (defpackage :tmsmt
-  (:use :cl :alexandria :sycamore :amino :sycamore :robray)
+  (:use :cl :alexandria :sycamore :amino :sycamore :robray :sycamore-util)
   )
