@@ -1,3 +1,3 @@
 (in-package :tmsmt)
 
-(defvar *motion-timeout* 5d0)
+(defparameter *motion-timeout* 2d0)

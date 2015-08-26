@@ -71,8 +71,8 @@
                        append (loop for g in (robray::scene-frame-geometry frame)
                                  for shape = (robray::scene-geometry-shape g)
                                  for dimension = (robray::scene-box-dimension shape)
-                                 for xrange = (collect-range (elt dimension 0) resolution)
-                                 for yrange = (collect-range (elt dimension 1) resolution)
+                                 for xrange = (collect-range (vec-x dimension) resolution)
+                                 for yrange = (collect-range (vec-y dimension) resolution)
                                  when (robray::scene-geometry-collision g)
                                  append
                                    (progn

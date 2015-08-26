@@ -529,7 +529,7 @@
 
 
 (defun smt-plan-invalidate-op (cx state op)
-  (let* ((stmts (loop for i below (smt-plan-context-step cx)
+  (let* ((stmts (loop for i to (smt-plan-context-step cx)
                    collect
                      (smt-implies (apply #'smt-and
                                          (loop for s in state
