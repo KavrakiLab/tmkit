@@ -120,6 +120,14 @@
               :args (ground-action-actual-arguments op)
               :step step))
 
+
+(defun smt-plan-action-exp (action i action-encoding)
+  (ecase action-encoding
+    (:boolean (format-ground-action action i))
+    (:enum (smt-= (mangle-var 'action :step i)
+                  (mangle-var (ground-action-name action)
+                              :args (ground-action-actual-arguments action))))))
+
 (defun exp-args-alist (dummy-args actual-args)
   "Find alist for argument replacement"
   (assert (= (length dummy-args) (length actual-args)))
@@ -185,7 +193,8 @@
   (operators nil :type list)
   (axioms nil :type list)
   (start nil :type list)
-  (goal nil :type list))
+  (goal nil :type list)
+  action-encoding)
 
 (defun type-map-keys (map)
   (map-tree-map :inorder 'list (lambda (key value)
@@ -199,6 +208,7 @@
 ;;       - need to omit derived variables from frame axioms
 (defun ground-domain (operators facts
                       &key
+                        action-encoding
                         goal)
   (let* ((operators (load-operators operators))
          (facts (load-facts facts))
@@ -216,6 +226,11 @@
                        when (eq 'bool (tree-map-find variable-type g))
                        collect g))
          (initial-false (set-difference  bool-vars initial-true :test #'equal)))
+    (ecase action-encoding
+      (:boolean)
+      (:enum (push (make-ground-action :name 'no-op
+                                       :effect '(and))
+                   ground-operators)))
     (multiple-value-bind (derived-type derived-axioms)
         (ground-derived type-objects (pddl-operators-derived operators))
       (make-ground-domain :variables ground-variables
@@ -225,17 +240,19 @@
                           :type-objects type-objects
                           :operators ground-operators
                           :axioms derived-axioms
+                          :action-encoding action-encoding
                           :start  `(and ,@initial-true
                                         ,@(loop for v in initial-false collect `(not ,v)))
                           :goal (or goal (pddl-facts-goal facts))))))
 
-(defun smt-frame-axioms-exp (state-vars ground-actions i j)
+
+(defun smt-frame-axioms-exp (state-vars ground-actions i j action-encoding)
   ;(print ground-operators)
   (let ((hash (make-hash-table :test #'equal))  ;; hash: variable => (list modifiying-operators)
         (empty-set (make-tree-set #'gsymbol-compare)))
     ;; note modified variables
     (dolist (op ground-actions)
-      (let ((fmt-op (format-ground-action op i)))
+      (let ((fmt-op (smt-plan-action-exp op i action-encoding)))
         (dolist (v (ground-action-modified-variables op))
           (setf (gethash v hash)
                 (tree-set-insert (gethash v hash empty-set)
@@ -252,8 +269,8 @@
                     (smt-or eq (apply #'smt-or actions))
                     eq)))))
 
-(defun smt-frame-axioms (state-vars ground-actions step)
-  (smt-assert (smt-frame-axioms-exp state-vars ground-actions step (1+ step))))
+(defun smt-frame-axioms (state-vars ground-actions step action-encoding)
+  (smt-assert (smt-frame-axioms-exp state-vars ground-actions step (1+ step) action-encoding)))
 
 
 (defun smt-plan-var-step (state-vars i)
@@ -264,12 +281,21 @@
   (loop for op in ground-actions
      collect (format-ground-action op i)))
 
-(defun smt-plan-step-fun-args (state-vars ground-actions derived i j)
-  (let ((vars-i (smt-plan-var-step state-vars i))
-        (vars-j (smt-plan-var-step state-vars j))
-        (derived-i (smt-plan-var-step derived j))
-        (op-i (smt-plan-op-step ground-actions i)))
-    (append op-i vars-i vars-j derived-i)))
+(defun smt-plan-step-fun-args (domain i j)
+  (let* ((state-vars (ground-domain-variables domain))
+         (ground-actions (ground-domain-operators domain))
+         (derived (ground-domain-derived-variables domain))
+         (vars-i (smt-plan-var-step state-vars i))
+         (vars-j (smt-plan-var-step state-vars j))
+         (derived-i (smt-plan-var-step derived j))
+         (op-i (smt-plan-op-step ground-actions i)))
+    (ecase (ground-domain-action-encoding domain)
+      (:boolean
+       (append op-i vars-i vars-j derived-i))
+      (:enum
+       (cons (mangle-var 'action :step i)
+             (append vars-i vars-j derived-i))))))
+
 
 (defun smt-plan-var-type (vars map)
   (loop for v in vars collect (tree-map-find map v)))
@@ -322,8 +348,15 @@
                              exp)))
     (let* ((state-vars (ground-domain-variables domain))
            (ground-actions (ground-domain-operators domain))
-           (op-i (smt-plan-op-step ground-actions 'i))
-           (op-type (smt-plan-bool-type ground-actions))
+           (action-encoding (ground-domain-action-encoding domain))
+           (op-i (ecase action-encoding
+                   (:boolean (smt-plan-op-step ground-actions 'i))
+                   (:enum (list (mangle-var 'action :step 'i)))))
+           (op-exps (loop for op in ground-actions
+                       collect (smt-plan-action-exp op 'i action-encoding)))
+           (op-type (ecase action-encoding
+                      (:boolean (smt-plan-bool-type ground-actions))
+                      (:enum (list 'actions))))
            (vars-i (smt-plan-var-step state-vars 'i))
            (vars-j (smt-plan-var-step state-vars 'j))
            (var-type (smt-plan-var-type state-vars (ground-domain-variable-type domain)))
@@ -336,50 +369,74 @@
            (op-vars-type (append op-type var-type var-type derived-type)))
       ;(print (smt-plan-step-fun-types domain state-vars ground-actions))
       (append
+       ;; exclusion
+       (ecase (ground-domain-action-encoding domain)
+         (:boolean
+          (list (smt-comment "Exclusion Function")
+                (bool-fun "exclude-step" op-i op-type
+                          (smt-plan-exclude-exp op-i))))
+         (:enum
+          (list (smt-declare-enum 'actions
+                                  (loop for a in ground-actions
+                                     collect (mangle-var (ground-action-name a)
+                                                         :args (ground-action-actual-arguments a)))))))
+         ;; Operator
        (list (smt-comment "Operator Function")
              (bool-fun "op-step" op-vars op-vars-type
                        (apply #'smt-and
                               (loop
                                  for op in ground-actions
-                                 for op-var in op-i
+                                 for op-exp in op-exps
                                  collect
                                    (let ((pre (rewrite-exp (ground-action-precondition op) 'i))
                                          (eff (rewrite-exp (ground-action-effect op) 'j)))
-                                     `(or (not ,op-var)      ; action not active
-                                          (and ,pre          ; precondition holds
-                                               ,eff)))))))
-       ;; exclusion
-       (list (smt-comment "Exclusion Function")
-             (bool-fun "exclude-step" op-i op-type
-                       (smt-plan-exclude-exp op-i)))
+                                     `(or (not ,op-exp)      ; action not active
+                                          (and ,(or pre '|true|)         ; precondition holds
+                                               ,(if (equal '(and) eff)
+                                                    '|true|
+                                                    eff))))))))
 
        ;; early termination
        (list (smt-comment "Early Termination")
              (bool-fun "early-term" (append op-i vars-i) (append op-type var-type)
-                       (smt-ite
-                        ;; if goal
-                        (rewrite-exp (ground-domain-goal domain) 'i)
-                        ;; then no op
-                        (smt-not (apply #'smt-or op-i))
-                        ;; else op
-                        (apply #'smt-or op-i))))
+                       (ecase action-encoding
+                         (:boolean (smt-ite
+                                    ;; if goal
+                                    (rewrite-exp (ground-domain-goal domain) 'i)
+                                    ;; then no op
+                                    (smt-not (apply #'smt-or op-i))
+                                    ;; else op
+                                    (apply #'smt-or op-i)))
+                         (:enum
+                          (smt-ite
+                           ;; if goal
+                           (rewrite-exp (ground-domain-goal domain) 'i)
+                           ;; then no op
+                           (smt-= (car op-i) 'no-op)
+                           ;; else op
+                           (smt-not (smt-= (car op-i) 'no-op)))))))
        ;; frame
        (list (smt-comment "Frame Axioms")
              (bool-fun "frame-axioms" frame-vars frame-vars-type
-                       (smt-frame-axioms-exp state-vars ground-actions 'i 'j)))
+                       (smt-frame-axioms-exp state-vars ground-actions 'i 'j
+                                             (ground-domain-action-encoding domain))))
 
 
        ;; Step
        (list (smt-comment "plan-step")
              (bool-fun "plan-step" op-vars op-vars-type
                        (apply #'smt-and
-                              (cons "exclude-step" op-i)
-                              (cons "early-term" (append op-i vars-i))
-                              (cons "op-step" op-vars)
-                              (cons "frame-axioms" frame-vars)
-                              ;; direct axioms
-                              (loop for axiom in (ground-domain-axioms domain)
-                                 collect (rewrite-exp axiom 'i)))))))))
+                              (append
+                               (ecase (ground-domain-action-encoding domain)
+                                 (:boolean
+                                  (list (cons "exclude-step" op-i)))
+                                 (:enum nil))
+                               (list (cons "early-term" (append op-i vars-i)))
+                               (list (cons "op-step" op-vars))
+                               (list (cons "frame-axioms" frame-vars))
+                               ;; direct axioms
+                               (loop for axiom in (ground-domain-axioms domain)
+                                  collect (rewrite-exp axiom 'i))))))))))
 
 (defun smt-plan-step-vars (domain i)
   (labels ((helper (vars types)
@@ -396,7 +453,8 @@
                     (ground-domain-derived-type domain)))))
 
 (defun smt-plan-step-stmts (domain i)
-  (let ((ground-actions (ground-domain-operators domain)))
+  (let ((ground-actions (ground-domain-operators domain))
+        (action-encoding (ground-domain-action-encoding domain)))
     (append
      ;; create the per-step state
      (list (smt-comment "State Variables" ))
@@ -404,35 +462,52 @@
 
      ;; per-step action variables
      (list (smt-comment "Action Variables"))
-     (loop for op in ground-actions
-        for v = (format-ground-action op i)
-        collect (smt-declare-fun v () 'bool))
+
+     (ecase action-encoding
+       (:boolean (loop for op in ground-actions
+                    for v = (format-ground-action op i)
+                    collect (smt-declare-fun v () 'bool)))
+       (:enum
+        (list (smt-declare-fun (mangle-var 'action :step i) ()
+                               'actions))))
      (list (smt-comment (format nil "Step ~D" i))
            (smt-assert `("plan-step"
-                         ,@(smt-plan-step-fun-args (ground-domain-variables domain)
-                                                   ground-actions
-                                                   (ground-domain-derived-variables domain)
+                         ,@(smt-plan-step-fun-args domain
                                                    i (1+ i))))))))
 
-(defun smt-plan-step-ops (ground-actions steps)
-  (let ((step-ops))
-    (dotimes (i steps)
-      (dolist (op ground-actions)
-        (let ((v (format-ground-action op i)))
-          (push v step-ops))))
+(defun smt-plan-step-ops (domain steps)
+  (let* ((ground-actions (ground-domain-operators domain))
+         (action-encoding (ground-domain-action-encoding domain))
+         (step-ops))
+    (ecase action-encoding
+      (:boolean
+       (dotimes (i steps)
+         (dolist (op ground-actions)
+           (let ((v (format-ground-action op i)))
+             (push v step-ops)))))
+      (:enum
+       (dotimes (i steps)
+         (push (mangle-var 'action :step i)
+               step-ops))))
     step-ops))
 
 
 
-(defun smt-plan-parse (assignments)
+(defun smt-plan-parse (action-encoding assignments)
   (let ((plan))
     (dolist (x assignments)
       (destructuring-bind (var value) x
         ;; TODO: non-boolean variables
-        (ecase value
-          ((true |true|)
-           (push (unmangle-op (string var)) plan))
-          ((false |false|)))))
+        (ecase action-encoding
+          (:boolean (ecase value
+                      ((true |true|)
+                       (push (unmangle-op (string var)) plan))
+                      ((false |false|))))
+          (:enum (let ((x (smt-unmangle (string var)))
+                       (y (smt-unmangle (string value))))
+                   (push (cons (lastcar x)
+                               y)
+                         plan))))))
     (map 'list #'cdr (sort plan (lambda (a b) (< (car a) (car b)))))))
 
 
@@ -461,7 +536,8 @@
        (setf (smt-plan-context-values cx)
              (smt-plan-result cx))
        ;(print (smt-plan-context-values cx))
-       (smt-plan-parse (smt-plan-context-values cx)))
+       (smt-plan-parse (ground-domain-action-encoding (smt-plan-context-domain cx))
+                       (smt-plan-context-values cx)))
       ((unsat |unsat|)
        ;(print (smt-eval smt '(|get-unsat-core|)))
        (setf (smt-plan-context-values cx) nil)
@@ -522,7 +598,7 @@
 (defun smt-plan-result (cx)
   "Retrive action variable assignments from SMT solver."
   (let* ((i (smt-plan-context-step cx))
-         (step-ops (smt-plan-step-ops (smt-plan-context-ground-actions cx)
+         (step-ops (smt-plan-step-ops (smt-plan-context-domain cx)
                                       (1+ i))))
     (smt-eval (smt-plan-context-smt cx)
               `(|get-value| ,step-ops))))
@@ -550,9 +626,13 @@
                            facts
                            domain
                            goal
-                           smt)
+                           smt
+                           (action-encoding :boolean))
   "Fork an SMT solver and initialize with base plan definitions."
-  (let* ((domain (or domain (ground-domain operators facts :goal goal)))
+  (let* ((domain (or domain (ground-domain operators
+                                           facts
+                                           :action-encoding action-encoding
+                                           :goal goal)))
          (state-vars (ground-domain-variables domain))
          (ground-actions (ground-domain-operators domain))
          (initial-state (ground-domain-start domain))
