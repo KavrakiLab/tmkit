@@ -524,6 +524,8 @@
   (ground-domain-operators (smt-plan-context-domain instance)))
 (defun smt-plan-context-goal (instance)
   (ground-domain-goal (smt-plan-context-domain instance)))
+(defun smt-plan-context-action-encoding (instance)
+  (ground-domain-action-encoding (smt-plan-context-domain instance)))
 
 (defun smt-plan-check (cx &key max-steps)
   "Check if a plan exists for the current step, recurse if not."
@@ -572,22 +574,22 @@
 
 (defun smt-plan-other (cx &key (max-steps 10))
   "Try to find an alternate plan, recursively."
-  (let ((values (smt-plan-context-values cx)))
-    ;; Invalidate the current plan
-    ;; TODO: maybe we just need the true actions?
-    (let ((exp (smt-not (apply #'smt-and
-                               (loop for (variable truth) in values
-                                  collect (ecase truth
-                                            ((true |true|)
-                                             variable)
-                                            ((false |false|)
-                                             (smt-not variable))))))))
-      ;; TODO: don't need this assertion when invalidating operators
-      (smt-eval (smt-plan-context-smt cx)
-                (smt-assert exp)))
+  ;; (let ((values (smt-plan-context-values cx)))
+  ;;   ;; Invalidate the current plan
+  ;;   ;; TODO: maybe we just need the true actions?
+  ;;   (let ((exp (smt-not (apply #'smt-and
+  ;;                              (loop for (variable truth) in values
+  ;;                                 collect (ecase truth
+  ;;                                           ((true |true|)
+  ;;                                            variable)
+  ;;                                           ((false |false|)
+  ;;                                            (smt-not variable))))))))
+  ;;     ;; TODO: don't need this assertion when invalidating operators
+  ;;     (smt-eval (smt-plan-context-smt cx)
+  ;;               (smt-assert exp))))
 
-    ;; Get another plan
-    (smt-plan-check cx :max-steps max-steps)))
+  ;; Get another plan
+  (smt-plan-check cx :max-steps max-steps))
 
 (defun smt-plan-next (cx &key (max-steps 10))
   "Find the next valid plan."
@@ -605,12 +607,16 @@
 
 
 (defun smt-plan-invalidate-op (cx state op)
-  (let* ((stmts (loop for i to (smt-plan-context-step cx)
+  (let* ((action-encoding (smt-plan-context-action-encoding cx))
+         (stmts (loop for i to (smt-plan-context-step cx)
                    collect
                      (smt-implies (apply #'smt-and
                                          (loop for s in state
                                             collect (rewrite-exp s i)))
-                                  (smt-not (mangle-var op :step i)))))
+                                  (smt-not (ecase action-encoding
+                                             (:boolean (mangle-var op :step i))
+                                             (:enum (smt-= (mangle-var 'action :step i)
+                                                               (mangle-var op))))))))
          (e (apply #'smt-and stmts)))
     (smt-eval (smt-plan-context-smt cx)
               (smt-assert e))))

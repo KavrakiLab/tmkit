@@ -159,6 +159,7 @@
 (defun itmp-rec (init-graph goal-graph operators
                  &key
                    (encoding :linear)
+                   (action-encoding :boolean)
                    (max-steps 3)
                    (resolution 0.2d0)
                    (plan-context *plan-context*)
@@ -173,6 +174,7 @@
            (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution))
            (smt-cx (smt-plan-context :operators operators
                                      :facts task-facts
+                                     :action-encoding action-encoding
                                      :smt smt))
            (plan-steps))
       (setq *itmp-cache* cache)

@@ -145,7 +145,8 @@
          (itmp-rec *sg-start* *sg-goal*
                    (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
                    :encoding :linear
-                   :max-steps 1 :resolution *resolution*))
+                   :action-encoding :enum
+                   :max-steps 2 :resolution *resolution*))
    nil))
 
 ;; (render-group-itmp *plan-context* *group*
