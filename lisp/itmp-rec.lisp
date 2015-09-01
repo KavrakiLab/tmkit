@@ -156,6 +156,11 @@
 
 (defvar *itmp-cache*)
 
+(defvar *itmp-motion-time*)
+(defvar *itmp-task-time*)
+(defvar *itmp-int-time*)
+(defvar *itmp-total-time*)
+
 (defun itmp-rec (init-graph goal-graph operators
                  &key
                    (encoding :linear)
@@ -167,7 +172,8 @@
                    (link *link*)
                    (group *group*))
   (with-smt (smt)
-    (let* ((cache (make-hash-table :test #'equal))
+    (let* ((time-0 (get-internal-real-time))
+           (cache (make-hash-table :test #'equal))
            (motion-time 0d0)
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
@@ -262,8 +268,16 @@
                                                         op)
                                 (next))))))))))
         (next))
-      (format t "~&IDITMP -- task time: ~F~&"
-              (smt-runtime smt))
-      (format t "~&IDITMP -- motion time: ~F~&"
-              motion-time)
+      (setq *itmp-task-time* (smt-runtime smt)
+            *itmp-motion-time* motion-time
+            *itmp-total-time* (coerce (/ (- (get-internal-real-time) time-0)
+                                         internal-time-units-per-second)
+                                      'double-float))
+      (setq *itmp-int-time* (max (- *itmp-total-time*
+                                    (+ *itmp-task-time* *itmp-motion-time*))
+                                 0))
+      (format t "~&IDITMP -- total time:  ~,3F~&" *itmp-total-time*)
+      (format t "~&IDITMP -- task time:   ~,3F~&" *itmp-task-time*)
+      (format t "~&IDITMP -- motion time: ~,3F~&" *itmp-motion-time*)
+      (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*)
       (apply #'append (reverse plan-steps)))))
