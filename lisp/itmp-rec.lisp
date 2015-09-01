@@ -225,38 +225,42 @@
                    (let* ((op (car task-plan))
                           (task-plan (cdr task-plan))
                           (trail (cons op trail)))
-                     (format t "~&Reify: ~A..." op)
-                     (multiple-value-bind (plan graph)
-                         (multiple-value-bind (result run-time)
-                             (sycamore-util:with-timing
-                               (multiple-value-list
-                                (itmp-transfer-action graph op
-                                                      :encoding encoding
-                                                      :resolution resolution
-                                                      :plan-context plan-context
-                                                      :link link
-                                                      :frame frame
-                                                      :group group
-                                                      :q-all-start start)))
-                           (incf motion-time run-time)
-                           (apply #'values result))
-                       (declare (type list plan)
-                                (type robray::scene-graph graph))
-                       (if plan
-                           (progn
-                             (format t "success.~%")
-                             (push plan plan-steps)
-                             (setf (gethash trail cache)
-                                   (list plan-steps graph))
-                             (rec task-plan plan graph trail start))
-                           (progn
-                             (format t "failure.~%")
-                             (smt-plan-invalidate-op smt-cx
-                                                     (scene-state graph resolution
-                                                                  :encoding encoding
-                                                                  :goal nil)
-                                                     op)
-                             (next))))))))
+                     (cond
+                       ((equal (car op) "NO-OP")
+                        (push :no-op plan-steps))
+                       (t
+                        (format t "~&Reify: ~A..." op)
+                        (multiple-value-bind (plan graph)
+                            (multiple-value-bind (result run-time)
+                                (sycamore-util:with-timing
+                                  (multiple-value-list
+                                   (itmp-transfer-action graph op
+                                                         :encoding encoding
+                                                         :resolution resolution
+                                                         :plan-context plan-context
+                                                         :link link
+                                                         :frame frame
+                                                         :group group
+                                                         :q-all-start start)))
+                              (incf motion-time run-time)
+                              (apply #'values result))
+                          (declare (type list plan)
+                                   (type robray::scene-graph graph))
+                          (if plan
+                              (progn
+                                (format t "success.~%")
+                                (push plan plan-steps)
+                                (setf (gethash trail cache)
+                                      (list plan-steps graph))
+                                (rec task-plan plan graph trail start))
+                              (progn
+                                (format t "failure.~%")
+                                (smt-plan-invalidate-op smt-cx
+                                                        (scene-state graph resolution
+                                                                     :encoding encoding
+                                                                     :goal nil)
+                                                        op)
+                                (next))))))))))
         (next))
       (format t "~&IDITMP -- task time: ~F~&"
               (smt-runtime smt))
