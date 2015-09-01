@@ -1,5 +1,4 @@
 #include <cstdlib>
-
 #include "cros.hpp"
 #include "container_scene.h"
 #include "moveit_container.hpp"
@@ -37,14 +36,16 @@ add_primitive( struct container * c, const char *name,
                shape_msgs::SolidPrimitive &primitive,
                const double quat[4], const double vec[3] )
 {
-    moveit_msgs::CollisionObject msg;
-    msg.header.frame_id = c->robot_model->getModelFrame();
-    msg.id = name;
-    msg.operation = msg.ADD;
-    msg.primitives.push_back(primitive);
-    msg.primitive_poses.push_back(array2pose(quat,vec));
+    moveit_msgs::CollisionObject object;
+    object.header.frame_id = c->robot_model->getModelFrame();
+    object.id = name;
+    object.operation = object.ADD;
+    object.primitives.push_back(primitive);
+    object.primitive_poses.push_back(array2pose(quat,vec));
 
-    c->planning_scene->processCollisionObjectMsg( msg );
+    c->planning_scene->processCollisionObjectMsg( object );
+
+
 }
 
 /**
@@ -155,8 +156,14 @@ attach_primitive( struct container * c, const char *parent,
 
     c->planning_scene->processAttachedCollisionObjectMsg( attached_object );
 
+    robot_state::RobotState start_state = c->planning_scene->getCurrentState();
+
+
+    printf("attached %s: %d\n",
+           name,
+           start_state.hasAttachedBody(name) );
+
     // c->planning_scene->getTransforms();
-    // robot_state::RobotState state = c->planning_scene->getCurrentState();
 
     // printf("attached id: %s\n"
     //        "  link_name: %s\n"

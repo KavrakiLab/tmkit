@@ -9,7 +9,7 @@
 
 
 (defparameter *tf-grasp-top* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .10)))
-(defparameter *tf-grasp-back* (tf* (y-angle (* .5 pi)) (vec3* -.10 .00 .025)))
+(defparameter *tf-grasp-back* (tf* (y-angle (* .5 pi)) (vec3* -.10 .00 .035)))
 (defparameter *tf-grasp-rel* *tf-grasp-back*)
 
 (defparameter *robot* (robray::urdf-resolve-file "package://baxter_description/urdf/baxter.urdf"))
@@ -77,7 +77,7 @@
          (itmp-rec *object-graph* (rope *scene-directory* "labscene_goal.robray")
                    (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
                    :encoding :linear
-                   :max-steps 3 :resolution .2d0))
+                   :max-steps 1 :resolution .2d0))
   nil))
 
 ;; (render-group-itmp *plan-context* *group*

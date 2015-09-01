@@ -24,7 +24,7 @@
 
 (defparameter *sg-block*  (genscene-repeat-table "front_table" "block"
                                                  *box*
-                                                 17
+                                                 20
                                                  (- (vec-x *table-dim*) *resolution*)
                                                  (- (vec-y *table-dim*) *resolution*)
                                                  :resolution *resolution*
@@ -34,16 +34,21 @@
                                                                                 :visual t
                                                                                 :collision t)))
 
+;; (defparameter *sg-block*
+;;   (scene-frame-fixed "front_table" "block-0"
+;;                      :tf (tf* nil
+;;                               (vec3* 0 .2 *z*))
+;;                      :geometry *geometry*))
 
-(defparameter *sg-start*
-  (scene-graph  *sg-block*
-                (scene-frame-fixed nil "table-base"
-                                   :tf (tf* (z-angle (* -45 (/ pi 180)))
-                                            (vec3* .1 -.3 0)))
-                (scene-frame-fixed "table-base" "front_table"
-                                   :tf (tf* nil ;(z-angle (* -30 (/ pi 180)))
-                                            '(.6 0 0))
-                                   :geometry (robray::scene-geometry (scene-box *table-dim*)
+
+(defparameter *sg-table*
+  (scene-graph (scene-frame-fixed nil "table-base"
+                                  :tf (tf* (z-angle (* -45 (/ pi 180)))
+                                           (vec3* .1 -.3 0)))
+               (scene-frame-fixed "table-base" "front_table"
+                                  :tf (tf* nil ;(z-angle (* -30 (/ pi 180)))
+                                           '(.6 0 0))
+                                  :geometry (robray::scene-geometry (scene-box *table-dim*)
                                                                      (draw-options-default :color '(.5 .5 .5)
                                                                                            :type "stackable"
                                                                                            :visual t
@@ -104,6 +109,9 @@
 (defparameter *link* (container-group-endlink *moveit-container* *group*))
 (defparameter *q-all-start* (amino:make-vec (container-variable-count *moveit-container*)))
 
+(context-remove-all-objects *plan-context*)
+(container-set-group *moveit-container* *group*)
+
 ;(tms-container-set-planner *moveit-container* "KPIECEkConfigDefault")
 (tms-container-set-planner *moveit-container*
                            ;"SBLkConfigDefault"
@@ -118,43 +126,33 @@
                            )
 
 (tms-container-set-volume *moveit-container*
-                          (vec3* -1 -2 -.25)
+                          (vec3* -2 -2 -2)
                           (vec3* 2 2 2)
                           )
 
 
-(context-remove-object *plan-context* "block_a")
 
-(context-remove-object *plan-context* "block_b")
-
-(context-remove-all-objects *plan-context*)
-
-(container-set-group *moveit-container* *group*)
-
-
-(defparameter *tf-grasp-rel* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .10)))
-
-
-
+(defparameter *tf-grasp-top* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .10)))
+(defparameter *tf-grasp-back* (tf* (y-angle (* .5 pi)) (vec3* -.10 .00 .035)))
+(defparameter *tf-grasp-rel* *tf-grasp-top*)
 
 (defvar *plan*)
 
-(time
- (progn
+(progn
    (setq *plan*
-         (itmp-rec *sg-start* *sg-goal*
+         (itmp-rec (scene-graph *sg-table* *sg-block*) *sg-goal*
                    (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
                    :encoding :linear
                    :action-encoding :enum
                    :max-steps 2 :resolution *resolution*))
-   nil))
+   nil)
 
 ;; (render-group-itmp *plan-context* *group*
 ;;                    *plan*
 ;;                    :render-options  (render-options-default :use-collision nil
 ;;                                                             :options (render-options-fast))
 ;;                    :scene-graph (scene-graph ;(plan-context-robot-graph *plan-context*)
-;;                                              *robot* *sg-start* *sg-marker*)
+;;                                              *robot* *sg-block* *sg-table* *sg-marker*)
 ;;                    :frame-name "right_endpoint")
 
 

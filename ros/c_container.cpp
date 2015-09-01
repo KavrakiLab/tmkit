@@ -3,7 +3,7 @@
 #include <Eigen/Geometry>
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit_msgs/DisplayTrajectory.h>
-
+#include <moveit/robot_state/conversions.h>
 #include "cros.hpp"
 #include "c_container.h"
 #include "moveit_container.hpp"
@@ -66,15 +66,16 @@ tms_container_set_start( struct container * c, size_t n_all, const double *q_all
     start_state.setVariablePositions(q_all);
     start_state.update(true);
 
-    c->req.start_state.joint_state.name =  start_state.getVariableNames();
-    {
-        size_t n = c->req.start_state.joint_state.name.size();
-        double *p = start_state.getVariablePositions();
-        c->req.start_state.joint_state.position.resize( n );
-        std::copy ( p, p+n,
-                    c->req.start_state.joint_state.position.begin() );
-    }
-    c->req.start_state.is_diff = true;
+    // c->req.start_state.joint_state.name =  start_state.getVariableNames();
+    // {
+    //     size_t n = c->req.start_state.joint_state.name.size();
+    //     double *p = start_state.getVariablePositions();
+    //     c->req.start_state.joint_state.position.resize( n );
+    //     std::copy ( p, p+n,
+    //                 c->req.start_state.joint_state.position.begin() );
+    // }
+    // c->req.start_state.is_diff = true;
+    c->planning_scene->setCurrentState(start_state);
 
     // // Print stuff
     // {
@@ -211,6 +212,11 @@ tms_container_plan( struct container * c,
     moveit_msgs::MoveItErrorCodes err;
     planning_interface::MotionPlanResponse res;
     c->req.allowed_planning_time = timeout;
+
+    moveit::core::robotStateToRobotStateMsg(c->planning_scene->getCurrentState(), c->req.start_state);
+
+    std::cout << c->req << std::endl;
+
     planning_interface::PlanningContextPtr context =
         c->planner_instance->getPlanningContext(c->planning_scene, c->req, err);
     context->solve(res);
