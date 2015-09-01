@@ -189,3 +189,8 @@
 (cffi:defcfun tms-container-set-planner :int
   (container moveit-container-t)
   (planner :string))
+
+(cffi:defcfun tms-container-set-volume :int
+  (container moveit-container-t)
+  (min amino::vector-3-t)
+  (max amino::vector-3-t))

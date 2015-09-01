@@ -115,6 +115,11 @@ tms_container_group_endlink( struct container * c, const char *group );
 int
 tms_container_set_planner( struct container * c, const char *planner );
 
+int
+tms_container_set_volume( struct container * c,
+                          const double min[3],
+                          const double max[3] );
+
 #ifdef __cplusplus
 }
 #endif

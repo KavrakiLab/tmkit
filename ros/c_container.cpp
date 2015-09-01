@@ -397,4 +397,22 @@ int
 tms_container_set_planner( struct container * c, const char *planner )
 {
     c->req.planner_id = planner;
+    return 0;
+}
+
+int
+tms_container_set_volume( struct container * c,
+                          const double min[3],
+                          const double max[3] )
+{
+    c->req.workspace_parameters.min_corner.x = min[0];
+    c->req.workspace_parameters.min_corner.y = min[1];
+    c->req.workspace_parameters.min_corner.z = min[2];
+
+    c->req.workspace_parameters.max_corner.x = max[0];
+    c->req.workspace_parameters.max_corner.y = max[1];
+    c->req.workspace_parameters.max_corner.z = max[2];
+
+    return 0;
+
 }
