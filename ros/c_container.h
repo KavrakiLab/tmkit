@@ -112,6 +112,9 @@ tms_container_group_endlink( struct container * c, const char *group );
 const char *
 tms_container_group_endlink( struct container * c, const char *group );
 
+int
+tms_container_set_planner( struct container * c, const char *planner );
+
 #ifdef __cplusplus
 }
 #endif

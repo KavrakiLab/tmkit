@@ -104,6 +104,8 @@
 (defparameter *link* (container-group-endlink *moveit-container* *group*))
 (defparameter *q-all-start* (amino:make-vec (container-variable-count *moveit-container*)))
 
+(tms-container-set-planner *moveit-container* "KPIECEkConfigDefault")
+
 (context-remove-object *plan-context* "block_a")
 
 (context-remove-object *plan-context* "block_b")
