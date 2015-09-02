@@ -399,12 +399,12 @@ tms_container_link_fk( struct container * c, const char *link, size_t n, const d
     return 0;
 }
 
-int
-tms_container_set_planner( struct container * c, const char *planner )
-{
-    c->req.planner_id = planner;
-    return 0;
-}
+// int
+// tms_container_set_planner( struct container * c, const char *planner )
+// {
+//     c->req.planner_id = planner;
+//     return 0;
+// }
 
 int
 tms_container_set_volume( struct container * c,

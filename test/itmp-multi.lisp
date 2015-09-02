@@ -109,21 +109,25 @@
 (defparameter *link* (container-group-endlink *moveit-container* *group*))
 (defparameter *q-all-start* (amino:make-vec (container-variable-count *moveit-container*)))
 
+(context-remove-object *plan-context* "block_a")
+
+(context-remove-object *plan-context* "block_b")
+
 (context-remove-all-objects *plan-context*)
 (container-set-group *moveit-container* *group*)
 
 ;(tms-container-set-planner *moveit-container* "KPIECEkConfigDefault")
-(tms-container-set-planner *moveit-container*
-                           ;"SBLkConfigDefault"
-                           ;"LBKPIECEkConfigDefault"
-                           ;"RRTkConfigDefault"
-                           "RRTConnectkConfigDefault"
-                           ;"LazyRRTkConfigDefault"
-                           ;"ESTkConfigDefault"
-                           ;"KPIECEkConfigDefault"
-                           ;"RRTStarkConfigDefault"
-                           ;"BKPIECEkConfigDefault"
-                           )
+;; (tms-container-set-planner *moveit-container*
+;;                            ;"SBLkConfigDefault"
+;;                            ;"LBKPIECEkConfigDefault"
+;;                            ;"RRTkConfigDefault"
+;;                            "RRTConnectkConfigDefault"
+;;                            ;"LazyRRTkConfigDefault"
+;;                            ;"ESTkConfigDefault"
+;;                            ;"KPIECEkConfigDefault"
+;;                            ;"RRTStarkConfigDefault"
+;;                            ;"BKPIECEkConfigDefault"
+;;                            )
 
 (tms-container-set-volume *moveit-container*
                           (vec3* -2 -2 -2)

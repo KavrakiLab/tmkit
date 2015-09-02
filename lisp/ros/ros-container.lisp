@@ -186,9 +186,9 @@
 (defun container-plan-endpoint (plan)
   (car (last plan)))
 
-(cffi:defcfun tms-container-set-planner :int
-  (container moveit-container-t)
-  (planner :string))
+;; (cffi:defcfun tms-container-set-planner :int
+;;   (container moveit-container-t)
+;;   (planner :string))
 
 (cffi:defcfun tms-container-set-volume :int
   (container moveit-container-t)

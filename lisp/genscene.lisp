@@ -1,13 +1,5 @@
 (in-package :tmsmt)
 
-(defun genscene-tf (i j z resolution &key
-                                       n-x
-                                       n-y
-                                       rotation)
-  (tf* rotation
-       (vec3* (* resolution (- i (floor (/ n-x 2))))
-              (* resolution (- j (floor (/ n-y 2))))
-              z)))
 
 (defun genscene-repeat-table (parent base-name shape count x y
                               &key

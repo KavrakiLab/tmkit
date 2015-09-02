@@ -10,7 +10,6 @@
                (:file "dumpsig" :depends-on ("util"))
                (:file "placement-graph" :depends-on ("pddl"))
                (:file "planner" :depends-on ("util" "expression" "pddl" "smtrun"))
-               (:file "genscene" :depends-on ("planner"))
                (:file "ros/ros-loadlib" :depends-on ("util" "dumpsig"))
                (:file "sig-unblock" :depends-on ("dumpsig" "ros/ros-loadlib"))
                (:file "ros/ros-defs" :depends-on ("sig-unblock"))

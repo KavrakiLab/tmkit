@@ -26,7 +26,7 @@
     (ros-init :name "lisp")
     (format t "~&  done")
     (format t "~&  Creating node-handle...")
-    (setq *node-handle* (node-handle-create ""))
+    (setq *node-handle* (node-handle-create "lisp"))
     (format t "~&  done"))
   (unless (and (boundp '*plan-context*)
                *plan-context*)
