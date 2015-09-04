@@ -7,7 +7,14 @@
                (:file "smtrun" :depends-on ("smtlib"))
                (:file "expression" :depends-on ("util"))
                (:file "pddl" :depends-on ("util"))
+               (:file "genscene" :depends-on ("util"))
                (:file "dumpsig" :depends-on ("util"))
+
+               ;; OMPL
+               (:file "ompl" :depends-on ("util" "moveit"))
+               (:file "synergistic-defs" :depends-on ("ompl" "ros/ros-container"))
+               (:file "synergistic" :depends-on ("synergistic-defs"))
+
                (:file "placement-graph" :depends-on ("pddl"))
                (:file "planner" :depends-on ("util" "expression" "pddl" "smtrun"))
                (:file "ros/ros-loadlib" :depends-on ("util" "dumpsig"))

@@ -1,5 +1,7 @@
 (in-package :tmsmt)
 
+(defvar *resolution* .1)
+
 (defparameter *tmsmt-root*
   (make-pathname :directory (let ((tmp (pathname-directory (asdf:system-source-directory :tmsmt))))
                               (subseq tmp 0 (1- (length tmp))))))

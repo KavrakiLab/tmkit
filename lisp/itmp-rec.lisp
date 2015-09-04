@@ -3,10 +3,8 @@
 
 ;(defvar *itmp-cache*)
 
-(defun itmp-encode-location (object x y resolution)
-  (smt-mangle object
-              (round (/ x resolution))
-              (round (/ y resolution))))
+(defun itmp-encode-location (object i j)
+  (smt-mangle object i j))
 
 (defun collect-range (dim increment)
   ;(print (list dim increment))
@@ -26,46 +24,51 @@
       (when (robray::scene-frame-geometry-isa frame type)
         (setf (tree-set-find frames) frame)))))
 
+(defun scene-state-pairs (scene
+                          &key
+                            (resolution *resolution*))
+  (labels ((frame-predicates (frame)
+             (let* ((name  (robray::scene-frame-name frame))
+                    (tf  (robray::scene-frame-fixed-tf frame))
+                    (translation  (tf-translation tf))
+                    (parent  (robray::scene-frame-parent frame))
+                    (x  (round (vec-x translation) resolution))
+                    (y  (round (vec-y translation) resolution)))
+               (list name parent x y))))
+    (let* ((scene (scene-graph scene))
+           (moveable-frames (scene-collect-type scene "moveable")))
+      (loop for frame in moveable-frames
+         collect (frame-predicates frame)))))
+
+
 (defun scene-state (scene resolution
                     &key
                       (encoding :linear)
                       goal)
 
-  (labels ((location-predicate (object parent x y)
+  (labels ((location-predicate (object parent i j)
              (ecase encoding
-               (:quadratic (list 'at object (itmp-encode-location parent x y resolution)))
-               (:linear `(= (position ,object) ,(itmp-encode-location parent x y resolution)))))
-           (occupied-predicate (parent x y)
-             (list 'occupied (itmp-encode-location parent x y resolution)))
-           (frame-predicates (frame)
-             (let* ((name  (robray::scene-frame-name frame))
-                    (tf  (robray::scene-frame-fixed-tf frame))
-                    (translation  (tf-translation tf))
-                    (parent  (robray::scene-frame-parent frame))
-                    (x  (vec-x translation))
-                    (y  (vec-y translation))
-                    (loc (location-predicate name parent x y)))
+               (:quadratic (list 'at object (itmp-encode-location parent i j)))
+               (:linear `(= (position ,object) ,(itmp-encode-location parent i j)))))
+           (occupied-predicate (parent i j)
+             (list 'occupied (itmp-encode-location parent i j)))
+           (frame-predicates (name parent i j)
+             (let ((loc (location-predicate name parent i j)))
                (if (or goal (eq encoding :linear))
                    (list loc)
-                   (list loc (occupied-predicate parent x y))))))
-    (let* ((scene (scene-graph scene))
-           (moveable-frames (scene-collect-type scene "moveable")))
-      (loop for frame in moveable-frames
-         nconc (frame-predicates frame)))))
+                   (list loc (occupied-predicate parent i j))))))
+    (loop for (name parent i j) in (scene-state-pairs scene :resolution resolution)
+         nconc
+         (frame-predicates name parent i j))))
 
 
-(defun scene-facts (init-scene goal-scene
-                    &key
-                      (encoding :linear)
-                      (resolution 0.2d0)
-                      (problem 'itmp)
-                      (domain 'itmp))
-  (let* ((init-scene (scene-graph init-scene))
-         (goal-scene (scene-graph goal-scene))
-         (moveable-frames (scene-collect-type init-scene "moveable"))
-         (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
-         (stackable-frames (scene-collect-type init-scene "stackable"))
-         ;;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
+
+
+(defun scene-locations (scene resolution)
+  (let* ((scene (scene-graph scene))
+         ;(moveable-frames (scene-collect-type init-scene "moveable"))
+         ;(moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
+         (stackable-frames (scene-collect-type scene "stackable"))
          (locations (loop for frame in stackable-frames
                        for name = (robray::scene-frame-name frame)
                        append (loop for g in (robray::scene-frame-geometry frame)
@@ -80,7 +83,23 @@
                                      (loop for x in xrange
                                         append (loop for y in yrange
                                                   collect
-                                                    (itmp-encode-location name x y resolution))))))))
+                                                    (itmp-encode-location name
+                                                                          (round x resolution)
+                                                                          (round y resolution)))))))))
+    locations))
+
+(defun scene-facts (init-scene goal-scene
+                    &key
+                      (encoding :linear)
+                      (resolution 0.2d0)
+                      (problem 'itmp)
+                      (domain 'itmp))
+  (let* ((init-scene (scene-graph init-scene))
+         (goal-scene (scene-graph goal-scene))
+         (moveable-frames (scene-collect-type init-scene "moveable"))
+         (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
+         ;;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
+         (locations (scene-locations init-scene resolution)))
     `(define (problem ,problem)
          (:domain ,domain)
        (:objects ,@moveable-objects - block
