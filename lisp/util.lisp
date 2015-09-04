@@ -182,3 +182,21 @@
 (defun assoc-value-default (item alist &key default (test #'eql))
   (let ((cons (assoc item alist :test test)))
     (if cons (cdr cons) default)))
+
+(defun output-timing (i base-name
+                      &key
+                        (task-time *itmp-task-time*)
+                        (motion-time *itmp-motion-time*)
+                        (total-time *itmp-total-time*))
+  (robray::output (format nil "~D ~F" i task-time)
+                  (format nil "~A-task.dat" base-name)
+                  :directory "/tmp/"
+                  :if-exists :append)
+  (robray::output (format nil "~D ~F" i motion-time)
+                  (format nil "~A-motion.dat" base-name)
+                  :directory "/tmp/"
+                  :if-exists :append)
+  (robray::output (format nil "~D ~F" i total-time)
+                  (format nil "~A-total.dat" base-name)
+                  :directory "/tmp/"
+                  :if-exists :append))

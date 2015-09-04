@@ -64,32 +64,63 @@
 
 
 
-(defun scene-locations (scene resolution)
-  (let* ((scene (scene-graph scene))
-         ;(moveable-frames (scene-collect-type init-scene "moveable"))
-         ;(moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
-         (stackable-frames (scene-collect-type scene "stackable"))
-         (locations (loop for frame in stackable-frames
-                       for name = (robray::scene-frame-name frame)
-                       append (loop for g in (robray::scene-frame-geometry frame)
-                                 for shape = (robray::scene-geometry-shape g)
-                                 for dimension = (robray::scene-box-dimension shape)
-                                 for xrange = (collect-range (vec-x dimension) resolution)
-                                 for yrange = (collect-range (vec-y dimension) resolution)
-                                 when (robray::scene-geometry-collision g)
-                                 append
-                                   (progn
+(defun scene-locations (scene resolution &key
+                                           max-count
+                                           (encode t))
+  (labels ((encode (list)
+             (if encode
+                 (loop for (name x y) in list
+                    collect (itmp-encode-location name
+                                                  (round x resolution)
+                                                  (round y resolution)))
+                 list))
+           (subset (list count)
+             (subseq (sort list (lambda (a b)
+                                  (destructuring-bind (n-a x-a y-a) a
+                                    (destructuring-bind (n-b x-b y-b) b
+                                      (let ((r-a (sqrt (+ (* x-a x-a) (* y-a y-a))))
+                                            (r-b (sqrt (+ (* x-b x-b) (* y-b y-b)))))
+                                        (if (= r-a r-b)
+                                            (if (equal n-a n-a)
+                                                (if (= x-a x-b)
+                                                    (if (= y-a y-b)
+                                                        (error "Equal locations")
+                                                        (< y-a y-b))
+                                                    (< x-a x-b))
+                                                (cond-compare (n-a n-b #'gsymbol-compare)
+                                                              t
+                                                              nil
+                                                              nil))
+                                            (< r-a r-b)))))))
+                     0 count)))
+
+
+    (let* ((scene (scene-graph scene))
+           (stackable-frames (scene-collect-type scene "stackable"))
+           (locations-list
+            (loop for frame in stackable-frames
+               for name = (robray::scene-frame-name frame)
+               append (loop for g in (robray::scene-frame-geometry frame)
+                         for shape = (robray::scene-geometry-shape g)
+                         for dimension = (robray::scene-box-dimension shape)
+                         for xrange = (collect-range (vec-x dimension) resolution)
+                         for yrange = (collect-range (vec-y dimension) resolution)
+                         when (robray::scene-geometry-collision g)
+                         append
+                           (progn
                                         ;(print (list name dimension xrange yrange))
-                                     (loop for x in xrange
-                                        append (loop for y in yrange
-                                                  collect
-                                                    (itmp-encode-location name
-                                                                          (round x resolution)
-                                                                          (round y resolution)))))))))
-    locations))
+                             (loop for x in xrange
+                                append (loop for y in yrange
+                                          collect
+                                            (list name x y))))))))
+      (encode
+       (if max-count
+           (subset locations-list max-count)
+           locations-list)))))
 
 (defun scene-facts (init-scene goal-scene
                     &key
+                      max-locations
                       (encoding :linear)
                       (resolution 0.2d0)
                       (problem 'itmp)
@@ -99,7 +130,8 @@
          (moveable-frames (scene-collect-type init-scene "moveable"))
          (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
          ;;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
-         (locations (scene-locations init-scene resolution)))
+         (locations (scene-locations init-scene resolution
+                                     :max-count max-locations)))
     `(define (problem ,problem)
          (:domain ,domain)
        (:objects ,@moveable-objects - block
@@ -182,6 +214,7 @@
 
 (defun itmp-rec (init-graph goal-graph operators
                  &key
+                   max-locations
                    (encoding :linear)
                    (action-encoding :boolean)
                    (max-steps 3)
@@ -196,7 +229,8 @@
            (motion-time 0d0)
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
-           (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution))
+           (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution
+                                    :max-locations max-locations))
            (smt-cx (smt-plan-context :operators operators
                                      :facts task-facts
                                      :action-encoding action-encoding

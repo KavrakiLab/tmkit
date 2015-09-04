@@ -20,27 +20,6 @@
 
 (defparameter *robot* (robray::urdf-resolve-file "package://baxter_description/urdf/baxter.urdf"))
 
-
-
-(defparameter *sg-block*  (genscene-repeat-table "front_table" "block"
-                                                 *box*
-                                                 20
-                                                 (- (vec-x *table-dim*) *resolution*)
-                                                 (- (vec-y *table-dim*) *resolution*)
-                                                 :resolution *resolution*
-                                                 :z *z*
-                                                 :options (draw-options-default :color '(1 0 0)
-                                                                                :type "moveable"
-                                                                                :visual t
-                                                                                :collision t)))
-
-;; (defparameter *sg-block*
-;;   (scene-frame-fixed "front_table" "block-0"
-;;                      :tf (tf* nil
-;;                               (vec3* 0 .2 *z*))
-;;                      :geometry *geometry*))
-
-
 (defparameter *sg-table*
   (scene-graph (scene-frame-fixed nil "table-base"
                                   :tf (tf* (z-angle (* -45 (/ pi 180)))
@@ -53,6 +32,22 @@
                                                                                            :type "stackable"
                                                                                            :visual t
                                                                                            :collision t)))))
+
+
+
+(defparameter *sg-block*  (genscene-repeat *sg-table* "block"
+                                           *box*
+                                           10
+                                           :max-locations 20
+                                           :resolution *resolution*
+                                           :z *z*
+                                           :options (draw-options-default :color '(1 0 0)
+                                                                          :type "moveable"
+                                                                          :visual t
+                                                                          :collision t)))
+
+
+
 
 (defparameter *sg-goal*
   (scene-frame-fixed "front_table" "block-0"
@@ -134,22 +129,43 @@
                           (vec3* 2 2 2)
                           )
 
-
-
 (defparameter *tf-grasp-top* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .10)))
 (defparameter *tf-grasp-back* (tf* (y-angle (* .5 pi)) (vec3* -.10 .00 .035)))
 (defparameter *tf-grasp-rel* *tf-grasp-top*)
 
 (defvar *plan*)
 
-(progn
-   (setq *plan*
-         (itmp-rec (scene-graph *sg-table* *sg-block*) *sg-goal*
-                   (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
-                   :encoding :linear
-                   :action-encoding :enum
-                   :max-steps 2 :resolution *resolution*))
-   nil)
+(loop for n-obj from 1 to 1
+   for i = 0
+   do
+     (loop
+        while (< i 5)
+        ;; create domain
+        for blocks = (genscene-repeat *sg-table* "block"
+                                      *box*
+                                      n-obj
+                                      :max-locations (1+ n-obj)
+                                      :resolution *resolution*
+                                      :z *z*
+                                      :options (draw-options-default :color '(1 0 0)
+                                                                     :type "moveable"
+                                                                     :visual t
+                                                                     :collision t))
+        for v = (tf-translation (robray::scene-frame-tf (robray::scene-graph-lookup blocks "block-0")))
+        unless (and (zerop (vec-x v))
+                    (zerop (vec-y v)))
+        do
+          (incf i)
+        ;; plan
+          (setq *plan*
+                (itmp-rec (scene-graph *sg-table* blocks) *sg-goal*
+                          (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
+                          :encoding :linear
+                          :action-encoding :enum
+                          :max-steps 3 :resolution *resolution*))
+        ;;(print *plan*)
+        ;; write output
+          (output-timing n-obj "idtmp")))
 
 ;; (render-group-itmp *plan-context* *group*
 ;;                    *plan*
