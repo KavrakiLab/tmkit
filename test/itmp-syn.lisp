@@ -2,8 +2,8 @@
 (in-package :tmsmt)
 
 (defparameter *table-dim* (vec3* .4 .4 .01))
-(defparameter *box-dim* .045)
-(defparameter *resolution* .15)
+(defparameter *box-dim* .04)
+(defparameter *resolution* .05)
 (defparameter *z* (/ (+ .02 (vec-z *table-dim*) *box-dim*)
                      2))
 (defparameter *box* (scene-box (vec3* *box-dim* *box-dim* *box-dim*)))
@@ -21,17 +21,17 @@
 (defparameter *robot* (robray::urdf-resolve-file "package://baxter_description/urdf/baxter.urdf"))
 
 
-(defparameter *sg-block*  (genscene-repeat-table "front_table" "block"
-                                                 *box*
-                                                 3
-                                                 (- (vec-x *table-dim*) *resolution*)
-                                                 (- (vec-y *table-dim*) *resolution*)
-                                                 :resolution *resolution*
-                                                 :z *z*
-                                                 :options (draw-options-default :color '(1 0 0)
-                                                                                :type "moveable"
-                                                                                :visual t
-                                                                                :collision t)))
+;; (defparameter *sg-block*  (genscene-repeat-table "front_table" "block"
+;;                                                  *box*
+;;                                                  3
+;;                                                  (- (vec-x *table-dim*) *resolution*)
+;;                                                  (- (vec-y *table-dim*) *resolution*)
+;;                                                  :resolution *resolution*
+;;                                                  :z *z*
+;;                                                  :options (draw-options-default :color '(1 0 0)
+;;                                                                                 :type "moveable"
+;;                                                                                 :visual t
+;;                                                                                 :collision t)))
 
 ;; (defparameter *sg-block*
 ;;   (scene-frame-fixed "front_table" "block-0"
@@ -139,18 +139,45 @@
 (defparameter *tf-grasp-back* (tf* (y-angle (* .5 pi)) (vec3* -.10 .00 .035)))
 (defparameter *tf-grasp-rel* *tf-grasp-top*)
 
-(defparameter *syn-data*
-  (syn-data (scene-graph *sg-block* *sg-table*) *sg-goal*))
+;; (defparameter *syn-data*
+;;   (syn-data (scene-graph *sg-block* *sg-table*) *sg-goal*))
 
-(print *syn-data*)
-(finish-output *standard-output*)
+;(print *syn-data*)
+;(finish-output *standard-output*)
 
 (defvar *plan*)
-(setq *plan*
-      (itmp-syn (scene-graph *sg-block* *sg-table*)
-                *sg-goal*
-                :resolution *resolution*))
 
+(loop for n-obj from 1 to 5
+   for i = 0
+   do
+     (loop
+        while (< i 5)
+        ;; create domain
+        for blocks = (genscene-repeat *sg-table* "block"
+                                      *box*
+                                      n-obj
+                                      :max-locations (1+ n-obj)
+                                      :resolution *resolution*
+                                      :z *z*
+                                      :options (draw-options-default :color '(1 0 0)
+                                                                     :type "moveable"
+                                                                     :visual t
+                                                                     :collision t))
+        for v = (tf-translation (robray::scene-frame-tf (robray::scene-graph-lookup blocks "block-0")))
+        unless (and (zerop (vec-x v))
+                    (zerop (vec-y v)))
+        do
+          (incf i)
+        ;; plan
+          (setq *plan*
+                (itmp-syn (scene-graph *sg-table* blocks) *sg-goal*
+                          :encoding :linear
+                          :max-locations (1+ n-obj)
+                          :resolution *resolution*))
+        ;;(print *plan*)
+          ;; write output
+          (output-timing n-obj "syn")
+          ))
 
 ;; (render-group-itmp *plan-context* *group*
 ;;                    *plan*

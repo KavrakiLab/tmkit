@@ -37,11 +37,12 @@
 
 (defparameter *sg-block*  (genscene-repeat *sg-table* "block"
                                            *box*
-                                           10
-                                           :max-locations 20
+                                           30
+                                           :max-locations 31
                                            :resolution *resolution*
                                            :z *z*
                                            :options (draw-options-default :color '(1 0 0)
+                                                                          :specular .5
                                                                           :type "moveable"
                                                                           :visual t
                                                                           :collision t)))
@@ -57,14 +58,15 @@
 
 (defparameter *sg-marker*
   (scene-graph
-   (scene-frame-fixed "block-0" "block-0-marker"
+   (scene-frame-fixed "front_table" "table-marker"
                       :tf (tf* (x-angle 0)
-                               '(0 0 .15))
+                               (list 0 0 (+ .15 (/ *box-dim* 1))))
                       :geometry (robray::scene-geometry (scene-sphere .1)
                                                         (draw-options-default :color '(0 1 0)
+                                                                              ;:specular .3
                                                                               :visual nil
                                                                               :collision nil)))
-   (robray::item-arrow-axis "block-0-marker" "block-0-arrow"
+   (robray::item-arrow-axis "table-marker" "table-arrow"
                             :axis  (vec3* 0 0 -1)
                             :length .1
                             :width .025
@@ -73,30 +75,59 @@
                                                            :alpha .5
                                                            :no-shadow t
                                                            :visual t
-                                                           :collision nil))))
+                                                           :collision nil))
+
+   (scene-frame-fixed "block-0" "block-0-marker"
+                      :tf (tf* (x-angle 0)
+                               '(0 0 .15))
+                      :geometry (robray::scene-geometry (scene-sphere .1)
+                                                        (draw-options-default :color '(0 0 1)
+                                                                              :visual nil
+                                                                              :collision nil)))
+   (robray::item-arrow-axis "block-0-marker" "block-0-arrow"
+                            :axis  (vec3* 0 0 -1)
+                            :length .1
+                            :width .025
+                            :end-arrow t
+                            :options (draw-options-default :color '(0 0 1)
+                                                           :alpha .5
+                                                           :no-shadow t
+                                                           :visual t
+                                                           :collision nil))
+   ))
 
 (uiop/stream:copy-file (robray::output-file "baxter.inc" (rope *tmsmt-root* "/test/"))
                        (robray::output-file "baxter.inc" robray::*robray-tmp-directory*))
 
 
+(let ((frame (robray::scene-graph-lookup *sg-block* "block-0"))
+      (blocks (scene-graph-remove-frame *sg-block* "block-0")))
 
-;; (robray::scene-graph-pov-frame
-;;  (scene-graph *robot* *sg-table* *sg-block* *sg-marker*)
-;;  :configuration-map
-;;  (alist-tree-map `(;("right_s0" . ,(* .25 pi))
-;;                                         ;("right_s1" . ,(* -0.25 pi))
-;;                                         ;("right_e0" . ,(* 0.0 pi))
-;;                                         ;("right_e1" . ,(* 0.25 pi))
-;;                                         ;("right_w0" . ,(* 0.0 pi))
-;;                                         ;("right_w1" . ,(* 0.5 pi))
-;;                                         ;("right_w2" . ,(* 0.0 pi))
-;;                    )
-;;                  #'string-compare)
-;;  :include "baxter.inc"
-;;  :render t
-;;  :options (render-options-default :use-collision nil
-;;                                   :options (render-options-medium))
-;;  :output "robray.pov")
+  (robray::scene-graph-pov-frame
+   (scene-graph *robot* *sg-table* *sg-marker* blocks
+                (scene-frame-fixed "front_table" "block-0"
+                                   :geometry (robray::scene-geometry *box*
+                                                                     (draw-options-default :color '(0 0 1)
+                                                                                           :specular .3
+                                                                                           :type "moveable"
+                                                                                           :visual t
+                                                                                           :collision t))
+                                   :tf (robray::scene-frame-tf frame)))
+   :configuration-map
+   (alist-tree-map `(;("right_s0" . ,(* .25 pi))
+                                        ;("right_s1" . ,(* -0.25 pi))
+                                        ;("right_e0" . ,(* 0.0 pi))
+                                        ;("right_e1" . ,(* 0.25 pi))
+                                        ;("right_w0" . ,(* 0.0 pi))
+                                        ;("right_w1" . ,(* 0.5 pi))
+                                        ;("right_w2" . ,(* 0.0 pi))
+                     )
+                   #'string-compare)
+   :include "baxter.inc"
+   :render t
+   :options (render-options-default :use-collision nil
+                                                 :options (render-options-full-hd))
+ :output "robray.pov"))
 
 (moveit-init (robray::urdf-resolve-file "package://baxter_description/urdf/baxter.urdf"))
 
@@ -135,7 +166,7 @@
 
 (defvar *plan*)
 
-(loop for n-obj from 1 to 1
+(loop for n-obj from 20 to 30
    for i = 0
    do
      (loop

@@ -51,8 +51,9 @@
        state))
 
 (defun syn-data (init-scene goal-scene &key
+                                         max-locations
                                          (resolution *resolution*))
-  (let* ((locations (scene-locations init-scene resolution))
+  (let* ((locations (scene-locations init-scene resolution :max-count max-locations))
          (moveable-frames (scene-collect-type init-scene "moveable"))
          (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
          (state (scene-state-pairs init-scene :resolution resolution))
@@ -137,7 +138,7 @@
                  &key
                    (encoding :linear)
                    ;(action-encoding :boolean)
-                   ;(max-steps 3)
+                   max-locations
                    (resolution 0.2d0)
                    (plan-context *plan-context*)
                    (frame "right_endpoint") ;; FIXME
@@ -149,7 +150,9 @@
          (task-time 0)
          (init-graph (scene-graph init-graph))
          (goal-graph (scene-graph goal-graph))
-         (data (syn-data init-graph goal-graph))
+         (data (syn-data init-graph goal-graph
+                         :max-locations max-locations
+                         :resolution resolution))
          (handle (syn-create data))
          (plan-steps))
     (setq *itmp-cache* cache)
@@ -232,10 +235,11 @@
                               (format t "failure.~%")
                               (abort))))))))))
       (next))
-    (print task-time)
     (setq *itmp-task-time* task-time
           *itmp-motion-time* motion-time
-          *itmp-total-time* (internal-time-seconds (- (get-internal-real-time) time-0)))
+          *itmp-total-time* (coerce (/ (- (get-internal-real-time) time-0)
+                                         internal-time-units-per-second)
+                                      'double-float))
     (setq *itmp-int-time* (max (- *itmp-total-time*
                                   (+ *itmp-task-time* *itmp-motion-time*))
                                0))
