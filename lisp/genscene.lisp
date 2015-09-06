@@ -1,26 +1,34 @@
 (in-package :tmsmt)
 
 
-(defun genscene-repeat (scene-graph base-name shape count
+(defun genscene-repeat (scene-graph base-name shape
                         &key
+                          count
+                          objects
+                          (randomize t)
                           max-locations
                           (rotation (quaternion nil))
                           (z .001)
                           (resolution *resolution*)
                           (options robray::*draw-options*))
-  (let ((locations (shuffle (scene-locations (scene-graph scene-graph)
-                                             resolution
-                                             :max-count max-locations
-                                             :encode nil))))
+  (let* ((all-locations (scene-locations (scene-graph scene-graph)
+                                        resolution
+                                        :max-count max-locations
+                                        :encode nil))
+         (locations (if randomize (shuffle all-locations) all-locations))
+         (objects (if count
+                      (loop for i below count collect i)
+                      objects)))
 
-    (assert (<= count (length locations)))
+    (assert (<= (length objects) (length locations)))
     (apply #'scene-graph (loop
-                            for k below count
+                            for k in objects
                             for (parent x y) in locations
                             collect (scene-frame-fixed parent (format nil "~A-~D" base-name k)
                                                        :geometry (robray::scene-geometry shape options)
                                                        :tf (tf* rotation
                                                                 (vec3* x y z)))))))
+
 
 
 
