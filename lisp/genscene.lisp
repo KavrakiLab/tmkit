@@ -14,6 +14,7 @@
   (let* ((all-locations (scene-locations (scene-graph scene-graph)
                                         resolution
                                         :max-count max-locations
+                                        :round nil
                                         :encode nil))
          (locations (if randomize (shuffle all-locations) all-locations))
          (objects (if count

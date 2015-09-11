@@ -31,7 +31,7 @@
   (let ((plan-pick (act-pick-tf context q-all-start link object-name pick-rel-tf ))
         (object-graph-0 (plan-context-object-graph context)))
     (if (null plan-pick)
-        (values nil object-graph-0)
+        (values nil object-graph-0 :pick object-name)
         (let* ((container (plan-context-moveit-container context))
                (q-group-pick (container-plan-endpoint plan-pick))
                (q-all-pick (container-merge-group container group q-group-pick q-all-start)))
@@ -48,5 +48,7 @@
                 ;; TODO: parent on the destination thing
                 (values (list plan-pick `(:pick ,object-name)
                               plan-place `(:place ,object-name))
-                        (plan-context-object-graph context))
-                (values nil object-graph-0)))))))
+                        (plan-context-object-graph context)
+                        nil
+                        object-name)
+                (values nil object-graph-0 :place object-name)))))))

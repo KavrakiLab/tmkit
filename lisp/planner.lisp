@@ -491,9 +491,7 @@
                step-ops))))
     step-ops))
 
-
-
-(defun smt-plan-parse (action-encoding assignments)
+(defun smt-plan-items (action-encoding assignments)
   (let ((plan))
     (dolist (x assignments)
       (destructuring-bind (var value) x
@@ -508,7 +506,11 @@
                    (push (cons (lastcar x)
                                y)
                          plan))))))
-    (map 'list #'cdr (sort plan (lambda (a b) (< (car a) (car b)))))))
+    plan))
+
+(defun smt-plan-parse (action-encoding assignments)
+  (map 'list #'cdr (sort (smt-plan-items action-encoding assignments)
+                         (lambda (a b) (< (car a) (car b))))))
 
 
 
@@ -625,6 +627,22 @@
     ;; (format t "~&state: ~A" state)
     ;; (format t "~&op: ~A" op)
     ;; (format t "~&step: ~A" step)))
+
+(defun smt-plan-invalidate-plan (cx action-encoding)
+  (let* ((operators (smt-plan-items action-encoding
+                                    (smt-plan-context-values cx)))
+         (exp
+          (ecase action-encoding
+            (:boolean
+             (loop for op in operators
+                collect (mangle-var (cdr op) :step (car op))))
+            (:enum
+             (loop for op in operators
+                collect (smt-= (mangle-var 'action :step (car op))
+                               (mangle-var (cdr op))))))))
+      (smt-eval (smt-plan-context-smt cx)
+                   (smt-assert (smt-not (apply #'smt-and exp))))))
+
 
 
 (defun smt-plan-context (&key

@@ -66,14 +66,16 @@
 
 (defun scene-locations (scene resolution &key
                                            max-count
+                                           (round t)
                                            (encode t))
   (labels ((encode (list)
-             (if encode
-                 (loop for (name x y) in list
-                    collect (itmp-encode-location name
-                                                  (round x resolution)
-                                                  (round y resolution)))
-                 list))
+             (loop for (name x y) in list
+                for i = (if round (round x resolution) x)
+                for j = (if round (round y resolution) y)
+                collect
+                  (if encode
+                      (itmp-encode-location name i j)
+                      (list name i j))))
            (subset (list count)
              (subseq (sort list (lambda (a b)
                                   (destructuring-bind (n-a x-a y-a) a
@@ -131,7 +133,9 @@
          (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
          ;;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
          (locations (scene-locations init-scene resolution
-                                     :max-count max-locations)))
+                                     :max-count max-locations
+                                     :encode t
+                                     :round t)))
     `(define (problem ,problem)
          (:domain ,domain)
        (:objects ,@moveable-objects - block
@@ -217,6 +221,7 @@
                    max-locations
                    (encoding :linear)
                    (action-encoding :boolean)
+                   (naive nil)
                    (max-steps 3)
                    (resolution 0.2d0)
                    (plan-context *plan-context*)
@@ -231,6 +236,9 @@
            (goal-graph (scene-graph goal-graph))
            (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution
                                     :max-locations max-locations))
+           (locations (scene-locations init-graph resolution :max-count max-locations
+                                       :encode nil
+                                       :round t))
            (smt-cx (smt-plan-context :operators operators
                                      :facts task-facts
                                      :action-encoding action-encoding
@@ -242,7 +250,9 @@
                  (setq plan-steps nil)
                  (let ((plan (smt-plan-next smt-cx :max-steps max-steps)))
                    (print plan)
-                   (cache plan)))
+                   (if naive
+                       (rec-start plan)
+                       (cache plan))))
                (cache (plan)
                  ;(print (hash-table-alist cache))
                  (let* ((prefixes (reverse (loop
@@ -267,10 +277,10 @@
                               *q-all-start*))
                        (progn
                          (format t "~&prefix: none")
-                         (reify plan
-                                init-graph *q-all-start*
-                                nil)))))
+                         (rec-start plan)))))
                  ;; Find a prefix
+               (rec-start (plan)
+                 (reify plan init-graph *q-all-start* nil))
                (rec (task-plan plan graph trail start)
                  (let* ((group-start (container-plan-endpoint (third plan)))
                         (all-start (container-merge-group *moveit-container* *group*
@@ -289,7 +299,7 @@
                         (push :no-op plan-steps))
                        (t
                         (format t "~&Reify: ~A..." op)
-                        (multiple-value-bind (plan graph)
+                        (multiple-value-bind (plan graph what-failed object)
                             (multiple-value-bind (result run-time)
                                 (sycamore-util:with-timing
                                   (multiple-value-list
@@ -307,18 +317,33 @@
                                    (type robray::scene-graph graph))
                           (if plan
                               (progn
+                                (assert (null what-failed))
                                 (format t "success.~%")
                                 (push plan plan-steps)
                                 (setf (gethash trail cache)
                                       (list plan-steps graph))
                                 (rec task-plan plan graph trail start))
+                              ;; failed
                               (progn
-                                (format t "failure.~%")
-                                (smt-plan-invalidate-op smt-cx
-                                                        (scene-state graph resolution
-                                                                     :encoding encoding
-                                                                     :goal nil)
-                                                        op)
+                                (format t "failure (~A ~A).~%" what-failed object)
+                                (if naive
+                                  ;; naive
+                                  (smt-plan-invalidate-plan smt-cx action-encoding)
+                                  ;; informed
+                                  (let ((state (scene-state graph resolution
+                                                            :encoding encoding
+                                                            :goal nil)))
+                                    (ecase what-failed
+                                      (:place
+                                       (smt-plan-invalidate-op smt-cx state op))
+                                      (:pick
+                                       (dolist (loc locations)
+                                        ;(print op)
+                                        ;(print (list* "TRANSFER" object loc))
+                                        ;(abort)
+                                         (smt-plan-invalidate-op smt-cx
+                                                                 state
+                                                                 (list* "TRANSFER" object loc)))))))
                                 (next))))))))))
         (next))
       (setq *itmp-task-time* (smt-runtime smt)
