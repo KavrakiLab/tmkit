@@ -2,8 +2,8 @@
 (in-package :tmsmt)
 
 (defparameter *table-dim* (vec3* .4 .4 .01))
-(defparameter *box-dim* .045)
-(defparameter *resolution* .05)
+(defparameter *box-dim* .050)
+(defparameter *resolution* .08)
 (defparameter *z* (/ (+ .02 (vec-z *table-dim*) *box-dim*)
                      2))
 (defparameter *box* (scene-box (vec3* *box-dim* *box-dim* *box-dim*)))
@@ -35,17 +35,17 @@
 
 
 
-(defparameter *sg-block*  (genscene-repeat *sg-table* "block"
-                                           *box*
-                                           30
-                                           :max-locations 31
-                                           :resolution *resolution*
-                                           :z *z*
-                                           :options (draw-options-default :color '(1 0 0)
-                                                                          :specular .5
-                                                                          :type "moveable"
-                                                                          :visual t
-                                                                          :collision t)))
+;; (defparameter *sg-block*  (genscene-repeat *sg-table* "block"
+;;                                            *box*
+;;                                            :count 30
+;;                                            :max-locations 31
+;;                                            :resolution *resolution*
+;;                                            :z *z*
+;;                                            :options (draw-options-default :color '(1 0 0)
+;;                                                                           :specular .5
+;;                                                                           :type "moveable"
+;;                                                                           :visual t
+;;                                                                           :collision t)))
 
 
 
@@ -100,34 +100,35 @@
                        (robray::output-file "baxter.inc" robray::*robray-tmp-directory*))
 
 
-(let ((frame (robray::scene-graph-lookup *sg-block* "block-0"))
-      (blocks (scene-graph-remove-frame *sg-block* "block-0")))
+;; (let ((frame (robray::scene-graph-lookup *sg-block* "block-0"))
+;;       (blocks (scene-graph-remove-frame *sg-block* "block-0")))
 
-  (robray::scene-graph-pov-frame
-   (scene-graph *robot* *sg-table* *sg-marker* blocks
-                (scene-frame-fixed "front_table" "block-0"
-                                   :geometry (robray::scene-geometry *box*
-                                                                     (draw-options-default :color '(0 0 1)
-                                                                                           :specular .3
-                                                                                           :type "moveable"
-                                                                                           :visual t
-                                                                                           :collision t))
-                                   :tf (robray::scene-frame-tf frame)))
-   :configuration-map
-   (alist-tree-map `(;("right_s0" . ,(* .25 pi))
-                                        ;("right_s1" . ,(* -0.25 pi))
-                                        ;("right_e0" . ,(* 0.0 pi))
-                                        ;("right_e1" . ,(* 0.25 pi))
-                                        ;("right_w0" . ,(* 0.0 pi))
-                                        ;("right_w1" . ,(* 0.5 pi))
-                                        ;("right_w2" . ,(* 0.0 pi))
-                     )
-                   #'string-compare)
-   :include "baxter.inc"
-   :render t
-   :options (render-options-default :use-collision nil
-                                                 :options (render-options-full-hd))
- :output "robray.pov"))
+;;   (robray::scene-graph-pov-frame
+;;    (scene-graph *robot* *sg-table* *sg-marker* blocks
+;;                 (scene-frame-fixed "front_table" "block-0"
+;;                                    :geometry (robray::scene-geometry *box*
+;;                                                                      (draw-options-default :color '(0 0 1)
+;;                                                                                            :specular .3
+;;                                                                                            :type "moveable"
+;;                                                                                            :visual t
+;;                                                                                            :collision t))
+;;                                    :tf (robray::scene-frame-tf frame)))
+;;    :configuration-map
+;;    (alist-tree-map `(;("right_s0" . ,(* .25 pi))
+;;                                         ;("right_s1" . ,(* -0.25 pi))
+;;                                         ;("right_e0" . ,(* 0.0 pi))
+;;                                         ;("right_e1" . ,(* 0.25 pi))
+;;                                         ;("right_w0" . ,(* 0.0 pi))
+;;                                         ;("right_w1" . ,(* 0.5 pi))
+;;                                         ;("right_w2" . ,(* 0.0 pi))
+;;                      )
+;;                    #'string-compare)
+;;    :include "baxter.inc"
+;;    :render t
+;;    :options (render-options-default :use-collision nil
+;;                                                  :options (render-options-full-hd))
+;;  :output "robray.pov")
+  ;; )
 
 (moveit-init (robray::urdf-resolve-file "package://baxter_description/urdf/baxter.urdf"))
 
@@ -160,13 +161,13 @@
                           (vec3* 2 2 2)
                           )
 
-(defparameter *tf-grasp-top* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .10)))
-(defparameter *tf-grasp-back* (tf* (y-angle (* .5 pi)) (vec3* -.10 .00 .035)))
-(defparameter *tf-grasp-rel* *tf-grasp-top*)
+(defparameter *tf-grasp-top* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 (+ .04 (/ *box-dim* 2)))))
+(defparameter *tf-grasp-back* (tf* (y-angle (* .5 pi)) (vec3* (- (+ .04 (/ *box-dim* 2)))  .00 .070)))
+(defparameter *tf-grasp-rel* *tf-grasp-back*)
 
 (defvar *plan*)
 
-(loop for n-obj from 20 to 30
+(loop for n-obj from 6 to 6
    for i = 0
    do
      (loop
@@ -174,7 +175,7 @@
         ;; create domain
         for blocks = (genscene-repeat *sg-table* "block"
                                       *box*
-                                      n-obj
+                                      :count n-obj
                                       :max-locations (1+ n-obj)
                                       :resolution *resolution*
                                       :z *z*
@@ -186,17 +187,27 @@
         unless (and (zerop (vec-x v))
                     (zerop (vec-y v)))
         do
-          (incf i)
-        ;; plan
-          (setq *plan*
-                (itmp-rec (scene-graph *sg-table* blocks) *sg-goal*
-                          (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
-                          :encoding :linear
-                          :action-encoding :enum
-                          :max-steps 3 :resolution *resolution*))
-        ;;(print *plan*)
-        ;; write output
-          (output-timing n-obj "idtmp")))
+          (progn
+            (incf i)
+            ;; plan
+            (print 'informed-idtmp)
+            (itmp-rec (scene-graph *sg-table* blocks) *sg-goal*
+                      (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
+                      :naive nil
+                      :encoding :linear
+                      :action-encoding :enum
+                      :max-steps n-obj :resolution *resolution*)
+            (output-timing n-obj "idtmp-side")
+
+            ;; (print 'naive-idtmp)
+            (itmp-rec (scene-graph *sg-table* blocks) *sg-goal*
+                      (rope *tmsmt-root* "pddl/itmp/itmp-blocks-linear.pddl")
+                      :naive t
+                      :encoding :linear
+                      :action-encoding :enum
+                      :max-steps n-obj :resolution *resolution*)
+            (output-timing n-obj "n-idtmp-side")
+          )))
 
 ;; (render-group-itmp *plan-context* *group*
 ;;                    *plan*
