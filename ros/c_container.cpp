@@ -215,7 +215,7 @@ tms_container_plan( struct container * c,
 
     moveit::core::robotStateToRobotStateMsg(c->planning_scene->getCurrentState(), c->req.start_state);
 
-    std::cout << c->req << std::endl;
+    //std::cout << c->req << std::endl;
 
     planning_interface::PlanningContextPtr context =
         c->planner_instance->getPlanningContext(c->planning_scene, c->req, err);
@@ -238,19 +238,19 @@ tms_container_plan( struct container * c,
     moveit_msgs::MotionPlanResponse res_msg;
     res.getMessage(res_msg);
     int i = 0;
-    for( auto itr = res_msg.trajectory.joint_trajectory.points.begin();
-         itr != res_msg.trajectory.joint_trajectory.points.end();
-         itr++ )
-    {
-        printf("waypoint %02d: ", i++);
-        for( auto j = itr->positions.begin();
-             j != itr->positions.end();
-             j++ )
-        {
-            printf("%f\t", *j );
-        }
-        printf("\n");
-    }
+    // for( auto itr = res_msg.trajectory.joint_trajectory.points.begin();
+    //      itr != res_msg.trajectory.joint_trajectory.points.end();
+    //      itr++ )
+    // {
+    //     printf("waypoint %02d: ", i++);
+    //     for( auto j = itr->positions.begin();
+    //          j != itr->positions.end();
+    //          j++ )
+    //     {
+    //         printf("%f\t", *j );
+    //     }
+    //     printf("\n");
+    // }
 
     /* Copy Result */
     *n_points = res_msg.trajectory.joint_trajectory.points.size();
