@@ -29,7 +29,7 @@ pigment {
 camera {
   //location <2.25, 1.0, 0.5>
 //  location <1.5, 1.5, 2.0>
-  location <2.5, 1.5, 0.0>
+  location <1.75, 1.25, 0.75>
   look_at  <0,    .0,  0>
   right x*16/9 /* Widescreen */
 }
@@ -39,7 +39,8 @@ sky_sphere{ //<0,0,0>, 1
   //S_Cloud3
   pigment {
     //Blood_Sky
-    Blue_Sky
+    //Blue_Sky
+    White
  //   Apocalypse
   }
 
@@ -52,26 +53,26 @@ sky_sphere{ //<0,0,0>, 1
 
 //     <-2.54,0,-2.54>,  // Near lower left corner
 //     < 2.54, 0, 2.54>   // Far upper right corner
-plane { <0, 1, 0>, 0
-  //texture {
+// plane { <0, 1, 0>, 0
+//   //texture {
 
-    //pigment{ color rgb<0.22,0.45,0>}
-    //normal { bumps 0.75 scale 0.015 }
-    //finish { phong 0.1 }
-    //} // end of texture
+//     //pigment{ color rgb<0.22,0.45,0>}
+//     //normal { bumps 0.75 scale 0.015 }
+//     //finish { phong 0.1 }
+//     //} // end of texture
 
-  texture {
-    pigment
-    {
-      checker pigment { Black_Marble }, pigment { White_Marble }
-      scale 12*0.0254
-      //checker color Black, color White
-    }
-    //finish{ phong 0.5 }
-  }
-  translate <0,-.9,0>
+//   texture {
+//     pigment
+//     {
+//       checker pigment { Black_Marble }, pigment { White_Marble }
+//       scale 12*0.0254
+//       //checker color Black, color White
+//     }
+//     //finish{ phong 0.5 }
+//   }
+//   translate <0,-.9,0>
 
-}
+// }
 
 // box {
 //     <0,0,0>  // Near lower left corner
@@ -161,7 +162,7 @@ plane { <0, 1, 0>, 0
 
 
 
-global_settings { ambient_light rgb<.5, .5, .5> }
+global_settings { ambient_light rgb<.75, .75, .75> }
 light_source{<10,20,15>
   // Sun
   color White

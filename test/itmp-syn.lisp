@@ -147,16 +147,18 @@
 
 (defvar *plan*)
 
-(loop for n-obj from 1 to 5
+(loop for n from 2 to 2
    for i = 0
    do
      (loop
-        while (< i 5)
+        while (< i 1)
+        for obj-count = 5
+        for loc-count = (max 8 (1+ obj-count))
         ;; create domain
         for blocks = (genscene-repeat *sg-table* "block"
                                       *box*
-                                      n-obj
-                                      :max-locations (1+ n-obj)
+                                      :count obj-count
+                                      :max-locations loc-count
                                       :resolution *resolution*
                                       :z *z*
                                       :options (draw-options-default :color '(1 0 0)
@@ -170,13 +172,15 @@
           (incf i)
         ;; plan
           (setq *plan*
-                (itmp-syn (scene-graph *sg-table* blocks) *sg-goal*
-                          :encoding :linear
-                          :max-locations (1+ n-obj)
-                          :resolution *resolution*))
+                (sb-sprof:with-profiling (:mode :cpu :report :flat :loop nil)
+                  (itmp-syn (scene-graph *sg-table* blocks) *sg-goal*
+                            :encoding :linear
+                            :max-locations loc-count
+                            :resolution *resolution*))
+          )
         ;;(print *plan*)
           ;; write output
-          (output-timing n-obj "syn")
+          ;(output-timing n-obj "syn")
           ))
 
 ;; (render-group-itmp *plan-context* *group*
