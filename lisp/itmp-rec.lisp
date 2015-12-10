@@ -160,14 +160,15 @@
 
 (defun itmp-transfer-action (scene-graph sexp
                              &key
+                               start
                                encoding
-                               q-all-start
                                resolution
                                (z-epsilon 1d-4)
-                               (plan-context *plan-context*)
-                               (link)
-                               (frame)
-                               (group))
+                               frame
+                               ;(plan-context *plan-context*)
+                               ;(link)
+                               ;(group)
+                               )
   (declare (type number resolution)
            (type robray::scene-graph scene-graph))
   ;(print sexp)
@@ -202,8 +203,8 @@
                                         ;(print object)
                                         ;(print tf-0)
                                         ;(print tf-dst)
-        (context-apply-scene plan-context scene-graph)
-        (act-transfer-tf plan-context group q-all-start frame link object *tf-grasp-rel*
+        ;(context-apply-scene plan-context scene-graph)
+        (act-transfer-tf scene-graph frame start object *tf-grasp-rel*
                          dst-name tf-dst)))))
 (defun itmp-abort ()
  ;(break)
@@ -218,16 +219,18 @@
 
 (defun itmp-rec (init-graph goal-graph operators
                  &key
+                   q-all-start
                    max-locations
                    (encoding :linear)
                    (action-encoding :boolean)
                    (naive nil)
                    (max-steps 3)
                    (resolution 0.2d0)
-                   (plan-context *plan-context*)
-                   (frame "right_endpoint") ;; FIXME
-                   (link *link*)
-                   (group *group*))
+                   frame
+                   ;(plan-context *plan-context*)
+                   ;(link *link*)
+                   ;(group *group*)
+                   )
   (with-smt (smt)
     (let* ((time-0 (get-internal-real-time))
            (cache (make-hash-table :test #'equal))
@@ -274,17 +277,18 @@
                               (car plan-steps)
                               (second c)
                               prefix
-                              *q-all-start*))
+                              q-all-start))
                        (progn
                          (format t "~&prefix: none")
                          (rec-start plan)))))
                  ;; Find a prefix
                (rec-start (plan)
-                 (reify plan init-graph *q-all-start* nil))
+                 (reify plan init-graph q-all-start nil))
                (rec (task-plan plan graph trail start)
-                 (let* ((group-start (container-plan-endpoint (third plan)))
-                        (all-start (container-merge-group *moveit-container* *group*
-                                                          group-start start)))
+                 (let* ((group-start ;(container-plan-endpoint (third plan))
+                          )
+                        (all-start group-start ;(container-merge-group *moveit-container* *group* group-start start))
+                        ))
                    (reify task-plan graph all-start trail)))
                (reify (task-plan graph start trail)
                  (declare (type list task-plan)
@@ -306,15 +310,15 @@
                                    (itmp-transfer-action graph op
                                                          :encoding encoding
                                                          :resolution resolution
-                                                         :plan-context plan-context
-                                                         :link link
+                                                        ; :plan-context plan-context
+                                                         ;:link link
                                                          :frame frame
-                                                         :group group
-                                                         :q-all-start start)))
+                                                         ;:group group
+                                                         :start start)))
                               (incf motion-time run-time)
                               (apply #'values result))
                           (declare (type list plan)
-                                   (type robray::scene-graph graph))
+                                   (type scene-graph graph))
                           (if plan
                               (progn
                                 (assert (null what-failed))
