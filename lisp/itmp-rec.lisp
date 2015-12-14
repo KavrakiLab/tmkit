@@ -189,7 +189,8 @@
                      (first rest) (second rest) (third rest)))))
       (let* ((dst-x (* dst-i resolution))
              (dst-y (* dst-j resolution))
-             (tf-0 (robray::scene-graph-tf-relative scene-graph src-name object))
+             (tf-0 (robray::scene-graph-tf-relative scene-graph src-name object
+                                                    :configuration-map start))
              ;;(src-x (* src-i resolution))
              ;;(src-y (* src-j resolution))
              (act-x (vec-x (tf-translation tf-0)))
@@ -231,6 +232,8 @@
                    ;(link *link*)
                    ;(group *group*)
                    )
+  (declare (optimize (speed 0) (debug 3))
+           (type robray::configuration-map q-all-start))
   (with-smt (smt)
     (let* ((time-0 (get-internal-real-time))
            (cache (make-hash-table :test #'equal))
@@ -285,14 +288,12 @@
                (rec-start (plan)
                  (reify plan init-graph q-all-start nil))
                (rec (task-plan plan graph trail start)
-                 (let* ((group-start ;(container-plan-endpoint (third plan))
-                          )
-                        (all-start group-start ;(container-merge-group *moveit-container* *group* group-start start))
-                        ))
-                   (reify task-plan graph all-start trail)))
+                 (declare (ignore plan))
+                 (reify task-plan graph start trail))
                (reify (task-plan graph start trail)
                  (declare (type list task-plan)
                           (type robray::scene-graph graph))
+                 (assert start)
                  (itmp-abort)
                  (when task-plan
                    (let* ((op (car task-plan))
@@ -322,14 +323,14 @@
                           (if plan
                               (progn
                                 (assert (null what-failed))
-                                (format t "success.~%")
+                                (format t "~&success.~%")
                                 (push plan plan-steps)
                                 (setf (gethash trail cache)
                                       (list plan-steps graph))
                                 (rec task-plan plan graph trail start))
                               ;; failed
                               (progn
-                                (format t "failure (~A ~A).~%" what-failed object)
+                                (format t "~&failure (~A ~A).~%" what-failed object)
                                 (if naive
                                   ;; naive
                                   (smt-plan-invalidate-plan smt-cx action-encoding)
