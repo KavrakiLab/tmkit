@@ -7,6 +7,7 @@
                (:file "smtrun" :depends-on ("smtlib"))
                (:file "expression" :depends-on ("util"))
                (:file "pddl" :depends-on ("util"))
+               (:file "tm-plan" :depends-on ("util"))
                (:file "genscene" :depends-on ("util"))
 
                ;; OMPL

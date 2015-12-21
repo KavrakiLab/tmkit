@@ -101,6 +101,10 @@
                    :max-steps 1 :resolution .1))
    nil))
 
+
+(when *plan*
+  (robray::win-display-motion-plan-sequence (tm-plan-motion-plans *plan*)))
+
 ;; (render-group-itmp *plan-context* *group*
 ;;                      *plan*
 ;;                      :render-options  (render-options-default :use-collision nil
