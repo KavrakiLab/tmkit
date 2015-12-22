@@ -218,6 +218,99 @@
 (defvar *itmp-int-time*)
 (defvar *itmp-total-time*)
 
+(defun tmp-reify (cache task-plan init-graph start &key
+                                                     frame
+                                                     naive
+                                                     encoding
+                                                     resolution)
+  (declare (type list task-plan)
+           (type hash-table cache))
+  (let ((motion-time 0)
+        (plan-steps))
+    (labels ((cache (plan)
+               ;;(print (hash-table-alist cache))
+               (let* ((prefixes (reverse (loop
+                                            for trail on (reverse plan)
+                                            collect trail)))
+                                        ;(format t "~&keys: ~A" (hash-table-keys cache))
+                      (prefix
+                       (loop for p in prefixes
+                          for n in (cdr prefixes)
+                          for has-p = (gethash p cache)
+                          for has-n = (gethash n cache)
+                          until (not has-n)
+                          finally (return p))))
+                 (if (gethash prefix cache)
+                     (let ((c (gethash prefix cache)))
+                       (format t "~&prefix: ~A" prefix)
+                       (setq plan-steps (first c))
+                       (rec (subseq plan (length prefix))
+                            (car plan-steps)
+                            (second c)
+                            prefix
+                            start))
+                     (progn
+                       (format t "~&prefix: none")
+                       (rec-start plan)))))
+             ;; Find a prefix
+             (rec-start (task-plan)
+               (next task-plan init-graph start nil))
+             (rec (task-plan plan graph trail start)
+               (declare (ignore start))
+               (let ((start (tm-plan-endpoint plan)))
+                 (next task-plan graph start trail)))
+             (next (task-plan graph start trail)
+               (declare (type list task-plan)
+                        (type robray::scene-graph graph))
+               (assert start)
+               (itmp-abort)
+               (if task-plan
+                   (reify task-plan graph start trail)
+                   (result plan-steps cache motion-time
+                           nil nil nil nil)))
+             (result (plan-steps cache motion-time end-graph op what-failed object)
+               (values (apply #'append (reverse plan-steps)) cache motion-time
+                       end-graph op what-failed object))
+             (reify (task-plan graph start trail)
+               (let* ((op (car task-plan))
+                      (task-plan (cdr task-plan))
+                      (trail (cons op trail)))
+                 (cond
+                   ((equal (car op) "NO-OP")
+                    (push :no-op plan-steps))
+                   (t
+                    (format t "~&Reify: ~A..." op)
+                    (multiple-value-bind (plan graph what-failed object)
+                        (multiple-value-bind (result run-time)
+                            (sycamore-util:with-timing
+                              (multiple-value-list
+                               (itmp-transfer-action graph op
+                                                     :encoding encoding
+                                                     :resolution resolution
+                                                     :frame frame
+                                                     :start start)))
+                          (incf motion-time run-time)
+                          (apply #'values result))
+                      (declare (type list plan)
+                               (type scene-graph graph))
+                      (if plan
+                          (progn
+                            (assert (null what-failed))
+                            (format t "~&success.~%")
+                            (push plan plan-steps)
+                            (setf (gethash trail cache)
+                                  (list plan-steps graph))
+                            (rec task-plan plan graph trail start))
+                          ;; failed
+                          (progn
+                            (format t "~&failure (~A ~A).~%" what-failed object)
+                            (result nil cache motion-time
+                                    graph op what-failed object)))))))))
+      (if naive
+          (rec-start task-plan)
+          (cache task-plan)))))
+
+
 (defun itmp-rec (init-graph goal-graph operators
                  &key
                    q-all-start
@@ -228,9 +321,6 @@
                    (max-steps 3)
                    (resolution 0.2d0)
                    frame
-                   ;(plan-context *plan-context*)
-                   ;(link *link*)
-                   ;(group *group*)
                    )
   (declare (optimize (speed 0) (debug 3))
            (type robray::configuration-map q-all-start))
@@ -248,120 +338,58 @@
            (smt-cx (smt-plan-context :operators operators
                                      :facts task-facts
                                      :action-encoding action-encoding
-                                     :smt smt))
-           (plan-steps))
+                                     :smt smt)))
       (setq *itmp-cache* cache)
       (labels ((next ()
                  (itmp-abort)
-                 (setq plan-steps nil)
                  (let ((plan (smt-plan-next smt-cx :max-steps max-steps)))
                    (print plan)
-                   (if naive
-                       (rec-start plan)
-                       (cache plan))))
-               (cache (plan)
-                 ;(print (hash-table-alist cache))
-                 (let* ((prefixes (reverse (loop
-                                              for trail on (reverse plan)
-                                              collect trail)))
-                                        ;(format t "~&keys: ~A" (hash-table-keys cache))
-                        (prefix
-                         (loop for p in prefixes
-                            for n in (cdr prefixes)
-                            for has-p = (gethash p cache)
-                            for has-n = (gethash n cache)
-                            until (not has-n)
-                            finally (return p))))
-                   (if (gethash prefix cache)
-                       (let ((c (gethash prefix cache)))
-                         (format t "~&prefix: ~A" prefix)
-                         (setq plan-steps (first c))
-                         (rec (subseq plan (length prefix))
-                              (car plan-steps)
-                              (second c)
-                              prefix
-                              q-all-start))
+                   (reify plan)))
+               (result (plan-steps)
+                 (setq *itmp-task-time* (smt-runtime smt)
+                       *itmp-motion-time* motion-time
+                       *itmp-total-time* (coerce (/ (- (get-internal-real-time) time-0)
+                                                    internal-time-units-per-second)
+                                                 'double-float))
+                 (setq *itmp-int-time* (max (- *itmp-total-time*
+                                               (+ *itmp-task-time* *itmp-motion-time*))
+                                            0))
+                 (format t "~&IDITMP -- total time:  ~,3F~&" *itmp-total-time*)
+                 (format t "~&IDITMP -- task time:   ~,3F~&" *itmp-task-time*)
+                 (format t "~&IDITMP -- motion time: ~,3F~&" *itmp-motion-time*)
+                 (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*)
+                 plan-steps)
+               (reify (plan)
+                 (multiple-value-bind (plan-steps new-cache new-motion-time
+                                                  failed-graph failed-op what-failed object)
+                     (tmp-reify cache plan init-graph q-all-start
+                                :frame frame
+                                :naive naive
+                                :encoding encoding
+                                :resolution resolution)
+                   (setq cache new-cache)
+                   (incf motion-time new-motion-time)
+                   (if plan-steps
+                       (result plan-steps)
+                       ;; failed
                        (progn
-                         (format t "~&prefix: none")
-                         (rec-start plan)))))
-                 ;; Find a prefix
-               (rec-start (plan)
-                 (reify plan init-graph q-all-start nil))
-               (rec (task-plan plan graph trail start)
-                 (declare (ignore start))
-                 (let ((start (tm-plan-endpoint plan)))
-                   (reify task-plan graph start trail)))
-               (reify (task-plan graph start trail)
-                 (declare (type list task-plan)
-                          (type robray::scene-graph graph))
-                 (assert start)
-                 (itmp-abort)
-                 (when task-plan
-                   (let* ((op (car task-plan))
-                          (task-plan (cdr task-plan))
-                          (trail (cons op trail)))
-                     (cond
-                       ((equal (car op) "NO-OP")
-                        (push :no-op plan-steps))
-                       (t
-                        (format t "~&Reify: ~A..." op)
-                        (multiple-value-bind (plan graph what-failed object)
-                            (multiple-value-bind (result run-time)
-                                (sycamore-util:with-timing
-                                  (multiple-value-list
-                                   (itmp-transfer-action graph op
-                                                         :encoding encoding
-                                                         :resolution resolution
-                                                        ; :plan-context plan-context
-                                                         ;:link link
-                                                         :frame frame
-                                                         ;:group group
-                                                         :start start)))
-                              (incf motion-time run-time)
-                              (apply #'values result))
-                          (declare (type list plan)
-                                   (type scene-graph graph))
-                          (if plan
-                              (progn
-                                (assert (null what-failed))
-                                (format t "~&success.~%")
-                                (push plan plan-steps)
-                                (setf (gethash trail cache)
-                                      (list plan-steps graph))
-                                (rec task-plan plan graph trail start))
-                              ;; failed
-                              (progn
-                                (format t "~&failure (~A ~A).~%" what-failed object)
-                                (if naive
-                                  ;; naive
-                                  (smt-plan-invalidate-plan smt-cx action-encoding)
-                                  ;; informed
-                                  (let ((state (scene-state graph resolution
-                                                            :encoding encoding
-                                                            :goal nil)))
-                                    (ecase what-failed
-                                      (:place
-                                       (smt-plan-invalidate-op smt-cx state op))
-                                      (:pick
-                                       (dolist (loc locations)
+                         (if naive
+                             ;; naive
+                             (smt-plan-invalidate-plan smt-cx action-encoding)
+                             ;; informed
+                             (let ((state (scene-state failed-graph resolution
+                                                       :encoding encoding
+                                                       :goal nil)))
+                               (ecase what-failed
+                                 (:place
+                                  (smt-plan-invalidate-op smt-cx state failed-op))
+                                 (:pick
+                                  (dolist (loc locations)
                                         ;(print op)
                                         ;(print (list* "TRANSFER" object loc))
                                         ;(abort)
-                                         (smt-plan-invalidate-op smt-cx
-                                                                 state
-                                                                 (list* "TRANSFER" object loc)))))))
-                                (next))))))))))
-        (next))
-      (setq *itmp-task-time* (smt-runtime smt)
-            *itmp-motion-time* motion-time
-            *itmp-total-time* (coerce (/ (- (get-internal-real-time) time-0)
-                                         internal-time-units-per-second)
-                                      'double-float))
-      (setq *itmp-int-time* (max (- *itmp-total-time*
-                                    (+ *itmp-task-time* *itmp-motion-time*))
-                                 0))
-      (format t "~&IDITMP -- total time:  ~,3F~&" *itmp-total-time*)
-      (format t "~&IDITMP -- task time:   ~,3F~&" *itmp-task-time*)
-      (format t "~&IDITMP -- motion time: ~,3F~&" *itmp-motion-time*)
-      (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*)
-      (apply #'append (reverse plan-steps)))))
+                                    (smt-plan-invalidate-op smt-cx
+                                                            state
+                                                            (list* "TRANSFER" object loc)))))))
+                         (next))))))
+        (next)))))
