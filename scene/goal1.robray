@@ -1,17 +1,17 @@
 include "class.robray"
 
-/* frame block_b { */
-/*     parent front_table; */
-/*     translation [0, 0, 0.0551]; */
-/*     geometry { */
-/*         isa block; */
-/*         isa red; */
-/*     } */
-/* } */
+frame block_b {
+    parent front_table;
+    translation [0, 0, 0.0551];
+    geometry {
+        isa block;
+        isa red;
+    }
+}
 
 frame block_a {
     parent front_table;
-    translation [-.1, 0, 0.0551];
+    translation [0, -.25, 0.0551];
     geometry {
         isa block;
         isa blue;

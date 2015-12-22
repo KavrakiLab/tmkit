@@ -61,9 +61,9 @@
 (defparameter *start* (robray::alist-configuration-map `(("right_s0" . ,(/ pi 5)))))
 
 
-(robray::win-set-config (robray::scene-graph-ik *all-graph* :frame "right_endpoint"
-                                                :tf (g* (scene-graph-tf-absolute *all-graph* "block_a")
-                                                        *tf-grasp-rel*)))
+;; (robray::win-set-config (robray::scene-graph-ik *all-graph* :frame "right_endpoint"
+;;                                                 :tf (g* (scene-graph-tf-absolute *all-graph* "block_a")
+;;                                                         *tf-grasp-rel*)))
 
 
 
@@ -98,7 +98,7 @@
                    :q-all-start *start*
                    :frame "right_endpoint"
                    :encoding :linear
-                   :max-steps 1 :resolution .1))
+                   :max-steps 3 :resolution .1))
    nil))
 
 
