@@ -99,6 +99,9 @@
   "Find hash-table mapping type to all objects of that type (directly or subtype)"
   (let ((type-map (make-tree-map #'gsymbol-compare))
         (empty-set (make-tree-set #'gsymbol-compare)))
+    ;; Add bool
+    (tree-map-insertf type-map 'bool
+                      (tree-set #'gsymbol-compare nil t))
     ;; Add each object to its direct type and t (the top-level type)
     (let ((t-set empty-set))
       (loop for x in objects

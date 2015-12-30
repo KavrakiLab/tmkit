@@ -6,24 +6,24 @@
 
 /** Data structure for grounded PDDL domain */
 
-typedef int tmp_pd_action_precon(const unsigned * vars, size_t vars_n);
+typedef int tmp_pd_action_pre(const unsigned * vars);
 
-typedef void tmp_pd_action_effect(const unsigned * vars_pre, unsigned * vars_post, size_t vars_n);
+typedef void tmp_pd_action_eff(unsigned * vars);
 
 struct tmp_pd_pddl_struct
 {
-  size_t type_n; // Number of types
+  size_t n_type; // Number of types
   unsigned * type; // Array containing the number of elements of each type
 
   // Array containing the domain of the grounded functions,
   // represented by the index of the domain type
-  size_t func_n;
+  size_t n_func;
   unsigned * func;
 
   // Action precondition and action effect
-  size_t action_n;
-  tmp_pd_action_precon * action_precon;
-  tmp_pd_action_effect * action_effect;
+  size_t n_action;
+  tmp_pd_action_pre * action_precon;
+  tmp_pd_action_eff * action_effect;
 
 
 };

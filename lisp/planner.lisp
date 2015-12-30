@@ -186,6 +186,7 @@
 
 (defstruct ground-domain
   (variables nil :type list)
+  (types nil :type list)
   (variable-type nil :type tree-map)
   (derived-variables nil :type list)
   (derived-type nil :type tree-map)
@@ -201,6 +202,14 @@
                                  (declare (ignore value))
                                  key)
                 map))
+
+(defun type-map-types (map)
+  (tree-set-list (fold-tree-map (lambda (set key value)
+                                  (declare (ignore key))
+                                  (tree-set-insert set value))
+                                (make-tree-set #'gsymbol-compare)
+                                map)))
+
 
 ;; TODO: ground derived types
 ;;       - add to variables (separate slot for derived variables)
@@ -238,6 +247,7 @@
                           :derived-variables (type-map-keys derived-type)
                           :derived-type derived-type
                           :type-objects type-objects
+                          :types (type-map-types variable-type)
                           :operators ground-operators
                           :axioms derived-axioms
                           :action-encoding action-encoding
