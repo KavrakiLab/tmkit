@@ -98,10 +98,16 @@
              (field-assign (field value)
                (cgen-assign-stmt (field field)
                                  value))
-             (init-array (type array-field values &optional size-field )
+             (init-array (type array-field values
+                               &key
+                               size-field
+                               const )
                (list
                 (when size-field (field-assign size-field (length values)))
-                (cgen-declare-array (rope "static const " type) array-field values)
+                (cgen-declare-array (rope (if const
+                                              "static const "
+                                              "static ")
+                                          type) array-field values)
                 (field-assign array-field array-field)
                )))
       (cgen-defun "void" name
@@ -114,7 +120,7 @@
                                                (declare (ignore type))
                                                (tree-set-count object-set))
                                              type-objects)
-                               "n_type")
+                               :size-field "n_type" :const t)
 
                    ;; func
                    (init-array "unsigned" "func"
@@ -123,22 +129,23 @@
                                                (declare (ignore variable))
                                                (gethash type type-indices))
                                              variable-type)
-                               "n_func")
+                               :const t :size-field "n_func")
                    ;; action_precon
-                   (init-array "tmp_pd_action_precon" "action_precon"
+                   (init-array "tmp_pd_action_pre *" "action_precon"
                                (map 'list #'pd-action-pre-name (ground-domain-operators domain))
-                               "n_action")
+                               :size-field "n_action")
                    ;; action_effect
-                   (init-array "tmp_pd_action_eff" "action_effect"
+                   (init-array "tmp_pd_action_eff *" "action_effect"
                                (map 'list #'pd-action-eff-name (ground-domain-operators domain)))
                    )))))
 
 
-(defun pd-cgen (domain
+(defun pd-cgen (domain source-file
                 &key
-                  ;output
-                         )
+                  )
   (let ((pres (pd-cgen-action-pres domain))
         (effs (pd-cgen-action-effs domain))
         (struct (pd-cgen-struct domain)))
-    (rope pres effs struct)))
+    (output-rope (rope (cgen-include-system "tmsmt/pddl.h") pres effs struct)
+                 source-file
+                 :if-exists :supersede)))
