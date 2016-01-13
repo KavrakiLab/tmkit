@@ -1,5 +1,15 @@
 (in-package :tmsmt)
 
+;; TODO: encode datatype name into datatype values
+;;       needed to allow complex type inheritance
+;;
+;; Ground domain expressions should carry around the type of each term
+;; so that the appropriate constant symbol can be selected in SMT
+;; expressions.  (smells like overloading)
+
+(defun plan-enum-symbol (type name)
+  (declare (ignore type))
+  name)
 
 ;;; ENCODING,
 ;;;  - PDDL Objects are state variables
@@ -331,6 +341,7 @@
       (smt-let* (reverse bindings)
                 (ite vars)))))
 
+
 (defun smt-plan-datatypes (domain)
   (labels ((tree-set-add-type (set name type)
              (declare (ignore name))
@@ -342,7 +353,10 @@
                        (case type
                          ((bool object t) list)
                          (otherwise
-                          (cons (smt-declare-enum type (tree-set-list (tree-map-find type-objects type)))
+                          (cons (smt-declare-enum type
+                                                  (map-tree-set 'list (lambda (name)
+                                                                        (plan-enum-symbol type name))
+                                                                (tree-map-find type-objects type)))
                                  list))))
                      nil
                      object-types))))
