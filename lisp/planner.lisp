@@ -692,6 +692,17 @@
                              :domain domain
                              :step 0))))
 
+(defun smt-plan (operators facts &key
+                                   (max-steps 5)
+                                   (action-encoding :boolean))
+  (with-smt (smt)
+    (let ((cx (smt-plan-context :operators operators
+                                :facts facts
+                                :smt smt
+                                :action-encoding action-encoding)))
+      (smt-plan-next cx :max-steps max-steps))))
+
+
 ;; (defun smt-plan-single ( &key
 ;;                     operators facts
 ;;                     state-vars
