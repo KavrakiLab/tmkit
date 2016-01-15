@@ -7,6 +7,8 @@
                (:file "smtrun" :depends-on ("smtlib"))
                (:file "expression" :depends-on ("util"))
                (:file "pddl" :depends-on ("util"))
+               (:file "pddl-cgen" :depends-on ("pddl" "planner"))
+               (:file "planner" :depends-on ("util" "expression" "pddl" "smtrun"))
                (:file "tm-plan" :depends-on ("util"))
                (:file "genscene" :depends-on ("util"))
 
@@ -16,7 +18,6 @@
                ;(:file "synergistic" :depends-on ("synergistic-defs"))
 
                (:file "placement-graph" :depends-on ("pddl"))
-               (:file "planner" :depends-on ("util" "expression" "pddl" "smtrun"))
                (:file "motion-plan" :depends-on ("util"))
                ;(:file "moveit" :depends-on ("ros/ros-scene" "ros/ros-container" "motion-plan"))
                (:file "m-actions" :depends-on ("util" "motion-plan"))

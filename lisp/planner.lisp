@@ -228,7 +228,7 @@
 ;;       - need to omit derived variables from frame axioms
 (defun ground-domain (operators facts
                       &key
-                        action-encoding
+                        (action-encoding :boolean)
                         goal)
   (let* ((operators (load-operators operators))
          (facts (load-facts facts))
