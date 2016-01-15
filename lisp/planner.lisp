@@ -24,6 +24,7 @@
          for o in list
          nconc
            (loop for args in (collect-args (cdr typed-list) type-map)
+              unless (position o args) ;; no duplicate args
               collect (cons o args)))))
 
 
