@@ -130,6 +130,12 @@
                                                (gethash type type-indices))
                                              variable-type)
                                :const t :size-field "n_func")
+                   ;; func name
+                   (init-array "char *" "func_name"
+                               (map 'list (lambda (v)
+                                            (cgen-string (princ-to-string v)))
+                                    (ground-domain-variables domain))
+                               :const t)
                    ;; action_precon
                    (init-array "tmp_pd_action_pre *" "action_precon"
                                (map 'list #'pd-action-pre-name (ground-domain-operators domain))
@@ -137,6 +143,14 @@
                    ;; action_effect
                    (init-array "tmp_pd_action_eff *" "action_effect"
                                (map 'list #'pd-action-eff-name (ground-domain-operators domain)))
+                   ;; action name
+                   (init-array "char *" "action_name"
+                               (map 'list (lambda (a)
+                                            (let ((a (cons (ground-action-name a)
+                                                           (ground-action-actual-arguments a))))
+                                            (cgen-string (princ-to-string a))))
+                                    (ground-domain-operators domain))
+                               :const t)
                    )))))
 
 

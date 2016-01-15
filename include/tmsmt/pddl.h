@@ -19,11 +19,13 @@ struct tmp_pd_pddl_struct
   // represented by the index of the domain type
   size_t n_func;
   const unsigned * func;
+  const char ** func_name;
 
   // Action precondition and action effect
   size_t n_action;
   tmp_pd_action_pre ** action_precon;
   tmp_pd_action_eff ** action_effect;
+  const char ** action_name;
 
 
 };
