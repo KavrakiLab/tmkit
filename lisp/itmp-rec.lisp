@@ -45,11 +45,17 @@
                     &key
                       (encoding :linear)
                       goal)
-
   (labels ((location-predicate (object parent i j)
-             (ecase encoding
-               (:quadratic (list 'at object (itmp-encode-location parent i j)))
-               (:linear `(= (position ,object) ,(itmp-encode-location parent i j)))))
+             (let ((parent-frame (robray::scene-graph-lookup scene parent)))
+               (cond
+                 ((robray::scene-frame-geometry-isa parent-frame "surface")
+                  (ecase encoding
+                    (:quadratic (list 'at object (itmp-encode-location parent i j)))
+                    (:linear `(= (position ,object) ,(itmp-encode-location parent i j)))))
+                 ((robray::scene-frame-geometry-isa parent-frame "stackable")
+                  (assert (eq encoding :linear))
+                  `(= (position ,object) ,parent))
+                 (t (error "Unkown type of parent ~A" parent)))))
            (occupied-predicate (parent i j)
              (list 'occupied (itmp-encode-location parent i j)))
            (frame-predicates (name parent i j)
@@ -98,7 +104,7 @@
 
 
     (let* ((scene (scene-graph scene))
-           (stackable-frames (scene-collect-type scene "stackable"))
+           (stackable-frames (scene-collect-type scene "surface"))
            (locations-list
             (loop for frame in stackable-frames
                for name = (robray::scene-frame-name frame)
@@ -131,6 +137,8 @@
          (goal-scene (scene-graph goal-scene))
          (moveable-frames (scene-collect-type init-scene "moveable"))
          (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
+         (stackable-frames (scene-collect-type init-scene "stackable"))
+         (stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
          ;;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
          (locations (scene-locations init-scene resolution
                                      :max-count max-locations
@@ -139,12 +147,11 @@
     `(define (problem ,problem)
          (:domain ,domain)
        (:objects ,@moveable-objects - block
-                                        ;,@stackable-objects - table
+                 ,@stackable-objects
                  ,@locations - location)
-       (:init ,@(cons '(= (last-transfer) no-object)
-                      (scene-state init-scene resolution
+       (:init ,@(scene-state init-scene resolution
                                    :encoding encoding
-                                   :goal nil)))
+                                   :goal nil))
        (:goal (and ,@(scene-state goal-scene resolution
                                   :encoding encoding
                                   :goal t))))))
