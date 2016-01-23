@@ -214,6 +214,54 @@
         ;(context-apply-scene plan-context scene-graph)
         (act-transfer-tf scene-graph frame start object *tf-grasp-rel*
                          dst-name tf-dst)))))
+
+(defun itmp-stack-action (scene-graph sexp
+                          &key
+                            start
+                            (z-epsilon 1d-4)
+                            frame)
+  (destructuring-bind (-stack obj-a obj-b)
+      sexp
+    (assert (rope= "STACK" -stack))
+    (let* ((z-a (itmp-transfer-z scene-graph obj-a))
+           (z-b (itmp-transfer-z scene-graph obj-b))
+           (tf-dst (tf* nil (vec3* 0 0 (+ z-a z-b z-epsilon)))))
+      ;(break)
+      (act-transfer-tf scene-graph frame start obj-a *tf-grasp-rel*
+                       obj-b tf-dst)
+      )))
+
+
+(defun itmp-action (scene-graph sexp
+                             &key
+                               start
+                               encoding
+                               resolution
+                               (z-epsilon 1d-4)
+                               frame
+                               )
+  (declare (type number resolution)
+           (type robray::scene-graph scene-graph))
+  ;(print sexp)
+  (destructuring-bind (action &rest args)
+      sexp
+    (declare (ignore args))
+    (cond
+      ((rope= "TRANSFER" action)
+       (itmp-transfer-action scene-graph sexp
+                             :start start
+                             :encoding encoding
+                             :resolution resolution
+                             :z-epsilon z-epsilon
+                             :frame frame))
+      ((rope= "STACK" action)
+       (itmp-stack-action scene-graph sexp
+                          :start start
+                          :z-epsilon z-epsilon
+                          :frame frame))
+      (t (error "Urecognized action: ~A" sexp)))))
+
+
 (defun itmp-abort ()
  ;(break)
   )
@@ -291,11 +339,11 @@
                         (multiple-value-bind (result run-time)
                             (sycamore-util:with-timing
                               (multiple-value-list
-                               (itmp-transfer-action graph op
-                                                     :encoding encoding
-                                                     :resolution resolution
-                                                     :frame frame
-                                                     :start start)))
+                               (itmp-action graph op
+                                            :encoding encoding
+                                            :resolution resolution
+                                            :frame frame
+                                            :start start)))
                           (incf motion-time run-time)
                           (apply #'values result))
                       (declare (type list plan)
