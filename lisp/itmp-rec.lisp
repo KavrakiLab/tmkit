@@ -46,7 +46,7 @@
                       (encoding :linear)
                       goal)
   (labels ((location-predicate (object parent i j)
-             (let ((parent-frame (robray::scene-graph-lookup scene parent)))
+             (let ((parent-frame (scene-graph-find scene parent)))
                (cond
                  ((robray::scene-frame-geometry-isa parent-frame "surface")
                   (ecase encoding
@@ -159,7 +159,7 @@
 
 (defun itmp-transfer-z (scene-graph object)
   ;; todo: other shapes
-  (let ((g (robray::scene-frame-geometry-collision (robray::scene-graph-lookup scene-graph object))))
+  (let ((g (robray::scene-frame-geometry-collision (scene-graph-find scene-graph object))))
     (assert (= 1 (length g)))
     (let ((shape (robray::scene-geometry-shape (elt g 0))))
       (etypecase shape
@@ -188,7 +188,7 @@
            (values (first rest) (second rest) (third rest)
                    (fourth rest) (fifth rest) (sixth rest)))
           (:linear
-           (let* ((frame (robray::scene-graph-lookup scene-graph object))
+           (let* ((frame (scene-graph-find scene-graph object))
                   (parent (robray::scene-frame-parent frame))
                   (tf (robray::scene-frame-tf frame))
                   (v (tf-translation tf)))
