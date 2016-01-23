@@ -395,6 +395,8 @@
 
 (defun itmp-rec (init-graph goal-graph operators
                  &key
+                   object-alist
+                   moveable-types
                    q-all-start
                    max-locations
                    (encoding :linear)
@@ -413,6 +415,8 @@
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
            (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution
+                                    :object-alist object-alist
+                                    :moveable-types moveable-types
                                     :max-locations max-locations))
            (locations (scene-locations init-graph resolution :max-count max-locations
                                        :encode nil
