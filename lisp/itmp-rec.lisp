@@ -43,15 +43,27 @@
 
 (defun scene-state (scene resolution
                     &key
+                      other-scene-graph
+                      moveable-objects
                       (encoding :linear)
                       goal)
-  (labels ((location-predicate (object parent i j)
-             (let ((parent-frame (scene-graph-find scene parent)))
+  (labels ((find-parent (parent)
+             (or (scene-graph-find scene parent)
+                 (scene-graph-find other-scene-graph parent)
+                 (error "Could not find parent ~A" parent)))
+           (fun-position (object location)
+             `(= (position ,object) ,location))
+           (surface-location (object parent i j)
+             (ecase encoding
+               (:quadratic (list 'at object (itmp-encode-location parent i j)))
+               (:linear (fun-position object (itmp-encode-location parent i j)))))
+           (parent-location (object parent)
+             (fun-position object parent))
+           (location-predicate (object parent i j)
+             (let ((parent-frame (find-parent parent)))
                (cond
                  ((robray::scene-frame-geometry-isa parent-frame "surface")
-                  (ecase encoding
-                    (:quadratic (list 'at object (itmp-encode-location parent i j)))
-                    (:linear `(= (position ,object) ,(itmp-encode-location parent i j)))))
+                  (surface-location object parent i j))
                  ((robray::scene-frame-geometry-isa parent-frame "stackable")
                   (assert (eq encoding :linear))
                   `(= (position ,object) ,parent))
@@ -63,9 +75,13 @@
                (if (or goal (eq encoding :linear))
                    (list loc)
                    (list loc (occupied-predicate parent i j))))))
-    (loop for (name parent i j) in (scene-state-pairs scene :resolution resolution)
-         nconc
-         (frame-predicates name parent i j))))
+    (append (loop for object in moveable-objects
+               for f = (scene-graph-find scene object)
+               when f
+               collect (parent-location object (scene-graph-parent-name scene object)))
+            (loop for (name parent i j) in (scene-state-pairs scene :resolution resolution)
+               nconc
+                 (frame-predicates name parent i j)))))
 
 
 
@@ -128,6 +144,8 @@
 
 (defun scene-facts (init-scene goal-scene
                     &key
+                      object-alist
+                      moveable-types
                       max-locations
                       (encoding :linear)
                       (resolution 0.2d0)
@@ -139,7 +157,12 @@
          (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
          (stackable-frames (scene-collect-type init-scene "stackable"))
          (stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
+         (extra-moveable-objects (loop for (type . objects) in object-alist
+                                    when (find type moveable-types)
+                                    append objects))
          ;;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
+         (objects (loop for (type . objects) in object-alist
+                     append `(,@objects - ,type)))
          (locations (scene-locations init-scene resolution
                                      :max-count max-locations
                                      :encode t
@@ -148,12 +171,16 @@
          (:domain ,domain)
        (:objects ,@moveable-objects - block
                  ,@stackable-objects
-                 ,@locations - location)
+                 ,@locations - location
+                 ,@objects)
        (:init ,@(scene-state init-scene resolution
-                                   :encoding encoding
-                                   :goal nil))
+                             :moveable-objects extra-moveable-objects
+                             :encoding encoding
+                             :goal nil))
        (:goal (and ,@(scene-state goal-scene resolution
+                                  :moveable-objects extra-moveable-objects
                                   :encoding encoding
+                                  :other-scene-graph init-scene
                                   :goal t))))))
 
 
