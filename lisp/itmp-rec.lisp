@@ -258,6 +258,17 @@
                        obj-b tf-dst)
       )))
 
+(defun itmp-push-action (scene-graph sexp
+                          &key
+                            start
+                            (z-epsilon 1d-4)
+                            frame)
+  (declare (ignore z-epsilon))
+  (destructuring-bind (action obj dst)
+      sexp
+    (assert (rope= "PUSH-TRAY" action))
+    (act-push-tf scene-graph frame start obj *tf-grasp-rel* dst)))
+
 
 (defun itmp-action (scene-graph sexp
                              &key
@@ -283,6 +294,11 @@
                              :frame frame))
       ((rope= "STACK" action)
        (itmp-stack-action scene-graph sexp
+                          :start start
+                          :z-epsilon z-epsilon
+                          :frame frame))
+      ((rope= "PUSH-TRAY" action)
+       (itmp-push-action scene-graph sexp
                           :start start
                           :z-epsilon z-epsilon
                           :frame frame))
@@ -455,12 +471,16 @@
                      (:place
                       (smt-plan-invalidate-op smt-cx state failed-op))
                      (:pick
-                      (dolist (loc locations)
-                        (smt-plan-invalidate-op smt-cx
-                                                state
-                                                (list* "TRANSFER" object loc)))))))
+                      (if (rope= "TRANSFER" (first failed-op))
+                          ;; special case transfer
+                          (dolist (loc locations)
+                            (smt-plan-invalidate-op smt-cx
+                                                    state
+                                                    (list* "TRANSFER" object loc)))
+                          ;; default, deny op
+                          (smt-plan-invalidate-op smt-cx state failed-op))))))
                (invalidate (failed-graph failed-op what-failed object)
-                 (format t "Failed: ~A" failed-op)
+                 (format t "~&Failed operator: ~A" failed-op)
                  (if naive
                      (smt-plan-invalidate-plan smt-cx action-encoding)
                      (invalidate-informed failed-graph failed-op what-failed object))

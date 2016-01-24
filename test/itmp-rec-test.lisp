@@ -52,7 +52,7 @@
 (defparameter *all-graph*
   (scene-graph *robot-graph* *object-graph*))
 
-(robray::win-set-scene-graph *all-graph*)
+(robray::win-set-scene-graph *object-graph*)
 
 (defparameter *tf-grasp-rel* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .075)))
 
@@ -61,9 +61,7 @@
 (defparameter *start* (robray::alist-configuration-map `(("right_s0" . ,(/ pi 5)))))
 
 
-;; (robray::win-set-config (robray::scene-graph-ik *all-graph* :frame "right_endpoint"
-;;                                                 :tf (g* (scene-graph-tf-absolute *all-graph* "block_a")
-;;                                                         *tf-grasp-rel*)))
+(robray::win-set-config  (robray::make-configuration-map))
 
 
 
