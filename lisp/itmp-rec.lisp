@@ -428,9 +428,11 @@
       (setq *itmp-cache* cache)
       (labels ((next ()
                  (itmp-abort)
-                 (let ((plan (smt-plan-next smt-cx :max-steps max-steps)))
-                   (print plan)
-                   (reify plan)))
+                 (if-let ((plan (smt-plan-next smt-cx :max-steps max-steps)))
+                   (progn
+                     (print plan)
+                     (reify plan))
+                   (error "no plan found after max steps")))
                (result (plan-steps)
                  (setq *itmp-task-time* (smt-runtime smt)
                        *itmp-motion-time* motion-time
@@ -445,6 +447,24 @@
                  (format t "~&IDITMP -- motion time: ~,3F~&" *itmp-motion-time*)
                  (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*)
                  plan-steps)
+               (invalidate-informed (failed-graph failed-op what-failed object)
+                 (let ((state (scene-state failed-graph resolution
+                                           :encoding encoding
+                                           :goal nil)))
+                   (ecase what-failed
+                     (:place
+                      (smt-plan-invalidate-op smt-cx state failed-op))
+                     (:pick
+                      (dolist (loc locations)
+                        (smt-plan-invalidate-op smt-cx
+                                                state
+                                                (list* "TRANSFER" object loc)))))))
+               (invalidate (failed-graph failed-op what-failed object)
+                 (format t "Failed: ~A" failed-op)
+                 (if naive
+                     (smt-plan-invalidate-plan smt-cx action-encoding)
+                     (invalidate-informed failed-graph failed-op what-failed object))
+                 (next))
                (reify (plan)
                  (multiple-value-bind (plan-steps new-cache new-motion-time
                                                   failed-graph failed-op what-failed object)
@@ -457,25 +477,5 @@
                    (incf motion-time new-motion-time)
                    (if plan-steps
                        (result plan-steps)
-                       ;; failed
-                       (progn
-                         (if naive
-                             ;; naive
-                             (smt-plan-invalidate-plan smt-cx action-encoding)
-                             ;; informed
-                             (let ((state (scene-state failed-graph resolution
-                                                       :encoding encoding
-                                                       :goal nil)))
-                               (ecase what-failed
-                                 (:place
-                                  (smt-plan-invalidate-op smt-cx state failed-op))
-                                 (:pick
-                                  (dolist (loc locations)
-                                        ;(print op)
-                                        ;(print (list* "TRANSFER" object loc))
-                                        ;(abort)
-                                    (smt-plan-invalidate-op smt-cx
-                                                            state
-                                                            (list* "TRANSFER" object loc)))))))
-                         (next))))))
+                       (invalidate failed-graph failed-op what-failed object)))))
         (next)))))
