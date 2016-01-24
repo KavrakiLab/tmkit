@@ -83,7 +83,9 @@
          (g-tf-obj g-tf-dst)
          (e-tf-obj (robray::scene-frame-fixed-tf (robray::scene-graph-lookup sg object-name)))
          (g-tf-e (g* g-tf-obj (tf-inverse e-tf-obj))))
-    (let ((mp (act-plan-ws ssg start g-tf-e)))
+    (let* (;(mp (act-plan-ws ssg start g-tf-e))
+           (q-goal (robray::scene-graph-ik sg :frame frame :tf g-tf-e))
+           (mp (robray::sequence-motion-plan ssg (list start q-goal))))
       ;;(print mp)
       (if (robray::motion-plan-valid-p mp)
           (values mp
