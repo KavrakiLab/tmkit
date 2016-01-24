@@ -167,10 +167,11 @@
                                      :max-count max-locations
                                      :encode t
                                      :round t)))
+    ;(print locations)
     `(define (problem ,problem)
          (:domain ,domain)
        (:objects ,@moveable-objects - block
-                 ,@stackable-objects
+                 ;,@stackable-objects
                  ,@locations - location
                  ,@objects)
        (:init ,@(scene-state init-scene resolution
@@ -267,7 +268,7 @@
   (destructuring-bind (action obj dst)
       sexp
     (assert (rope= "PUSH-TRAY" action))
-    (act-push-tf scene-graph frame start obj *tf-grasp-rel* dst)))
+    (act-push-tf scene-graph frame start obj *tf-push-rel* dst)))
 
 
 (defun itmp-action (scene-graph sexp
