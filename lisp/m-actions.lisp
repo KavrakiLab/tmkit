@@ -15,21 +15,10 @@
     (let ((mp (act-plan-ws ssg start g-tf-e)))
       ;(print mp)
       (if (robray::motion-plan-valid-p mp)
-          (values mp
-                  (let* (;(end (motion-plan-endpoint-map mp))
-                         ;(g-tf-ae (scene-graph-tf-absolute sg frame :configuration-map end))
-                         ;(o-tf-ae (g* (tf-inverse g-tf-o) g-tf-ae))
-                         )
-                    ;(print (tf-array g-tf-e))
-                    ;(print (tf-array g-tf-ae))
-                    ;(print (tf-inverse relative-tf))
-                    (scene-graph-reparent sg frame object-name
-                                          ;:tf (g* (tf-inverse act-g-tf-e) g-tf-e)
-                                          ;:tf o-tf-e
-                                          :tf (tf-inverse o-tf-e)
-                                          )
-                    ;sg
-                    ))
+          (let ((op-reparent (tm-op-reparent sg frame object-name
+                                             :configuration-map (motion-plan-endpoint-map mp))))
+            (values mp
+                    (tm-op-reparent-new-scene-graph op-reparent)))
           (values nil sg)))))
 
 (defun act-place-tf (sg frame start destination-name relative-tf object-name )
@@ -42,8 +31,10 @@
     (let ((mp (act-plan-ws ssg start g-tf-e)))
       ;;(print mp)
       (if (robray::motion-plan-valid-p mp)
-          (values mp
-                  (scene-graph-reparent sg destination-name object-name :tf relative-tf))
+          (let ((op-reparent (tm-op-reparent sg destination-name object-name
+                                             :configuration-map (motion-plan-endpoint-map mp))))
+            (values mp
+                    (tm-op-reparent-new-scene-graph op-reparent)))
           (values nil sg)))))
 
 (defun act-transfer-tf (sg-0 frame start object-name pick-rel-tf destination-name dst-rel-tf)
