@@ -259,6 +259,8 @@
                        obj-b tf-dst)
       )))
 
+(defvar *tf-push-rel*)
+
 (defun itmp-push-action (scene-graph sexp
                           &key
                             start
@@ -324,8 +326,7 @@
                                                      resolution)
   (declare (type list task-plan)
            (type hash-table cache))
-  (let ((motion-time 0)
-        (plan-steps))
+  (let ((motion-time 0))
     (labels ((cache (plan)
                ;;(print (hash-table-alist cache))
                (let* ((prefixes (reverse (loop
@@ -339,47 +340,46 @@
                           for has-n = (gethash n cache)
                           until (not has-n)
                           finally (return p))))
-                 (if (gethash prefix cache)
-                     (let ((c (gethash prefix cache)))
-                       (format t "~&prefix: ~A" prefix)
-                       (setq plan-steps (first c))
-                       (rec (subseq plan (length prefix))
-                            (car plan-steps)
-                            (second c)
-                            prefix
-                            start))
-                     (progn
-                       (format t "~&prefix: none")
-                       (rec-start plan)))))
+                 (if-let ((c (gethash prefix cache)))
+                   (progn
+                     (format t "~&prefix: ~A" prefix)
+                     (rec (subseq plan (length prefix))
+                          c
+                          prefix))
+                   (progn
+                     (format t "~&prefix: none")
+                     (rec-start plan)))))
              ;; Find a prefix
              (rec-start (task-plan)
-               (next task-plan init-graph start nil))
-             (rec (task-plan plan graph trail start)
-               (declare (ignore start))
-               (let ((start (tm-plan-endpoint plan)))
-                 (next task-plan graph start trail)))
-             (next (task-plan graph start trail)
+               (next task-plan nil init-graph start nil))
+             (rec (task-plan tm-plan trail)
+               (let ((start (tm-plan-final-config tm-plan))
+                     (graph (tm-plan-final-scene-graph tm-plan)))
+                 (next task-plan tm-plan graph start trail)))
+             (next (task-plan tm-plan graph start trail)
                (declare (type list task-plan)
                         (type robray::scene-graph graph))
                (assert start)
                (itmp-abort)
                (if task-plan
-                   (reify task-plan graph start trail)
-                   (result plan-steps cache motion-time
+                   (reify task-plan tm-plan graph start trail)
+                   (result tm-plan cache motion-time
                            nil nil nil nil)))
-             (result (plan-steps cache motion-time end-graph op what-failed object)
-               (values (apply #'append (reverse plan-steps)) cache motion-time
+             (result (tm-plan cache motion-time end-graph op what-failed object)
+               (values tm-plan cache motion-time
                        end-graph op what-failed object))
-             (reify (task-plan graph start trail)
+             (reify (task-plan tm-plan graph start trail)
                (let* ((op (car task-plan))
                       (task-plan (cdr task-plan))
                       (trail (cons op trail)))
                  (cond
                    ((equal (car op) "NO-OP")
-                    (push :no-op plan-steps))
+                    (abort)
+                    ;(push :no-op plan-steps)
+                    )
                    (t
                     (format t "~&Reify: ~A..." op)
-                    (multiple-value-bind (plan graph what-failed object)
+                    (multiple-value-bind (new-tm-plan what-failed object)
                         (multiple-value-bind (result run-time)
                             (sycamore-util:with-timing
                               (multiple-value-list
@@ -390,16 +390,13 @@
                                             :start start)))
                           (incf motion-time run-time)
                           (apply #'values result))
-                      (declare (type list plan)
-                               (type scene-graph graph))
-                      (if plan
-                          (progn
+                      (declare (type (or null tm-plan) new-tm-plan))
+                      (if new-tm-plan
+                          (let ((tm-plan (tm-plan tm-plan new-tm-plan)))
                             (assert (null what-failed))
                             (format t "~&success.~%")
-                            (push plan plan-steps)
-                            (setf (gethash trail cache)
-                                  (list plan-steps graph))
-                            (rec task-plan plan graph trail start))
+                            (setf (gethash trail cache) tm-plan)
+                            (rec task-plan tm-plan trail))
                           ;; failed
                           (progn
                             (format t "~&failure (~A ~A).~%" what-failed object)

@@ -5,7 +5,9 @@
   (robray::win-set-scene-graph (sub-scene-graph-scene-graph sub-scene-graph))
   (robray::win-set-config start)
   ;(print (list 'ws-plan start tf))
-  (motion-plan sub-scene-graph start :workspace-goal tf :timeout 5d0))
+  (let ((mp (motion-plan sub-scene-graph start :workspace-goal tf :timeout 5d0)))
+    (when (robray::motion-plan-valid-p mp)
+      (tm-op-motion mp))))
 
 (defun act-pick-tf (sg frame start object-name o-tf-e)
   ;;(print (list 'pick frame object-name (tf-array o-tf-e)))
@@ -14,12 +16,11 @@
          (g-tf-e (g* g-tf-o o-tf-e)))
     (let ((mp (act-plan-ws ssg start g-tf-e)))
       ;(print mp)
-      (if (robray::motion-plan-valid-p mp)
-          (let ((op-reparent (tm-op-reparent sg frame object-name
-                                             :configuration-map (motion-plan-endpoint-map mp))))
-            (values mp
-                    (tm-op-reparent-new-scene-graph op-reparent)))
-          (values nil sg)))))
+      (if mp
+          (tm-plan mp
+                   (tm-op-reparent sg frame object-name
+                                   :configuration-map (tm-op-final-config mp))
+          nil)))))
 
 (defun act-place-tf (sg frame start destination-name relative-tf object-name )
   ;;(print (list 'place frame object-name destination-name))
@@ -30,27 +31,26 @@
          (g-tf-e (g* g-tf-obj (tf-inverse e-tf-obj))))
     (let ((mp (act-plan-ws ssg start g-tf-e)))
       ;;(print mp)
-      (if (robray::motion-plan-valid-p mp)
-          (let ((op-reparent (tm-op-reparent sg destination-name object-name
-                                             :configuration-map (motion-plan-endpoint-map mp))))
-            (values mp
-                    (tm-op-reparent-new-scene-graph op-reparent)))
-          (values nil sg)))))
+      (if mp
+          (tm-plan mp (tm-op-reparent sg destination-name object-name
+                                      :configuration-map (tm-op-final-config mp)))
+          nil))))
 
 (defun act-transfer-tf (sg-0 frame start object-name pick-rel-tf destination-name dst-rel-tf)
   ;(print 'transfer)
-  (multiple-value-bind (mp-pick sg)
-      (act-pick-tf sg-0 frame start object-name pick-rel-tf )
-    (if (null mp-pick)
-        (values nil sg-0 :pick object-name)
-        (multiple-value-bind (mp-place sg)
-            (act-place-tf sg frame (motion-plan-endpoint-map mp-pick)
-                          destination-name dst-rel-tf object-name)
-          (if (null mp-place)
-              (values nil sg-0 :place object-name)
-              (values (list mp-pick `(:pick ,object-name)
-                            mp-place `(:place ,object-name))
-                      sg nil object-name))))))
+  (let ((ops-pick (act-pick-tf sg-0 frame start object-name pick-rel-tf )))
+    (declare (type tm-op-maybe ops-pick))
+    (if (null ops-pick)
+        (values nil :pick object-name)
+        (let ((ops-place (act-place-tf (tm-op-final-scene-graph ops-pick)
+                                       frame
+                                       (tm-op-final-config ops-pick)
+                                       destination-name dst-rel-tf object-name)))
+          (declare (type tm-op-maybe ops-place))
+          (if (null ops-place)
+              (values nil :place object-name)
+              (values (tm-plan ops-pick ops-place)
+                      nil object-name))))))
 
 (defun act-stack-tf (sg-0 frame start object-name pick-rel-tf destination-name dst-rel-tf)
   ;(print 'transfer)
@@ -78,7 +78,7 @@
            (q-goal (robray::scene-graph-ik sg :frame frame :tf g-tf-e))
            (mp (robray::sequence-motion-plan ssg (list start q-goal))))
       ;;(print mp)
-      (if (robray::motion-plan-valid-p mp)
+      (if mp
           (values mp
                   (scene-graph-reparent sg destination-name object-name :tf (tf* nil nil)))
           (values nil sg)))))
