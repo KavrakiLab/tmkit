@@ -14,13 +14,11 @@
   (let* ((ssg (scene-graph-chain sg nil frame))
          (g-tf-o (scene-graph-tf-absolute sg object-name :configuration-map start))
          (g-tf-e (g* g-tf-o o-tf-e)))
-    (let ((mp (act-plan-ws ssg start g-tf-e)))
-      ;(print mp)
-      (if mp
-          (tm-plan mp
-                   (tm-op-reparent sg frame object-name
-                                   :configuration-map (tm-op-final-config mp))
-          nil)))))
+    (if-let ((mp (act-plan-ws ssg start g-tf-e)))
+      (tm-plan mp
+               (tm-op-reparent sg frame object-name
+                               :configuration-map (tm-op-final-config mp)))
+      nil)))
 
 (defun act-place-tf (sg frame start destination-name relative-tf object-name )
   ;;(print (list 'place frame object-name destination-name))
@@ -29,28 +27,22 @@
          (g-tf-obj (g* g-tf-dst relative-tf))
          (e-tf-obj (robray::scene-frame-fixed-tf (robray::scene-graph-lookup sg object-name)))
          (g-tf-e (g* g-tf-obj (tf-inverse e-tf-obj))))
-    (let ((mp (act-plan-ws ssg start g-tf-e)))
-      ;;(print mp)
-      (if mp
-          (tm-plan mp (tm-op-reparent sg destination-name object-name
-                                      :configuration-map (tm-op-final-config mp)))
-          nil))))
+    (if-let ((mp (act-plan-ws ssg start g-tf-e)))
+      (tm-plan mp (tm-op-reparent sg destination-name object-name
+                                  :configuration-map (tm-op-final-config mp)))
+      nil)))
 
 (defun act-transfer-tf (sg-0 frame start object-name pick-rel-tf destination-name dst-rel-tf)
   ;(print 'transfer)
-  (let ((ops-pick (act-pick-tf sg-0 frame start object-name pick-rel-tf )))
-    (declare (type tm-op-maybe ops-pick))
-    (if (null ops-pick)
-        (values nil :pick object-name)
-        (let ((ops-place (act-place-tf (tm-op-final-scene-graph ops-pick)
-                                       frame
-                                       (tm-op-final-config ops-pick)
-                                       destination-name dst-rel-tf object-name)))
-          (declare (type tm-op-maybe ops-place))
-          (if (null ops-place)
-              (values nil :place object-name)
-              (values (tm-plan ops-pick ops-place)
-                      nil object-name))))))
+  (if-let ((ops-pick (act-pick-tf sg-0 frame start object-name pick-rel-tf )))
+    (if-let ((ops-place (act-place-tf (tm-op-final-scene-graph ops-pick)
+                                      frame
+                                      (tm-op-final-config ops-pick)
+                                      destination-name dst-rel-tf object-name)))
+      (values (tm-plan ops-pick ops-place)
+              nil object-name)
+      (values nil :place object-name))
+    (values nil :pick object-name)))
 
 ;; (defun act-stack-tf (sg-0 frame start object-name pick-rel-tf destination-name dst-rel-tf)
 ;;   ;(print 'transfer)
