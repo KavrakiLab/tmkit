@@ -1,0 +1,1 @@
+autoreconf -i && ./configure && make && make INSTALL
