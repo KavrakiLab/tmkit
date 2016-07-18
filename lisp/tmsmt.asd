@@ -1,6 +1,6 @@
 (asdf:defsystem tmsmt
   :description "SMT-based planner"
-  :depends-on ("alexandria" "cl-ppcre" "sycamore" "motion-grammar-kit" "cffi" "amino" "amino-rx")
+  :depends-on ("alexandria" "cl-ppcre" "sycamore" "cffi" "amino" "amino-rx")
   :components ((:file "package")
                (:file "util" :depends-on ("package"))
                (:file "smtlib" :depends-on ("util"))
