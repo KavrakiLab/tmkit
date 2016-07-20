@@ -17,6 +17,7 @@ tmsmt_core_SOURCES = \
 	lisp/motion-plan.lisp \
 	lisp/m-actions.lisp \
 	lisp/itmp-rec.lisp \
+	lisp/driver.lisp \
 	lisp/tmsmt.asd
 
 
