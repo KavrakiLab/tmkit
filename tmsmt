@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright (c) 2016, Rice University
 # All rights reserved.
@@ -47,8 +47,11 @@ Compute a task-motion plan
 
 Options:
   -s SCENE_FILE               Start scene file
+  -g SCENE_FILE               Goal scene file
+  -d TASK_DOMAIN_FILE         Task Domain (PDDL) file
+  -r RESOLUTION               Discretization resolution
+  -m MAX_STEPS                Maximum number of task steps
   -G,--gui                    Enable graphical interface
-  -P,--pause                  Pause after planning to display plan
   -v                          Be verbose
 
 Examples:
@@ -58,13 +61,29 @@ EOF
             ;;
         -s)
             shift;
+            # TODO: escape special characters
             export TMSMT_SCENE_FILES="${TMSMT_SCENE_FILES} \"$1\""
+            ;;
+        -g)
+            shift;
+            # TODO: escape special characters
+            export TMSMT_GOAL_FILES="${TMSMT_GOAL_FILES} \"$1\""
+            ;;
+        -d)
+            shift;
+            # TODO: escape special characters
+            export TMSMT_TASK_DOMAIN="$1"
+            ;;
+        -r)
+            shift;
+            export TMSMT_RESOLUTION="$1"
+            ;;
+        -m)
+            shift;
+            export TMSMT_MAX_STEPS="$1"
             ;;
         -G|--gui)
             export TMSMT_GUI=1
-            ;;
-        -P|--pause)
-            export TMSMT_PAUSE=1
             ;;
         -v)
             export TMSMT_VERBOSE=1
@@ -78,6 +97,6 @@ EOF
     shift
 done
 
-# tmsmt.core --quit --eval '(ql:quickload :tmsmt)' --eval '(tmsmt::tmp-command)'
-tmsmt.core --non-interactive \
-           --eval '(tmsmt::tmp-command)'
+# sbcl --non-interactive --eval '(require :tmsmt)' --eval '(tmsmt::tmp-command)'
+
+exec tmsmt.core --non-interactive --eval '(tmsmt::tmp-command)'

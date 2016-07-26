@@ -558,8 +558,11 @@
   "Check if a plan exists for the current step, recurse if not."
   (let* ((i (smt-plan-context-step cx))
          (smt (smt-plan-context-smt cx))
-         (is-sat (smt-eval smt '(|check-sat|))))
-    (print is-sat)
+         (old-time (smt-runtime smt))
+         (is-sat (smt-eval smt '(|check-sat|)))
+         (new-time (smt-runtime smt)))
+    (format t "~&~S (~Fs)" is-sat (let ((r 1d-4)) (* (round (- new-time old-time) r)
+                                                   r)))
     (case is-sat
       ((sat |sat|)
        (setf (smt-plan-context-values cx)
@@ -576,7 +579,7 @@
          (incf (smt-plan-context-step cx))
          (smt-plan-step cx :max-steps max-steps)))
       (otherwise
-       (error "Unrecognized (check-sat) result: ~A" is-sat)))))
+       (error "Unrecognized (check-sat) result: ~S" is-sat)))))
 
 (defun smt-plan-step (cx &key
                            (max-steps 10))
