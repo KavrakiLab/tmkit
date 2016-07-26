@@ -11,6 +11,7 @@
     (setf (readtable-case r) :preserve)
     r))
 
+(defparameter *smt-package* (find-package :tmsmt))
 
 (defun smt-input (smt)
   (sb-ext:process-input (smt-process smt)))
@@ -19,7 +20,8 @@
   (sb-ext:process-output (smt-process smt)))
 
 (defun smt-read (smt &optional (eof-error-p t) eof-value recursive-p)
-  (let ((*readtable* *smt-readtable*))
+  (let ((*readtable* *smt-readtable*)
+        (*package* *smt-package*))
     (read (smt-output smt) eof-error-p eof-value recursive-p)))
 
 (define-condition smt-runtime-error (error)

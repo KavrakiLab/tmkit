@@ -7,10 +7,11 @@
                               (subseq tmp 0 (1- (length tmp))))))
 
 
-(defun load-sexp (filename)
+(defun load-sexp (filename &optional (package *package*))
   "Read a single s-expression from a file"
   (with-open-file (s (rope-string (rope filename)) :direction :input)
-    (read s)))
+    (let ((*package* package))
+      (read s))))
 
 (defun load-all-sexp (filename)
   "Read all s-expressions from a file"

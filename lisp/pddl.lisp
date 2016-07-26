@@ -1,5 +1,6 @@
 (in-package :tmsmt)
 
+(defparameter *pddl-package* (find-package :tmsmt))
 
 (defstruct pddl-action
   "A PDDL action"
@@ -61,14 +62,14 @@
   (etypecase operators
     (pddl-operators operators)
     (cons (parse-operators operators))
-    ((or rope pathname) (parse-operators (load-sexp operators)))))
+    ((or rope pathname) (parse-operators (load-sexp operators *pddl-package*)))))
 
 (defun load-facts (facts)
   "Load facts from `facts'."
   (etypecase facts
     (pddl-facts facts)
     (cons (parse-facts facts))
-    ((or rope pathname) (parse-facts (load-sexp facts)))))
+    ((or rope pathname) (parse-facts (load-sexp facts *pddl-package*)))))
 
 (defun parse-typed-list (type-list)
   (labels ((collect-names (type-list)
