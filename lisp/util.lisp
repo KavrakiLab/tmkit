@@ -200,3 +200,11 @@
                   (format nil "~A-total.dat" base-name)
                   :directory "/tmp/"
                   :if-exists :append))
+
+(defun subdir (pathname subdirectory)
+  (let ((pathname (pathname pathname)))
+    ;; ensure not a file
+    (assert (null (pathname-name pathname)))
+    (make-pathname :directory (append (pathname-directory pathname)
+                                      (ensure-list subdirectory))
+                   :defaults pathname)))

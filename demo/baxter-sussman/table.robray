@@ -1,0 +1,81 @@
+/**********/
+/* Tables */
+/**********/
+
+def table_height .05;
+
+frame table_base {
+    translation [.1, -.3, table_height];
+    rpy [0, 0, -45*deg];
+}
+
+frame front_table {
+    parent table_base;
+    translation [.6, 0, 0];
+    geometry {
+        isa table;
+        dimension [.75, .75, table_size];
+    }
+}
+
+
+frame curtain {
+    translation [-.35, 0, 0];
+    rpy [0, 0, 0];
+    geometry {
+        shape box;
+        dimension [.01, 5, 5];
+    }
+}
+
+frame bookshelf {
+    translation [0, -1.15, 0];
+    rpy [0, 0, 0];
+    geometry {
+        shape box;
+        dimension [1, .01, 5];
+    }
+}
+
+
+def table_depth .5;
+def table_length1 1.5;
+def table_length2 1.3;
+def table_thickness 0.01;
+def table_top table_thickness / 2 + 1*mm;
+
+class big_table {
+    shape box;
+    color [.6, .3, .6];
+    alpha .5;
+    dimension [table_depth, table_length1, table_thickness];
+}
+
+frame lab_front_table {
+    translation [.8, -.2, table_height];
+    geometry {
+        isa big_table;
+    }
+}
+
+frame left_table {
+    parent lab_front_table;
+    rpy [0, 0, π/2];
+    translation [-table_length1/2 + table_depth/2,
+                 table_length1/2 + table_depth/2,
+                 0];
+    geometry {
+        isa big_table;
+    }
+}
+
+frame right_table {
+    parent lab_front_table;
+    translation [-table_length1/2 - table_depth/2,
+                 -table_length1/2 + table_depth/2,
+                 0];
+    rpy [0, 0, -π/2];
+    geometry {
+        isa big_table;
+    }
+}

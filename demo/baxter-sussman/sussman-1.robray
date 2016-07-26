@@ -1,0 +1,35 @@
+
+include "class.robray"
+include "table.robray"
+
+
+/**********/
+/* Blocks */
+/**********/
+frame block_a {
+    parent block_b;
+    translation [0, 0, block_stack];
+    geometry {
+        isa block;
+        isa red;
+    }
+}
+
+frame block_b {
+    parent block_c;
+    translation [0, -.25, block_stack];
+    geometry {
+        isa block;
+        isa blue;
+    }
+}
+
+
+/* frame block_f { */
+/*     parent front_table; */
+/*     translation [-.2, -.2, 0.0551]; */
+/*     geometry { */
+/*         isa fixedblock; */
+/*         dimension [.1, .1, .5]; */
+/*     } */
+/* } */

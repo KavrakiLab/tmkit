@@ -1,0 +1,56 @@
+
+
+def mm 1e-3;
+def cm 1e-2;
+def inch 2.54*cm;
+
+/***********/
+/* Classes */
+/***********/
+class moveable { }
+class stackable { }
+
+class red   { color [1,0,0]; }
+class green { color [0,1,0]; }
+class blue  { color [0,0,1]; }
+
+def block_size 10*cm;
+def table_size 1*cm;
+def tray_size 1*cm;
+
+
+class table {
+    shape box;
+    isa surface;
+    color [.6, .3, .6];
+    alpha 0.5;
+}
+
+class block {
+    shape box;
+    isa moveable;
+    isa stackable;
+    color [0, 1, 0];
+    alpha 0.5;
+    dimension [block_size, block_size, block_size];
+}
+
+
+class fixedblock {
+    shape box;
+    isa red;
+    alpha 1.0;
+    dimension [.1, .1, .1];
+}
+
+
+class tray {
+    shape box;
+    isa surface;
+    color [255/255, 229/255, 180/255]; /* peach */
+    dimension [.125, .25, tray_size];
+}
+
+def table_stack (block_size + table_size)/2 + .1*mm;
+def block_stack block_size + .1*mm;
+def tray_stack (tray_size + table_size)/2 + .1*mm;
