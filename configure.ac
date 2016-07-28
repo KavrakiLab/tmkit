@@ -9,6 +9,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_CONFIG_SRCDIR([lisp/tmsmt.asd])
 
+AC_PROG_CC_C99
 
 AC_CHECK_PROGS([AARX_CORE], [aarx.core])
 
@@ -16,9 +17,27 @@ AS_IF([test "x$AARX_CORE" = x],
       [AC_MSG_ERROR([Could not found aarx.core.  Is amino installed?])])
 
 
+
+# Check for Lex/Flex
+AC_ARG_WITH([lex],
+            AS_HELP_STRING([--without-lex], [Do not run lex/flex]),
+            [],
+            [with_lex=yes])
+AS_IF([test "x$with_lex" != xyes],
+      [AM_PROG_LEX])
+AM_CONDITIONAL([HAVE_LEX], [test "x$LEX" != x -a "x$with_lex" = xyes])
+
+
+# Amino
+PKG_CHECK_MODULES([AMINO], [amino])
+CFLAGS="$CFLAGS $AMINO_CFLAGS"
+CXXFLAGS="$CXXFLAGS $AMINO_CXXFLAGS"
+LDFLAGS="$LDFLAGS $AMINO_LDFLAGS"
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
 AS_BOX([TMSMT CONFIGURATION SUMMARY])
 AC_MSG_NOTICE([AARX_CORE:         $AARX_CORE])
+AC_MSG_NOTICE([LEX:               $LEX])
 AS_BOX([END SUMMARY])

@@ -17,3 +17,11 @@ catkin_generated
 /install-sh
 /missing
 /tmsmt.core
+/ylwrap
+*.o
+/src/planfile.c
+/src/.dirstamp
+*.deps/
+*.lib/
+/planfile_test
+/compile
