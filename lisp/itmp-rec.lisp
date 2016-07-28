@@ -287,25 +287,31 @@
   (destructuring-bind (action &rest args)
       sexp
     (declare (ignore args))
-    (cond
-      ((rope= "TRANSFER" action)
-       (itmp-transfer-action scene-graph sexp
+    (multiple-value-bind (plan what frame)
+        (cond
+          ((rope= "TRANSFER" action)
+           (itmp-transfer-action scene-graph sexp
+                                 :start start
+                                 :encoding encoding
+                                 :resolution resolution
+                                 :z-epsilon z-epsilon
+                                 :frame frame))
+          ((rope= "STACK" action)
+           (itmp-stack-action scene-graph sexp
+                              :start start
+                              :z-epsilon z-epsilon
+                              :frame frame))
+          ((rope= "PUSH-TRAY" action)
+           (itmp-push-action scene-graph sexp
                              :start start
-                             :encoding encoding
-                             :resolution resolution
                              :z-epsilon z-epsilon
                              :frame frame))
-      ((rope= "STACK" action)
-       (itmp-stack-action scene-graph sexp
-                          :start start
-                          :z-epsilon z-epsilon
-                          :frame frame))
-      ((rope= "PUSH-TRAY" action)
-       (itmp-push-action scene-graph sexp
-                          :start start
-                          :z-epsilon z-epsilon
-                          :frame frame))
-      (t (error "Urecognized action: ~A" sexp)))))
+          (t (error "Urecognized action: ~A" sexp)))
+      (values (when plan
+                (tm-plan (tm-op-action sexp scene-graph start)
+                         plan))
+                what frame))))
+
 
 
 (defun itmp-abort ()

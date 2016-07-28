@@ -53,9 +53,8 @@
 
       (unless plan
         (format *error-output* "~&ERROR: no plan found.~&"))
-      )
 
-    (values)))
+    plan)))
 
 
 (defun tmp-command ()

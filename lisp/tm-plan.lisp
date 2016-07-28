@@ -9,6 +9,19 @@
 (deftype tm-op-maybe ()
   `(or null tm-op))
 
+
+(defstruct (tm-op-action (:include tm-op))
+  action)
+
+(defun tm-op-action (action scene-graph config)
+  (make-tm-op-action :initial-scene-graph scene-graph
+                     :initial-config config
+                     :final-scene-graph scene-graph
+                     :final-config config
+                     :action action))
+
+
+
 (defstruct (tm-op-reparent (:include tm-op))
   frame
   new-parent)
