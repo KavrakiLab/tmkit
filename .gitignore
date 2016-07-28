@@ -25,3 +25,4 @@ catkin_generated
 *.lib/
 /planfile_test
 /compile
+/doc/manual/
