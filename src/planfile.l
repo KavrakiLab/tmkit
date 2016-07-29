@@ -48,9 +48,8 @@
 %option never-interactive
 %option read
 
-%option stack
-
 %option extra-type="struct tmplan*"
+
 
 %{
 
@@ -58,7 +57,7 @@
 #include <stdio.h>
 
 #include <amino.h>
-#include "tmsmt/tmplan_internal.h"
+#include "tmsmt/tmplan.h"
 
 %}
 
@@ -79,7 +78,7 @@ END [[:blank:]]*("#".*)?"\n"
 
 DIGIT    [[:digit:]]
 INT      {DIGIT}+
-NUMBER   "-"?{INT}("."{DIGIT}*)?
+NUMBER   "-"?{INT}("."{DIGIT}*)?("e"("-"?){INT})?
 BLANKS   [[:blank:]]+
 MAYBE_BLANKS   [[:blank:]]*
 
@@ -103,12 +102,11 @@ START {MAYBE_BLANKS}
 
     /* Action */
 {START}"a"{BLANKS} {
-   tmplan_add_op(yyextra, tmplan_op_action_create(yyextra));
+   tmplan_add_action(yyextra);
    BEGIN(ACTION);
 }
 
 <ACTION>[^#\n]*[^[:blank:]#\n] {
-    printf("action: '%s'\n", yytext);
     tmplan_op_action_set( (struct tmplan_op_action*)tmplan_last_op(yyextra),
                           yytext);
     BEGIN(EOL);
@@ -117,12 +115,13 @@ START {MAYBE_BLANKS}
 
     /* Motion Plan Start */
 {START}"m"{BLANKS} {
-    tmplan_add_op(yyextra, tmplan_op_motion_plan_create(yyextra));
+    tmplan_add_motion_plan(yyextra);
     BEGIN(MOTION_START);
 }
 
 <MOTION_START>{FRAME_NAME} {
-    printf("config: '%s'\n", yytext);
+    tmplan_op_motion_plan_add_var( (struct tmplan_op_motion_plan*)tmplan_last_op(yyextra),
+                                   yytext );
     BEGIN(MOTION_SPACE);
 }
 
@@ -131,21 +130,23 @@ START {MAYBE_BLANKS}
 }
 
 <MOTION_START>{END} {
+    tmplan_op_motion_plan_path_start( (struct tmplan_op_motion_plan*)tmplan_last_op(yyextra) );
     BEGIN(INITIAL);
 }
 
 <MOTION_SPACE>{END} {
+    tmplan_op_motion_plan_path_start( (struct tmplan_op_motion_plan*)tmplan_last_op(yyextra) );
     BEGIN(INITIAL);
 }
 
     /* Waypoint */
 {START}"p"{BLANKS} {
     BEGIN(WAYPOINT_START);
-    printf("point: ");
 }
 
 <WAYPOINT_START>{NUMBER} {
-    printf(" %f", atof(yytext) );
+    tmplan_op_motion_plan_path_add( (struct tmplan_op_motion_plan*)tmplan_last_op(yyextra),
+                                    atof(yytext) );
     BEGIN(WAYPOINT_SPACE);
 }
 
@@ -154,12 +155,10 @@ START {MAYBE_BLANKS}
 }
 
 <WAYPOINT_SPACE>{END} {
-    printf("\n");
     BEGIN(INITIAL);
 }
 
 <WAYPOINT_START>{END} {
-    printf("\n");
     BEGIN(INITIAL);
 }
 
@@ -167,10 +166,12 @@ START {MAYBE_BLANKS}
     /* Reparent */
 {START}"r"{BLANKS} {
     BEGIN(REPARENT_FRAME);
+    tmplan_add_reparent(yyextra);
 }
 
 <REPARENT_FRAME>{FRAME_NAME} {
-    printf("%s <- ", yytext);
+    tmplan_op_reparent_set_frame( (struct tmplan_op_reparent*)tmplan_last_op(yyextra),
+                                  yytext);
     BEGIN(REPARENT_SPACE);
 }
 <REPARENT_SPACE>{BLANKS} {
@@ -178,7 +179,8 @@ START {MAYBE_BLANKS}
 }
 
 <REPARENT_NEW_PARENT>{FRAME_NAME} {
-    printf("%s\n", yytext);
+    tmplan_op_reparent_set_new_parent( (struct tmplan_op_reparent*)tmplan_last_op(yyextra),
+                                       yytext);
     BEGIN(INITIAL);
 }
     /* Error */
@@ -213,6 +215,7 @@ tmplan_parse (FILE *in, struct aa_mem_region *reg)
         aa_mem_region_pop(reg,e);
         return NULL;
     } else {
+        tmplan_finish_op(e);
         return e;
     }
 }

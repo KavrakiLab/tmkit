@@ -14,9 +14,20 @@ tmplan_create (struct aa_mem_region *reg)
 }
 
 AA_API void
+tmplan_finish_op(struct tmplan * tmp )
+{
+    if( tmp->last ) {
+        if( TMPLAN_OP_MOTION_PLAN == tmp->last->type ) {
+            tmplan_op_motion_plan_path_finish(
+                (struct tmplan_op_motion_plan*) tmp->last );
+        }
+        tmp->last = NULL;
+    }
+}
+
+AA_API void
 tmplan_add_op(struct tmplan * tmp, void *op)
 {
-    fprintf(stderr, "adding\n");
     aa_mem_rlist_enqueue_ptr(tmp->rlist, op);
     tmp->last = (struct tmplan_op*)op;
     tmp->count++;
@@ -34,21 +45,20 @@ tmplan_op_type( struct tmplan_op *op )
     return op->type;
 }
 
-AA_API struct tmplan_op_action *
-tmplan_op_action_create (struct tmplan *tmp)
+AA_API void
+tmplan_add_action(struct tmplan *tmp)
 {
+    tmplan_finish_op(tmp);
     struct tmplan_op_action *op = AA_MEM_REGION_NEW(tmp->reg, struct tmplan_op_action);
     op->parent.type = TMPLAN_OP_ACTION;
     op->parent.tmp = tmp;
-    return op;
+    tmplan_add_op(tmp,op);
 }
 
 AA_API void
 tmplan_op_action_set (struct tmplan_op_action *op, const char *value )
 {
-    op->action = aa_mem_region_dup( op->parent.tmp->reg,
-                                    value,
-                                    1+strlen(value));
+    op->action = aa_mem_region_strdup( op->parent.tmp->reg, value );
 }
 
 AA_API const char *
@@ -58,25 +68,112 @@ tmplan_op_action_get (const struct tmplan_op_action *op )
 }
 
 
-AA_API struct tmplan_op_motion_plan *
-tmplan_op_motion_plan_create (struct tmplan *tmp)
+AA_API void
+tmplan_add_motion_plan(struct tmplan *tmp)
 {
+    tmplan_finish_op(tmp);
     struct tmplan_op_motion_plan *op = AA_MEM_REGION_NEW(tmp->reg, struct tmplan_op_motion_plan);
     op->parent.type = TMPLAN_OP_MOTION_PLAN;
     op->parent.tmp = tmp;
-    return op;
+    op->names = aa_mem_rlist_alloc(tmp->reg);
+    op->config_cnt = 0;
+    op->path = NULL;
+    op->path_cnt = 0;
+    tmplan_add_op(tmp,op);
 }
 
-AA_API struct tmplan_op_reparent *
-tmplan_op_reparent_create (struct tmplan *tmp)
+
+AA_API void
+tmplan_op_motion_plan_add_var (struct tmplan_op_motion_plan *op, const char *name)
 {
+    op->config_cnt++;
+    aa_mem_rlist_enqueue_cpy(op->names, name, 1+strlen(name));
+
+}
+
+struct map_var_cx {
+    void *cx;
+    void (*function)(void *cx, const char *name);
+};
+
+static void
+map_var_helper( void *cx_, void *data )
+{
+    struct map_var_cx *cx = (struct map_var_cx *)cx_;
+    cx->function(cx->cx, (const char *)data);
+}
+
+AA_API void
+tmplan_op_motion_plan_map_var (struct tmplan_op_motion_plan *op,
+                               void (*function)(void *cx, const char *name),
+                               void *cx)
+{
+    struct map_var_cx cxp;
+    cxp.cx = cx;
+    cxp.function = function;
+    aa_mem_rlist_map( op->names, map_var_helper, &cxp );
+}
+
+
+AA_API void
+tmplan_op_motion_plan_path_start (struct tmplan_op_motion_plan *op )
+{
+    (void)op;
+}
+
+
+AA_API void
+tmplan_op_motion_plan_path_add (struct tmplan_op_motion_plan *op, double x)
+{
+    size_t i = op->path_cnt++;
+    op->path = aa_mem_region_tmprealloc( op->parent.tmp->reg,
+                                         sizeof(double) * op->path_cnt );
+    op->path[i] = x;
+}
+
+AA_API void
+tmplan_op_motion_plan_path_finish (struct tmplan_op_motion_plan *op )
+{
+    struct aa_mem_region *reg = op->parent.tmp->reg;
+    size_t size = op->path_cnt*sizeof(double);
+    op->path = aa_mem_region_alloc( reg, size );
+}
+
+AA_API void
+tmplan_add_reparent(struct tmplan *tmp)
+{
+    tmplan_finish_op(tmp);
     struct tmplan_op_reparent *op = AA_MEM_REGION_NEW(tmp->reg, struct tmplan_op_reparent);
     op->parent.type = TMPLAN_OP_REPARENT;
     op->parent.tmp = tmp;
-    return op;
+    op->frame = NULL;
+    op->new_parent = NULL;
+    tmplan_add_op(tmp,op);
 }
 
+AA_API void
+tmplan_op_reparent_set_frame (struct tmplan_op_reparent *op, const char *frame)
+{
+    op->frame = aa_mem_region_strdup(op->parent.tmp->reg, frame);
+}
 
+AA_API void
+tmplan_op_reparent_set_new_parent (struct tmplan_op_reparent *op, const char *frame)
+{
+    op->new_parent = aa_mem_region_strdup(op->parent.tmp->reg, frame);
+}
+
+AA_API const char*
+tmplan_op_reparent_get_frame (struct tmplan_op_reparent *op)
+{
+    return op->frame;
+}
+
+AA_API const char*
+tmplan_op_reparent_get_new_parent (struct tmplan_op_reparent *op)
+{
+    return op->new_parent;
+}
 
 struct map_ops_cx {
     void *cx;
@@ -101,7 +198,10 @@ tmplan_map_ops (const struct tmplan *tmp,
 }
 
 
-
+static void write_varname( void *cx, const char *name )
+{
+    fprintf((FILE*)cx, " %s", name);
+}
 
 static void
 tmplan_write_helper (void *cx, const struct tmplan_op *op )
@@ -117,12 +217,22 @@ tmplan_write_helper (void *cx, const struct tmplan_op *op )
         }
     } break;
     case TMPLAN_OP_MOTION_PLAN: {
-        fprintf(out, "m\n");
         struct tmplan_op_motion_plan *x = (struct tmplan_op_motion_plan *)op;
+        fprintf(out, "m");
+        tmplan_op_motion_plan_map_var( x, write_varname, out );
+        fprintf(out, "\n");
+        for( size_t i = 0; i < x->path_cnt / x->config_cnt; i++ ) {
+            fprintf(out, "p");
+            for( size_t j = 0; j < x->config_cnt; j ++ ) {
+                fprintf(out, " %f", x->path[i*x->config_cnt + j] );
+            }
+            fprintf(out, "\n");
+        }
     } break;
     case TMPLAN_OP_REPARENT: {
-        fprintf(out, "p\n");
         struct tmplan_op_reparent *x = (struct tmplan_op_reparent *)op;
+        fprintf(out, "r %s %s\n",
+                x->frame, x->new_parent );
     } break;
     }
 }

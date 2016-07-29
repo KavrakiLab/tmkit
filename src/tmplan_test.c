@@ -11,8 +11,8 @@ int main(int argc, char **argv) {
     FILE *in = fopen(argv[1],"r");
     struct tmplan *tmp = tmplan_parse(in, NULL);
     fclose(in);
-    printf("\n\nPARSED\n\n");
-    tmplan_write(tmp,stdout);
+
+    if( tmp ) tmplan_write(tmp,stdout);
 
     return 0;
 }

@@ -25,7 +25,7 @@ struct tmplan_op_action {
 struct tmplan_op_motion_plan {
     struct tmplan_op parent;
     size_t config_cnt;
-    const char **names;
+    struct aa_mem_rlist *names;
     double *path;  ///< plan, size config_count*point_cnt
     size_t path_cnt;
 };
