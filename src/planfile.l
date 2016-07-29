@@ -54,7 +54,6 @@
 
 %{
 
-#pragma GCC diagnostic warning "-w"
 
 #include <stdio.h>
 
@@ -104,17 +103,21 @@ START {MAYBE_BLANKS}
 
     /* Action */
 {START}"a"{BLANKS} {
+   tmplan_add_op(yyextra, tmplan_op_action_create(yyextra));
    BEGIN(ACTION);
 }
 
 <ACTION>[^#\n]*[^[:blank:]#\n] {
     printf("action: '%s'\n", yytext);
+    tmplan_op_action_set( (struct tmplan_op_action*)tmplan_last_op(yyextra),
+                          yytext);
     BEGIN(EOL);
 }
 
 
     /* Motion Plan Start */
 {START}"m"{BLANKS} {
+    tmplan_add_op(yyextra, tmplan_op_motion_plan_create(yyextra));
     BEGIN(MOTION_START);
 }
 
@@ -188,7 +191,7 @@ START {MAYBE_BLANKS}
 
 %%
 
-AA_API void
+AA_API struct tmplan*
 tmplan_parse (FILE *in, struct aa_mem_region *reg)
 {
     if( NULL == reg ) {
@@ -200,16 +203,16 @@ tmplan_parse (FILE *in, struct aa_mem_region *reg)
     tmplan_set_in(in, scanner);
 
     struct tmplan *e = tmplan_create(reg);
-    aa_rx_wf_set_extra(e, scanner);
+    tmplan_set_extra(e, scanner);
 
     int r = tmplan_lex(scanner);
 
     tmplan_lex_destroy(scanner);
 
-    /* if( r < 0 ) { */
-    /*     aa_rx_wf_mtl_destroy(e.mtl); */
-    /*     return NULL; */
-    /* } else { */
-    /*     return e.mtl; */
-    /* } */
+    if( r < 0 ) {
+        aa_mem_region_pop(reg,e);
+        return NULL;
+    } else {
+        return e;
+    }
 }
