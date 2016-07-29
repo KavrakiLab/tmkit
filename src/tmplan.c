@@ -76,26 +76,59 @@ tmplan_op_reparent_create (struct tmplan *tmp)
     return op;
 }
 
+
+
+struct map_ops_cx {
+    void *cx;
+    void (*function)(void *cx, const struct tmplan_op *op);
+};
+
+AA_API void
+map_ops_helper (void *cx_, void *data ) {
+    struct map_ops_cx * cx = (struct map_ops_cx *)cx_;
+    cx->function(cx->cx, data);
+}
+
+AA_API int
+tmplan_map_ops (const struct tmplan *tmp,
+                void (*function)(void *cx, const struct tmplan_op *op),
+                void *cx )
+{
+    struct map_ops_cx cxp;
+    cxp.cx = cx;
+    cxp.function = function;
+    aa_mem_rlist_map( tmp->rlist, map_ops_helper, &cxp );
+}
+
+
+
+
+static void
+tmplan_write_helper (void *cx, const struct tmplan_op *op )
+{
+    FILE *out = (FILE*)cx;
+    switch( op->type ) {
+    case TMPLAN_OP_ACTION: {
+        struct tmplan_op_action *x = (struct tmplan_op_action *)op;
+        if( x->action ) {
+            fprintf(out,"a %s\n",x->action);
+        } else {
+            fprintf(out, "a\n");
+        }
+    } break;
+    case TMPLAN_OP_MOTION_PLAN: {
+        fprintf(out, "m\n");
+        struct tmplan_op_motion_plan *x = (struct tmplan_op_motion_plan *)op;
+    } break;
+    case TMPLAN_OP_REPARENT: {
+        fprintf(out, "p\n");
+        struct tmplan_op_reparent *x = (struct tmplan_op_reparent *)op;
+    } break;
+    }
+}
+
 AA_API int
 tmplan_write (const struct tmplan *tmp, FILE *out )
 {
-    for( struct aa_mem_cons *c = tmp->rlist->head; c; c = c->next ) {
-        struct tmplan_op *op =  (struct tmplan_op *)c->data;
-        switch( op->type ) {
-        case TMPLAN_OP_ACTION: {
-            struct tmplan_op_action *x = (struct tmplan_op_action *)op;
-            if( x->action ) {
-                fprintf(out,"a %s\n",x->action);
-            } else {
-                fprintf(out, "a\n");
-            }
-        } break;
-        case TMPLAN_OP_MOTION_PLAN: {
-            struct tmplan_op_motion_plan *x = (struct tmplan_op_motion_plan *)op;
-        } break;
-        case TMPLAN_OP_REPARENT: {
-            struct tmplan_op_reparent *x = (struct tmplan_op_reparent *)op;
-        } break;
-        }
-    }
+    tmplan_map_ops( tmp, tmplan_write_helper, out );
 }

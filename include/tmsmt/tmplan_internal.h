@@ -17,6 +17,7 @@ struct tmplan_op {
 
 struct tmplan_op_action {
     struct tmplan_op parent;
+    struct aa_mem_rlist *namelist;
     const char *action;
 };
 
@@ -24,9 +25,9 @@ struct tmplan_op_action {
 struct tmplan_op_motion_plan {
     struct tmplan_op parent;
     size_t config_cnt;
-    size_t point_cnt; ///< number of waypoints
     const char **names;
     double *path;  ///< plan, size config_count*point_cnt
+    size_t path_cnt;
 };
 
 
