@@ -50,7 +50,7 @@
 
 %option stack
 
-%option extra-type="struct wf_mtl_extra*"
+%option extra-type="struct tmplan*"
 
 %{
 
@@ -59,11 +59,22 @@
 #include <stdio.h>
 
 #include <amino.h>
-#include "tmsmt/tmplan.h"
+#include "tmsmt/tmplan_internal.h"
 
 %}
 
 %x EOL
+%x ACTION
+
+%x MOTION_START
+%x MOTION_SPACE
+
+%x WAYPOINT_START
+%x WAYPOINT_SPACE
+
+%x REPARENT_FRAME
+%x REPARENT_SPACE
+%x REPARENT_NEW_PARENT
 
 END [[:blank:]]*("#".*)?"\n"
 
@@ -76,7 +87,7 @@ MAYBE_BLANKS   [[:blank:]]*
 NUMBER_BLANKS {NUMBER}{BLANKS}
 NUMBER_END {NUMBER}{MAYBE_BLANKS}
 
-ID [[:graph:]]+
+FRAME_NAME [[:graph:]]+
 
 
 START {MAYBE_BLANKS}
@@ -92,19 +103,81 @@ START {MAYBE_BLANKS}
 }
 
     /* Action */
-{START}"a"{BLANKS}.* {
+{START}"a"{BLANKS} {
+   BEGIN(ACTION);
 }
+
+<ACTION>[^#\n]*[^[:blank:]#\n] {
+    printf("action: '%s'\n", yytext);
+    BEGIN(EOL);
+}
+
+
     /* Motion Plan Start */
-{START}"m"{BLANKS}.* {
+{START}"m"{BLANKS} {
+    BEGIN(MOTION_START);
 }
+
+<MOTION_START>{FRAME_NAME} {
+    printf("config: '%s'\n", yytext);
+    BEGIN(MOTION_SPACE);
+}
+
+<MOTION_SPACE>{BLANKS} {
+    BEGIN(MOTION_START);
+}
+
+<MOTION_START>{END} {
+    BEGIN(INITIAL);
+}
+
+<MOTION_SPACE>{END} {
+    BEGIN(INITIAL);
+}
+
     /* Waypoint */
-{START}"p"{BLANKS}.* {
+{START}"p"{BLANKS} {
+    BEGIN(WAYPOINT_START);
+    printf("point: ");
 }
+
+<WAYPOINT_START>{NUMBER} {
+    printf(" %f", atof(yytext) );
+    BEGIN(WAYPOINT_SPACE);
+}
+
+<WAYPOINT_SPACE>{BLANKS} {
+    BEGIN(WAYPOINT_START);
+}
+
+<WAYPOINT_SPACE>{END} {
+    printf("\n");
+    BEGIN(INITIAL);
+}
+
+<WAYPOINT_START>{END} {
+    printf("\n");
+    BEGIN(INITIAL);
+}
+
+
     /* Reparent */
-{START}"r"{BLANKS}.* {
+{START}"r"{BLANKS} {
+    BEGIN(REPARENT_FRAME);
 }
 
+<REPARENT_FRAME>{FRAME_NAME} {
+    printf("%s <- ", yytext);
+    BEGIN(REPARENT_SPACE);
+}
+<REPARENT_SPACE>{BLANKS} {
+    BEGIN(REPARENT_NEW_PARENT);
+}
 
+<REPARENT_NEW_PARENT>{FRAME_NAME} {
+    printf("%s\n", yytext);
+    BEGIN(INITIAL);
+}
     /* Error */
     /* This rule needs to be last */
 
@@ -116,17 +189,18 @@ START {MAYBE_BLANKS}
 %%
 
 AA_API void
-tmplan_parse (FILE *in)
+tmplan_parse (FILE *in, struct aa_mem_region *reg)
 {
+    if( NULL == reg ) {
+        reg = aa_mem_region_local_get();
+    }
 
     yyscan_t scanner;
     tmplan_lex_init(&scanner);
     tmplan_set_in(in, scanner);
 
-    /* struct wf_mtl_extra e; */
-    /* e.mtl = aa_rx_wf_mtl_create(); */
-    /* e.mtl->filename = strdup(filename); */
-    /* aa_rx_wf_set_extra(&e, scanner); */
+    struct tmplan *e = tmplan_create(reg);
+    aa_rx_wf_set_extra(e, scanner);
 
     int r = tmplan_lex(scanner);
 

@@ -8,14 +8,16 @@ AM_INIT_AUTOMAKE([subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_CONFIG_SRCDIR([lisp/tmsmt.asd])
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_PROG_CC_C99
+LT_INIT
 
 AC_CHECK_PROGS([AARX_CORE], [aarx.core])
 
 AS_IF([test "x$AARX_CORE" = x],
       [AC_MSG_ERROR([Could not found aarx.core.  Is amino installed?])])
-
 
 
 # Check for Lex/Flex
@@ -29,10 +31,15 @@ AM_CONDITIONAL([HAVE_LEX], [test "x$LEX" != x -a "x$with_lex" = xyes])
 
 
 # Amino
-PKG_CHECK_MODULES([AMINO], [amino])
-CFLAGS="$CFLAGS $AMINO_CFLAGS"
-CXXFLAGS="$CXXFLAGS $AMINO_CXXFLAGS"
-LDFLAGS="$LDFLAGS $AMINO_LDFLAGS"
+PKG_CHECK_MODULES([AMINO], [amino],
+[
+  CFLAGS="$CFLAGS $AMINO_CFLAGS"
+  CXXFLAGS="$CXXFLAGS $AMINO_CXXFLAGS"
+  LDFLAGS="$LDFLAGS $AMINO_LIBS"
+],
+[
+  AC_MSG_ERROR([Amino is required])
+])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

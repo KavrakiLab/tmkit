@@ -2,8 +2,8 @@
 
 #include "tmsmt/tmplan.h"
 
-int main(int argc, char *argv) {
+int main(int argc, char **argv) {
 
-    tmplan_parse(stdin);
+    tmplan_parse(stdin, NULL);
     return 0;
 }
