@@ -41,7 +41,13 @@ PKG_CHECK_MODULES([AMINO], [amino],
   AC_MSG_ERROR([Amino is required])
 ])
 
-AC_CONFIG_FILES([Makefile])
+
+# Doxygen
+AC_CHECK_PROGS([DOXYGEN],[doxygen])
+AM_CONDITIONAL([HAVE_DOXYGEN], [test "x$DOXYGEN" != x])
+
+
+AC_CONFIG_FILES([Makefile Doxyfile])
 AC_OUTPUT
 
 AS_BOX([TMSMT CONFIGURATION SUMMARY])

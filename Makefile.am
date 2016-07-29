@@ -51,11 +51,10 @@ planfile_test_SOURCES = src/tmplan_test.c
 planfile_test_LDADD = libtmsmt.la
 
 
-doc/manual/planfile.html: doc/md/planfile.md doc/md/head.html doc/md/foot.html
-	$(MKDIR_P) `dirname "$@"`
-	cp doc/md/head.html $@ && \
-	markdown $< >> $@ && \
-	cat doc/md/foot.html >> $@
+if HAVE_DOXYGEN
+doxygen:
+	$(DOXYGEN)
+endif
 
 clean-local:
 	-rm -rf doc/manual/

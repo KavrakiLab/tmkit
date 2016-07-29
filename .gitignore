@@ -37,3 +37,5 @@ catkin_generated
 /config.h.in
 /config.h
 /config.guess
+/Doxyfile
+/doc/doxygen_sqlite3.db
