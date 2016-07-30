@@ -134,6 +134,14 @@ tmplan_op_motion_plan_map_var (struct tmplan_op_motion_plan *op,
                                void *cx);
 
 /**
+ * Apply function to each op in the plan.
+ */
+AA_API int
+tmplan_map_ops (const struct tmplan *tmp,
+                void (*function)(void *cx, const struct tmplan_op *op),
+                void *cx );
+
+/**
  * Preprate to add points to the motion plan.
  */
 AA_API void
@@ -186,7 +194,13 @@ tmplan_op_reparent_get_new_parent (struct tmplan_op_reparent *op);
  * Parse a plan file, allocation out of the given region.
  */
 AA_API struct tmplan*
-tmplan_parse (FILE *in, struct aa_mem_region *reg);
+tmplan_parse_filename (const char *filename, struct aa_mem_region *reg);
+
+/**
+ * Parse a plan file, allocation out of the given region.
+ */
+AA_API struct tmplan*
+tmplan_parse_file (FILE *in, struct aa_mem_region *reg);
 
 
 /**

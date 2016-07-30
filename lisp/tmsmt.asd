@@ -1,7 +1,13 @@
+(cl:eval-when (:load-toplevel :execute)
+    (asdf:operate 'asdf:load-op 'cffi-grovel))
+
 (asdf:defsystem tmsmt
   :description "SMT-based planner"
   :depends-on ("alexandria" "cl-ppcre" "sycamore" "cffi" "amino" "amino-rx")
   :components ((:file "package")
+
+               (cffi-grovel:grovel-file "grovel" :depends-on ("package"))
+
                (:file "util" :depends-on ("package"))
                (:file "smtlib" :depends-on ("util"))
                (:file "smtrun" :depends-on ("smtlib"))

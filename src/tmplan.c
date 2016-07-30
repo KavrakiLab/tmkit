@@ -242,3 +242,21 @@ tmplan_write (const struct tmplan *tmp, FILE *out )
 {
     tmplan_map_ops( tmp, tmplan_write_helper, out );
 }
+
+AA_API struct tmplan*
+tmplan_parse_filename (const char *filename, struct aa_mem_region *reg)
+{
+    FILE *in = fopen(filename,"r");
+    if( NULL == in ) {
+        fprintf(stderr, "Could not open `%s'.", filename);
+        return NULL;
+    }
+
+    struct tmplan *r = tmplan_parse_file(in, reg);
+
+    fclose(in);
+
+    return r;
+
+
+}

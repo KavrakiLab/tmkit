@@ -8,9 +8,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "No file specified\n");
         return -1;
     }
-    FILE *in = fopen(argv[1],"r");
-    struct tmplan *tmp = tmplan_parse(in, NULL);
-    fclose(in);
+    struct tmplan *tmp = tmplan_parse_filename(argv[1], NULL);
 
     if( tmp ) tmplan_write(tmp,stdout);
 

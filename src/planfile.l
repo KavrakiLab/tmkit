@@ -194,7 +194,7 @@ START {MAYBE_BLANKS}
 %%
 
 AA_API struct tmplan*
-tmplan_parse (FILE *in, struct aa_mem_region *reg)
+tmplan_parse_file (FILE *in, struct aa_mem_region *reg)
 {
     if( NULL == reg ) {
         reg = aa_mem_region_local_get();
