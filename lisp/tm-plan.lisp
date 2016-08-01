@@ -90,21 +90,19 @@
 
 (defmethod object-rope ((object tm-op-motion))
   (let* ((mp (tm-op-motion-motion-plan object))
-         (ssg (robray::motion-plan-sub-scene-graph mp))
-         (path (robray::motion-plan-path mp))
-         (k (robray::sub-scene-graph-config-count ssg))
-         (m (robray::sub-scene-graph-all-config-count ssg))
-         (n (/ (length path) m))
-         (names (loop for i below k collect (robray::sub-scene-graph-config-name ssg i))))
+         (names (robray::motion-plan-config-names-list mp))
+         (path-list (robray::motion-plan-path-list mp)))
+    ;; Check lengths
+    (loop
+       with m = (length names)
+       for point in path-list
+       do (assert (= m
+                     (length point))))
+    ;; Result
     (rope
      (format nil "~&m ~{~A ~}~%" names)
      (format nil "~{p ~{~F	~}~%~}"
-             (loop for j below n
-                collect
-                  (loop for i-sub below k
-                     for i = (robray::aa-rx-sg-sub-config ssg i-sub)
-                     collect (aref path (+ i (* j m)))))))))
-
+             path-list))))
 
 (defmethod object-rope ((object tm-plan))
   (rope (tm-plan-ops object)))

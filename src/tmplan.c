@@ -139,6 +139,26 @@ tmplan_op_motion_plan_path_finish (struct tmplan_op_motion_plan *op )
     op->path = aa_mem_region_alloc( reg, size );
 }
 
+
+AA_API size_t
+tmplan_op_motion_plan_path_size(struct tmplan_op_motion_plan *op )
+{
+    return op->path_cnt;
+}
+
+
+AA_API double *
+tmplan_op_motion_plan_path(struct tmplan_op_motion_plan *op )
+{
+    return op->path;
+}
+
+AA_API size_t
+tmplan_op_motion_plan_config_count(struct tmplan_op_motion_plan *op )
+{
+    return op->config_cnt;
+}
+
 AA_API void
 tmplan_add_reparent(struct tmplan *tmp)
 {

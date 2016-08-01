@@ -160,6 +160,29 @@ AA_API void
 tmplan_op_motion_plan_path_finish (struct tmplan_op_motion_plan *op );
 
 /**
+ * Return a pointer to the path data.
+ */
+AA_API double *
+tmplan_op_motion_plan_path(struct tmplan_op_motion_plan *op );
+
+/**
+ * Return the number of configuration variables used for the path.
+ *
+ */
+AA_API size_t
+tmplan_op_motion_plan_config_count(struct tmplan_op_motion_plan *op );
+
+/**
+ * Return the number of elements in the path.
+ *
+ * The number of waypoints in the path is the path size divided by the
+ * number of configuration variables.
+ *
+ */
+AA_API size_t
+tmplan_op_motion_plan_path_size(struct tmplan_op_motion_plan *op );
+
+/**
  * @struct tmplan_op_motion_plan
  *
  * Opaque type for a reparent operation.
