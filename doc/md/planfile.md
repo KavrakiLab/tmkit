@@ -1,4 +1,4 @@
-Plan Files
+Plan Files {#planfile}
 ==========
 
 Task and motion plans are output in a plan-text, line-based format.

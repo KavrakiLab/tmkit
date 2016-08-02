@@ -2,6 +2,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include
 ACLOCAL_AMFLAGS = -I m4
 
 bin_PROGRAMS =
+bin_SCRIPTS =
 noinst_PROGRAMS =
 lib_LTLIBRARIES =
 
@@ -42,6 +43,7 @@ tmsmt_core_SOURCES = \
 tmsmt.core$(EXEEXT): $(tmsmt_core_SOURCES)
 	$(AARX_CORE) --script build.lisp
 
+bin_SCRIPTS += tmsmt
 
 
 
@@ -54,6 +56,12 @@ planfile_test_LDADD = libtmsmt.la
 if HAVE_DOXYGEN
 doxygen:
 	$(DOXYGEN)
+endif
+
+
+if HAVE_HELP2MAN
+doc/tmsmt.1: $(top_srcdir)/tmsmt $(top_srcdir)/configure.ac
+	$(HELP2MAN) -h -h --version-string="0.0" --no-info -n "Task-Motion Planner" $(top_srcdir)/tmsmt -o $@
 endif
 
 clean-local:

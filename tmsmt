@@ -49,14 +49,19 @@ Options:
   -s SCENE_FILE               Start scene file
   -g SCENE_FILE               Goal scene file
   -d TASK_DOMAIN_FILE         Task Domain (PDDL) file
+  -o OUTPUT_PLAN_FILE         Output plan file
+  -i INPUT_PLAN_FILE          Load plan from file
   -r RESOLUTION               Discretization resolution
   -m MAX_STEPS                Maximum number of task steps
   -G,--gui                    Enable graphical interface
   -v                          Be verbose
 
-Examples:
-  tmsmt -s 'package://baxter_description/urdf/baxter.urdf' -s file.robray
 EOF
+
+            # HELP TEXT
+  # export ROS_PACKAGE_PATH=/opt/ros/indigo/share
+  # tmsmt -s 'package://baxter_description/urdf/baxter.urdf' \\
+  #       -s file.robray
             exit 0
             ;;
         -s)
@@ -73,6 +78,16 @@ EOF
             shift;
             # TODO: escape special characters
             export TMSMT_TASK_DOMAIN="$1"
+            ;;
+        -o)
+            shift;
+            # TODO: escape special characters
+            export TMSMT_OUTPUT="$1"
+            ;;
+        -i)
+            shift;
+            # TODO: escape special characters
+            export TMSMT_INPUT="$1"
             ;;
         -r)
             shift;
@@ -97,6 +112,6 @@ EOF
     shift
 done
 
-# sbcl --non-interactive --eval '(require :tmsmt)' --eval '(tmsmt::tmp-command)'
+sbcl --non-interactive --eval '(require :tmsmt)' --eval '(tmsmt::tmp-command)'
 
-exec tmsmt.core --non-interactive --eval '(tmsmt::tmp-command)'
+# exec tmsmt.core --non-interactive --eval '(tmsmt::tmp-command)'

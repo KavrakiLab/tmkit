@@ -46,6 +46,16 @@ PKG_CHECK_MODULES([AMINO], [amino],
 AC_CHECK_PROGS([DOXYGEN],[doxygen])
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "x$DOXYGEN" != x])
 
+# Man Pages
+AC_ARG_ENABLE([man],
+              [AS_HELP_STRING([--disable-man], [Do not build man pages])],
+              [],
+              [enable_man="yes"])
+
+AS_IF([test "x$enable_man" = xyes -a "x$build" = "x$host"],
+      [AC_CHECK_PROGS([HELP2MAN], [help2man])])
+AM_CONDITIONAL([HAVE_HELP2MAN], [test x$HELP2MAN != x])
+
 
 AC_CONFIG_FILES([Makefile Doxyfile])
 AC_OUTPUT

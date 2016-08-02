@@ -146,3 +146,10 @@
                         (translate-tmplan scene-graph config-map ptr)
                      (amino::aa-mem-region-local-pop ptr)))))
       (tm-plan-list ops))))
+
+(defun display-tm-plan-file (scene-files start-config plan-file)
+  (robray::win-display-motion-plan-sequence
+   (tm-plan-motion-plans (parse-tmplan (robray::load-scene-files scene-files)
+                                       (or start-config
+                                           (robray::make-configuration-map))
+                                       plan-file))))

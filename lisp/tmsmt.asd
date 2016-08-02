@@ -29,5 +29,7 @@
                (:file "m-actions" :depends-on ("util" "motion-plan"))
                (:file "itmp-rec" :depends-on ("util" "m-actions"))
                (:file "driver" :depends-on ("itmp-rec"))
+
+               (:file "foreign-tmplan" :depends-on ("tm-plan"))
                ;(:file "planvis" :depends-on ("util"))
                ))

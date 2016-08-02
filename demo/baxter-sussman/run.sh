@@ -10,4 +10,5 @@ exec tmsmt -s 'package://baxter_description/urdf/baxter.urdf' \
            -s allowed-collision.robray \
            -g sussman-1.robray  \
            -d domain.pddl \
+           -o baxter-sussman.tmp \
            --gui
