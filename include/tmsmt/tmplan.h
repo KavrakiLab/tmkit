@@ -91,7 +91,7 @@ tmplan_last_op(struct tmplan * tmp);
  * Return the type of the operator.
  */
 AA_API enum tmplan_op_type
-tmplan_op_type( struct tmplan_op *op );
+tmplan_op_type( const struct tmplan_op *op );
 
 /**
  * @struct tmplan_op_action

@@ -40,7 +40,7 @@ tmplan_last_op(struct tmplan * tmp)
 }
 
 AA_API enum tmplan_op_type
-tmplan_op_type( struct tmplan_op *op )
+tmplan_op_type( const struct tmplan_op *op )
 {
     return op->type;
 }
@@ -227,11 +227,12 @@ static void
 tmplan_write_helper (void *cx, const struct tmplan_op *op )
 {
     FILE *out = (FILE*)cx;
-    switch( op->type ) {
+    switch( tmplan_op_type(op) ) {
     case TMPLAN_OP_ACTION: {
         struct tmplan_op_action *x = (struct tmplan_op_action *)op;
-        if( x->action ) {
-            fprintf(out,"a %s\n",x->action);
+        const char *action = tmplan_op_action_get(x);
+        if( action ) {
+            fprintf(out,"a %s\n",x );
         } else {
             fprintf(out, "a\n");
         }
@@ -241,10 +242,13 @@ tmplan_write_helper (void *cx, const struct tmplan_op *op )
         fprintf(out, "m");
         tmplan_op_motion_plan_map_var( x, write_varname, out );
         fprintf(out, "\n");
-        for( size_t i = 0; i < x->path_cnt / x->config_cnt; i++ ) {
+        size_t config_cnt = tmplan_op_motion_plan_config_count(x);
+        size_t path_size = tmplan_op_motion_plan_path_size(x);
+        double *path = tmplan_op_motion_plan_path(x);
+        for( size_t i = 0; i < path_size / config_cnt; i++ ) {
             fprintf(out, "p");
-            for( size_t j = 0; j < x->config_cnt; j ++ ) {
-                fprintf(out, " %f", x->path[i*x->config_cnt + j] );
+            for( size_t j = 0; j < config_cnt; j ++ ) {
+                fprintf(out, " %f", path[i*config_cnt + j] );
             }
             fprintf(out, "\n");
         }
@@ -252,7 +256,8 @@ tmplan_write_helper (void *cx, const struct tmplan_op *op )
     case TMPLAN_OP_REPARENT: {
         struct tmplan_op_reparent *x = (struct tmplan_op_reparent *)op;
         fprintf(out, "r %s %s\n",
-                x->frame, x->new_parent );
+                tmplan_op_reparent_get_frame(x),
+                tmplan_op_reparent_get_new_parent(x) );
     } break;
     }
 }

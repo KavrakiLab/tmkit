@@ -6,8 +6,11 @@ This file describes the installation process.
 Dependencies
 ============
 
-* [Amino] (https://github.com/golems/amino)
-* [Z3] (https://z3.codeplex.com/)
+* [Amino] (https://github.com/golems/amino) provides robot kinematics
+  and a motion planner interface.
+
+* [Z3] (https://z3.codeplex.com/) provides a solver for the
+  constraint-based task planner.
 
 Build Overview
 ==============

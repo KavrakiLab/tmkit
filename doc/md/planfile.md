@@ -121,11 +121,12 @@ static void
 helper_function (void *cx, const struct tmplan_op *op )
 {
     FILE *out = (FILE*)cx;
-    switch( op->type ) {
+    switch( tmplan_op_type(op)) {
     case TMPLAN_OP_ACTION: {
         struct tmplan_op_action *x = (struct tmplan_op_action *)op;
-        if( x->action ) {
-            fprintf(out,"a %s\n",x->action);
+        const char *action = tmplan_op_action_get(x);
+        if( action ) {
+            fprintf(out,"a %s\n",action);
         } else {
             fprintf(out, "a\n");
         }
@@ -136,7 +137,8 @@ helper_function (void *cx, const struct tmplan_op *op )
     case TMPLAN_OP_REPARENT: {
         struct tmplan_op_reparent *x = (struct tmplan_op_reparent *)op;
         fprintf(out, "r %s %s\n",
-                x->frame, x->new_parent );
+                tmplan_op_reparent_get_frame(x),
+                tmplan_op_reparent_get_new_parent(x) );
     } break;
     }
 }
