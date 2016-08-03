@@ -1,1 +1,31 @@
 TMSMT is a task and motion planner.
+
+Features
+========
+
+* Command-line planner command
+* Task-motion plan visualization
+* General, constraint-based task planning
+
+Installation
+============
+
+Obtaining
+---------
+
+Via git:
+
+    git clone https://github.com/kavrakilab/tmsmt.git
+    cd tmsmt && autoreconf -i
+
+Building
+---------
+
+    ./configure && make && make install
+
+
+DOCUMENTATION
+=============
+
+* Manual: http://code.golems.org/pkg/tmsmt/ and `./doc/manual/`
+* Examples `./demos/`

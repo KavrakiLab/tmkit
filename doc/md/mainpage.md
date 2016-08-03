@@ -3,6 +3,7 @@ TMSMT {#mainpage}
 
 TMSMT is a framework for Task and Motion Planning.
 
+- <a href="installation.html"><b>Installation</b></a>
 - [License](@ref copying): 3-clause BSD (permissive)
 - <a href="https://github.com/kavrakilab/tmsmt"><b>Source
   Code</b></a>: `git clone https://github.com/kavrakilab/tmsmt.git`

@@ -35,6 +35,10 @@ Plan Files
 Option Summary
 ==============
 
+    Usage: tmsmt [OPTIONS]
+
+    Options:
+
     -s SCENE_FILE
         Start scene file
 
@@ -61,7 +65,7 @@ Option Summary
         Enable graphical interface
 
     -v
-    Be verbose
+        Verbose output
 
 
 Examples
