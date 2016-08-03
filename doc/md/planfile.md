@@ -3,12 +3,14 @@ Plan Files {#planfile}
 
 Task and motion plans are output in a plan-text, line-based format.
 
-Statements
+[TOC]
+
+Statements {#planfile_statements}
 ==========
 
 Each plan file line is a single statement.
 
-Action Lines
+Action Lines {#planfile_stmt_action}
 ------------
 
 Action lines indicate the discrete action to be taken.
@@ -19,7 +21,7 @@ Action lines begin with "a".
 
     a TRANSFER object destination
 
-Reparent Lines
+Reparent Lines {#planfile_stmt_reparent}
 --------------
 
 Reparent lines change the topology of the scenegraph. For example
@@ -33,7 +35,7 @@ followed by its new parent frame.
 
     r object end_effector
 
-Motion Plan Start Lines
+Motion Plan Start Lines {#planfile_stmt_motion}
 -----------------------
 
 Motion plan start lines indicate the beginning of a new motion plan
@@ -49,7 +51,7 @@ lines.
 
     m shoulder_0 shoulder_1 shoulder_2 elbow wrist_0 wrist_1 wrist_2
 
-Configuration Waypoint Lines
+Configuration Waypoint Lines  {#planfile_stmt_waypoint}
 ----------------------------
 
 Waypoint lines indicate a particular configuration waypoint along a
@@ -63,7 +65,7 @@ configuration variable values at that waypoint.
 
     p 0.0 0.0 0.0 3.14 0.0 0.0 0.0
 
-Comment Lines
+Comment Lines {#planfile_stmt_comment}
 -------------
 
 Plan files uses shell-style line comments (`# Comment`).
@@ -71,3 +73,95 @@ Plan files uses shell-style line comments (`# Comment`).
 ### Comment Example
 
     # This is a line comment
+
+Generation and Parsing {#planfile_stmt_gen_parse}
+======================
+
+The [tmplan.h] (@ref tmplan.h) header defines functions and data
+structures for plan files.
+
+
+Parsing Example
+---------------
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~{.c}
+/* Parse the plan file struct */
+struct aa_mem_region region;
+aa_mem_region_init(&region, 1024*64);
+struct tmplan *tmp = tmplan_parse_filename("plan.tmp", &region);
+
+/* Use the plan file struct */
+/* ... */
+
+/* Release the plan file struct */
+aa_mem_region_pop(&region, tmp);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+@sa tmplan_parse_filename()
+@sa tmplan_parse_file()
+
+Usage Example
+-------------
+
+~~~~~~~~~~~~~~~~{.c}
+
+/* A function to apply to each operator in the plan */
+static void
+helper_function (void *cx, const struct tmplan_op *op );
+
+/* This is a simplified version of tmplan_write() */
+int
+simple_tmplan_write (const struct tmplan *tmp)
+{
+    /* apply helper_function to each operator */
+    tmplan_map_ops( tmp, helper_function, stdout );
+}
+
+static void
+helper_function (void *cx, const struct tmplan_op *op )
+{
+    FILE *out = (FILE*)cx;
+    switch( op->type ) {
+    case TMPLAN_OP_ACTION: {
+        struct tmplan_op_action *x = (struct tmplan_op_action *)op;
+        if( x->action ) {
+            fprintf(out,"a %s\n",x->action);
+        } else {
+            fprintf(out, "a\n");
+        }
+    } break;
+    case TMPLAN_OP_MOTION_PLAN: {
+        fprintf(out, "m\n");
+    } break;
+    case TMPLAN_OP_REPARENT: {
+        struct tmplan_op_reparent *x = (struct tmplan_op_reparent *)op;
+        fprintf(out, "r %s %s\n",
+                x->frame, x->new_parent );
+    } break;
+    }
+}
+~~~~~~~~~~~~~~~~
+
+@sa tmplan_map_ops()
+@sa tmplan_op_motion_plan_map_var()
+
+Generation Example
+------------------
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~{.c}
+struct aa_mem_region region;
+aa_mem_region_init(&region, 1024*64);
+struct tmplan *tmp = tmplan_create(&region);
+/* Initialize the struct */
+/* ... */
+
+/* Write the struct */
+FILE *out = fopen("plan.tmp", "w");
+tmplan_write(tmp,stdout);
+fclose(out);
+
+/* Release the plan file struct */
+aa_mem_region_pop(&region, tmp);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+@sa tmplan_write()

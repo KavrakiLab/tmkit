@@ -4,9 +4,10 @@ The Planner Command {#planner_command}
 This package provides a shell command to invoke the task-motion
 planner.
 
+[TOC]
 
-Inputs and Output
-=================
+Input and Output {#planner_command_io}
+================
 
 Start and Goal Scenes
 ---------------------
@@ -32,7 +33,7 @@ Plan Files
 
 * Plans are recorded in as TMSMT [Plan Files](@ref planfile).
 
-Option Summary
+Option Summary {#planner_command_options}
 ==============
 
     Usage: tmsmt [OPTIONS]
@@ -68,7 +69,7 @@ Option Summary
         Verbose output
 
 
-Examples
+Examples {#planner_command_examples}
 ========
 
 When loading scenes from URDF, it is necessary to set the
