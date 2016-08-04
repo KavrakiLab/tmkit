@@ -3,7 +3,7 @@
 
 (asdf:defsystem tmsmt
   :description "SMT-based planner"
-  :depends-on ("alexandria" "cl-ppcre" "sycamore" "cffi" "amino" "amino-rx")
+  :depends-on ("alexandria" "cl-ppcre" "sycamore" "cffi" "amino" "amino-rx" "clpython")
   :components ((:file "package")
 
                (cffi-grovel:grovel-file "grovel" :depends-on ("package"))
@@ -32,4 +32,7 @@
 
                (:file "foreign-tmplan" :depends-on ("tm-plan"))
                ;(:file "planvis" :depends-on ("util"))
+
+               ;;; Python Interface
+               (:file "python/tmsmtpy" :depends-on ("package" "util"))
                ))
