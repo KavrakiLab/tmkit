@@ -148,7 +148,7 @@
                       moveable-types
                       max-locations
                       (encoding :linear)
-                      (resolution 0.2d0)
+                      (resolution *resolution*)
                       (problem 'itmp)
                       (domain 'itmp))
   (let* ((init-scene (scene-graph init-scene))
