@@ -9,8 +9,12 @@
   (:nicknames |tmsmtpy|)
   (:export
 
-
+   ;; binders
    |bind_scene_state|
+   |bind_scene_objects|
+
+   ;; helpers
    |collect_frame_type|
    |mangle|
-   |hello|))
+   |hello|)
+)

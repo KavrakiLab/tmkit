@@ -1,14 +1,15 @@
 (in-package |tmsmtpy|)
 
-(defvar *scene-state-function*)
-
 (defun |hello| ()
   (format t "~&Hello World!~%"))
 
 
 (defun |bind_scene_state| (x)
-  (setq *scene-state-function* x))
+  (setq tmsmt::*scene-state-function* x))
 
+
+(defun |bind_scene_objects| (x)
+  (setq tmsmt::*scene-objects-function* x))
 
 (defun |collect_frame_type| (scene type)
   (tmsmt::scene-collect-type scene type))
