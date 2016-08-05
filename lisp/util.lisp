@@ -214,3 +214,10 @@
     (make-pathname :directory (append (pathname-directory pathname)
                                       (ensure-list subdirectory))
                    :defaults pathname)))
+
+
+(defun listify (thing)
+  (typecase thing
+    (string thing)
+    (vector (map 'list #'listify thing))
+    (t thing)))

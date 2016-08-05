@@ -185,6 +185,29 @@
                                   :goal t))))))
 
 
+
+(defun scene-facts2 (init-scene goal-scene
+                     &key
+                       (problem 'itmp)
+                       (domain 'itmp)
+                       (configuration (robray::make-configuration-map))
+                       (state-function *scene-state-function*)
+                       (objects-function *scene-objects-function*))
+  (let ((start-state (funcall state-function init-scene configuration))
+        (goal-state (funcall state-function
+                             goal-scene
+                             configuration))
+        (objects (listify (funcall objects-function init-scene))))
+
+    `(define (problem ,problem)
+         (:domain ,domain)
+       (:objects ,@(loop for o in objects
+                      nconc (append (cdr o)
+                                    (list '- (car o)))))
+       ,(cons :init start-state)
+       (:goal ,(cons 'and goal-state)))))
+
+
 (defun itmp-transfer-z (scene-graph object)
   ;; todo: other shapes
   (let ((g (robray::scene-frame-geometry-collision (scene-graph-find scene-graph object))))
@@ -434,10 +457,12 @@
            (motion-time 0d0)
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
-           (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution
-                                    :object-alist object-alist
-                                    :moveable-types moveable-types
-                                    :max-locations max-locations))
+           ;; (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution
+           ;;                          :object-alist object-alist
+           ;;                          :moveable-types moveable-types
+           ;;                          :max-locations max-locations))
+
+           (task-facts (scene-facts2 init-graph goal-graph))
            (locations (scene-locations init-graph resolution :max-count max-locations
                                        :encode nil
                                        :round t))

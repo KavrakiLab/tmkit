@@ -1,12 +1,27 @@
 (in-package :tmsmt)
 
+(defun canonize-exp (exp map)
+  "Canonicalize terms in `EXP', substituting from `map'.
+
+Converts arrays to lists."
+  (labels ((rec (exp)
+             (typecase exp
+               (cons
+                (cons (rec (car exp))
+                      (rec (cdr exp))))
+               ((or string symbol)
+                (tree-map-find map exp exp))
+               (vector (map 'list #'rec exp))
+               (t exp))))
+    (rec exp)))
+
 (defun apply-rewrite-exp (function exp)
   (declare (type function function))
   (etypecase exp
     (atom (funcall function exp))
     (list
      (destructuring-case exp
-       (((and or not =) &rest rest)
+       (((and or not = "=") &rest rest)
         (cons (car exp)
               (loop for exp in rest collect (apply-rewrite-exp function exp))))
        ((t &rest rest) (declare (ignore rest))

@@ -2,6 +2,18 @@
 
 (defparameter *pddl-package* (find-package :tmsmt))
 
+;; TODO: handle keywords better
+(defparameter *pddl-canonical-map*
+  (fold (lambda (map symbol)
+          (fold (lambda (map key)
+                  (tree-map-insert map key symbol))
+                map
+                (list symbol
+                      (string-upcase (string symbol))
+                      (string-downcase (string symbol)))))
+        (make-tree-map #'gsymbol-compare)
+        '(= and or object define :domain -)))
+
 (defstruct pddl-action
   "A PDDL action"
   name
@@ -27,11 +39,13 @@
   "A PDDL set of operators"
   name
   types
+  (canon *pddl-canonical-map*)
   supertypes
   constants
   functions
   derived
   actions)
+
 
 (defstruct (pddl-function (:include pddl-typed))
   arguments)
@@ -64,12 +78,12 @@
     (cons (parse-operators operators))
     ((or rope pathname) (parse-operators (load-sexp operators *pddl-package*)))))
 
-(defun load-facts (facts)
+(defun load-facts (facts &optional domain)
   "Load facts from `facts'."
   (etypecase facts
     (pddl-facts facts)
-    (cons (parse-facts facts))
-    ((or rope pathname) (parse-facts (load-sexp facts *pddl-package*)))))
+    (cons (parse-facts facts domain))
+    ((or rope pathname) (parse-facts (load-sexp facts *pddl-package*) domain))))
 
 (defun parse-typed-list (type-list)
   (labels ((collect-names (type-list)
@@ -175,7 +189,7 @@
       sexp
     (check-symbol -define :define)
     (check-symbol -domain :domain)
-    (let ((ops (make-pddl-operators :name name)))
+    (let* ((ops (make-pddl-operators :name name)))
       (dolist (clause clauses)
         (destructuring-ecase clause
           ((:requirements &rest ignore)
@@ -217,7 +231,11 @@
                      (supertype (pddl-typed-type x)))
                  (when (hash-table-contains type hash)
                    (error "Duplicate type ~A" type))
-                 (setf (gethash type  hash) supertype)))
+                 ;; set supertype
+                 (setf (gethash type  hash) supertype)
+                 ;; note canonicalize type symbol
+                 (tree-map-insertf (pddl-operators-canon ops) type type)
+                 (tree-map-insertf (pddl-operators-canon ops) (string type) type)))
              ;; check super-types
              ;; if not explicitly given, create as subtype of t
              (dolist (x typed-list)
@@ -226,9 +244,11 @@
                    (setf (gethash supertype hash) t))))))))
       ops)))
 
-(defun parse-facts (sexp)
+(defun parse-facts (sexp &optional domain)
   (destructuring-bind (-define (-problem name) &rest clauses)
-      sexp
+      (if domain
+          (canonize-exp sexp (pddl-operators-canon domain))
+          sexp)
     (check-symbol -define :define)
     (check-symbol -problem :problem)
     (let ((facts (make-pddl-facts :name name)))
@@ -238,8 +258,10 @@
            (setf (pddl-facts-domain facts)
                  name))
           ((:objects &rest objs)
-           (setf (pddl-facts-objects facts)
-                 (parse-typed-list objs)))
+           (let ((typed-list (parse-typed-list objs)))
+             ;; set in struct
+             (setf (pddl-facts-objects facts)
+                   typed-list)))
           ((:init &rest things)
            (setf (pddl-facts-init facts)
                  things))

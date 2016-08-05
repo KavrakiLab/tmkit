@@ -5,35 +5,32 @@ import tmsmtpy as tm
 import CL
 import math
 
-tm.hello()
-
 RESOLUTION=0.1
-
 
 def scene_state_linear(scene, configuration):
     '''Map the scene graph `scene' to a task state expression'''
 
     ## terms in the expression
-    conjunction = ["AND"]
+    conjunction = []
 
     def handle_moveable(frame):
         name = frame['name']
         parent_name = frame['parent']
-        parent_frame = scene[parent_name]
+        position = parent_name
 
-        if aa.frame_isa(parent_frame, "surface"):
-            trans = aa.translation( aa.frame_fixed_tf(frame) )
-            i = int(round( trans[0] / RESOLUTION))
-            j = int(round( trans[1] / RESOLUTION))
-            conjunction.append(["=",
-                                ["POSITION", name],
-                                tm.mangle(parent_name,i,j)])
+        try:
+            parent_frame = scene[parent_name]
+            if aa.frame_isa(parent_frame, "surface"):
+                trans = aa.translation( aa.frame_fixed_tf(frame) )
+                i = int(round( trans[0] / RESOLUTION))
+                j = int(round( trans[1] / RESOLUTION))
+                position = tm.mangle(parent_name,i,j)
+        except NameError:
+            pass
 
-        if aa.frame_isa(parent_frame, "stackable"):
-            print "  stacked"
-            conjunction.append(["=",
-                                ["POSITION", name],
-                                parent_name])
+        conjunction.append(["=",
+                            ["POSITION", name],
+                            position])
 
     moveable_frames = tm.collect_frame_type(scene,"moveable")
     map(handle_moveable, moveable_frames)
@@ -55,7 +52,7 @@ def scene_objects_linear(scene):
     moveable.insert(0, "BLOCK")
 
     # Draw grid on surfaces
-    locations = ['LOCATIONS']
+    locations = ['LOCATION']
     def add_loc(name,i,j):
         locations.append(tm.mangle(name,i,j))
 

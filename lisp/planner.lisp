@@ -7,6 +7,10 @@
 ;; so that the appropriate constant symbol can be selected in SMT
 ;; expressions.  (smells like overloading)
 
+(defvar *operators*)
+
+(defvar *facts*)
+
 (defun plan-enum-symbol (type name)
   (declare (ignore type))
   name)
