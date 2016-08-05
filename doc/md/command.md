@@ -28,6 +28,18 @@ Task Domain
 * Task facts -- PDDL Objects, start state, goal state, etc. -- are
   inferred from the start and goal scenes.
 
+Task-Motion Map Scripts
+-----------------------
+
+* The domain-specific mapping from scenes to task state and task
+  operators to motion planning problems is specified via functions
+  defined in user-provided script files
+
+* Scripts may be written in [Python]
+  (https://common-lisp.net/project/clpython/) or [Common Lisp]
+  (http://www.gigamonkeys.com/book/).  Note, however, that Python
+  scripts cannot use extension modules.
+
 Plan Files
 ----------
 
@@ -49,10 +61,13 @@ Option Summary {#planner_command_options}
     -d TASK_DOMAIN_FILE
         Task Domain (PDDL) file
 
+    -l SCRIPT_FILE
+        Load Script File
+
     -o OUTPUT_PLAN_FILE
         Output plan file
 
-    -i INPUT_PLAN_FILE
+    --load-plan=PLAN_FILE
         Load plan from file
 
     -r RESOLUTION
@@ -61,7 +76,6 @@ Option Summary {#planner_command_options}
     -m MAX_STEPS
         Maximum number of task steps
 
-    -G
     --gui
         Enable graphical interface
 

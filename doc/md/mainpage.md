@@ -8,7 +8,11 @@ TMSMT is a framework for Task and Motion Planning.
 - <a href="https://github.com/kavrakilab/tmsmt"><b>Source
   Code</b></a>: `git clone https://github.com/kavrakilab/tmsmt.git`
 
+Usage
+=====
 
+* [Planner Command] (@ref planner_command)
+* See also: `./demos` in the source distribution
 
 Publications
 ============

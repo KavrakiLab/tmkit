@@ -4,16 +4,32 @@
 ;; FIXME: where does this go?
 (defparameter *tf-grasp-rel* (tf* (y-angle (* 1 pi)) (vec3* .00 .00 .075)))
 
+(defun tmp-script (pathname)
+  (let* ((pathname (pathname pathname))
+         (type (string-downcase (pathname-type pathname))))
+    (cond
+      ;; CLPython Script
+      ((string= type "py")
+       (clpython:run pathname))
+      ;; Lisp Script
+      ((find type '("lisp" "l") :test #'string=)
+       (load pathname))
+      (t (error "Unrecognized file type `~A' of file `~A'"
+                type pathname)))))
+
+
 (defun tmp-driver (&key
                      task-domain
                      start-scene
                      goal-scene
                      gui
+                     scripts
                      verbose
                      (max-steps 3)
                      (resolution .15)
                      ;; FIXME:
                      output
+                     write-facts
                      (encoding :linear)
                      (frame "right_endpoint")
                      (start (robray::alist-configuration-map `(("right_s0" . ,(/ pi 5)))))
@@ -22,6 +38,7 @@
   (when verbose
     (format t "~&Start scene files: ~{~A~^, ~}~%" (ensure-list start-scene))
     (format t "~&Goal scene files:  ~{~A~^, ~}~%" (ensure-list goal-scene)))
+  (map nil #'tmp-script scripts)
   ;; Check parameters
   (unless start-scene
     (error "TMSMT: No start scene specified."))
@@ -66,13 +83,15 @@
 
 ;; TODO: start configuration
 
+(defun env-list (varname)
+  (read-from-string (concatenate 'string "("
+                                 (uiop/os:getenv varname)
+                                 ")")))
+
 (defun tmp-command ()
-  (let* ((scene-files (read-from-string (concatenate 'string "("
-                                                     (uiop/os:getenv "TMSMT_SCENE_FILES")
-                                                     ")")))
-         (goal-files (read-from-string (concatenate 'string "("
-                                                    (uiop/os:getenv "TMSMT_GOAL_FILES")
-                                                    ")")))
+  (let* ((scene-files (env-list "TMSMT_SCENE_FILES"))
+         (goal-files (env-list "TMSMT_GOAL_FILES"))
+         (script-files (env-list "TMSMT_SCRIPT_FILES"))
          (max-steps (if-let ((s (uiop/os:getenv "TMSMT_MAX_STEPS")))
                       (parse-integer s)
                       5))
@@ -91,10 +110,12 @@
         ;; Find the plan
         (tmp-driver :start-scene scene-files
                     :goal-scene goal-files
+                    :scripts script-files
                     :task-domain (uiop/os:getenv "TMSMT_TASK_DOMAIN")
                     :max-steps max-steps
                     :resolution resolution
                     :gui gui
+                    :write-facts (uiop/os:getenv "TMSMT_WRITE_FACTS")
                     :output (uiop/os:getenv "TMSMT_OUTPUT")
                     :verbose (uiop/os:getenv "TMSMT_VERBOSE")))
     ;; Join the window thread

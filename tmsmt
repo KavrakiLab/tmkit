@@ -38,9 +38,15 @@
 # TMSMT_PAUSE=nil
 # TMSMT_VERBOSE=nil
 
+
+parse_long() {
+    echo "$1" | cut -d = -f 2
+}
+
 while test "$1" != x-- -a "x$#" != x0; do
     case "$1" in
         -h|-\?|--help)
+            # HELP TEXT
             cat <<EOF
 Usage: tmsmt [OPTIONS] FILES...
 Compute a task-motion plan
@@ -50,24 +56,29 @@ Options:
   -g SCENE_FILE               Goal scene file
   -d TASK_DOMAIN_FILE         Task Domain (PDDL) file
   -o OUTPUT_PLAN_FILE         Output plan file
-  -i INPUT_PLAN_FILE          Load plan from file
   -r RESOLUTION               Discretization resolution
+  -l SCRIPT_FILE              Load script file
   -m MAX_STEPS                Maximum number of task steps
-  -G,--gui                    Enable graphical interface
-  -v                          Be verbose
-
+  --gui                       Enable graphical interface
+  --load-plan=PLAN_FILE       Load plan from file
+  --write-facts=FILE          Write inititial task facts to FILE
+  -v,--verbose                Be verbose
 EOF
-
-            # HELP TEXT
-  # export ROS_PACKAGE_PATH=/opt/ros/indigo/share
-  # tmsmt -s 'package://baxter_description/urdf/baxter.urdf' \\
-  #       -s file.robray
+            # Examples:
+            # export ROS_PACKAGE_PATH=/opt/ros/indigo/share
+            # tmsmt -s 'package://baxter_description/urdf/baxter.urdf' \\
+            #       -s file.robray
             exit 0
             ;;
         -s)
             shift;
             # TODO: escape special characters
             export TMSMT_SCENE_FILES="${TMSMT_SCENE_FILES} \"$1\""
+            ;;
+        -l)
+            shift;
+            # TODO: escape special characters
+            export TMSMT_SCRIPT_FILES="${TMSMT_SCRIPT_FILES} \"$1\""
             ;;
         -g)
             shift;
@@ -84,11 +95,6 @@ EOF
             # TODO: escape special characters
             export TMSMT_OUTPUT="$1"
             ;;
-        -i)
-            shift;
-            # TODO: escape special characters
-            export TMSMT_INPUT="$1"
-            ;;
         -r)
             shift;
             export TMSMT_RESOLUTION="$1"
@@ -97,10 +103,16 @@ EOF
             shift;
             export TMSMT_MAX_STEPS="$1"
             ;;
-        -G|--gui)
+        --load-plan=*)
+            export TMSMT_INPUT=`parse_long "$1"`
+            ;;
+        --write-facts=*)
+            export TMSMT_WRITE_FACTS=`parse_long "$1"`
+            ;;
+        --gui)
             export TMSMT_GUI=1
             ;;
-        -v)
+        -v|--verbose)
             export TMSMT_VERBOSE=1
             ;;
         *)
@@ -111,6 +123,11 @@ EOF
     esac
     shift
 done
+
+if [ -n "$TMSMT_VERBOSE" ]; then
+   env | grep "^TMSMT_"
+fi
+
 
 sbcl --non-interactive --eval '(require :tmsmt)' --eval '(tmsmt::tmp-command)'
 
