@@ -28,12 +28,12 @@ Task Domain
 * Task facts -- PDDL Objects, start state, goal state, etc. -- are
   inferred from the start and goal scenes.
 
-Task-Motion Map Scripts
------------------------
+Domain Scripts
+--------------
 
 * The domain-specific mapping from scenes to task state and task
   operators to motion planning problems is specified via functions
-  defined in user-provided script files
+  defined in user-provided [domain script] (@ref domain_script) files
 
 * Scripts may be written in [Python]
   (https://common-lisp.net/project/clpython/) or [Common Lisp]
@@ -78,6 +78,9 @@ Option Summary {#planner_command_options}
 
     --gui
         Enable graphical interface
+
+    --python-shell
+        Start an interactive (CL)Python shell
 
     -v
         Verbose output

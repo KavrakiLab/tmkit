@@ -62,6 +62,7 @@ Options:
   --gui                       Enable graphical interface
   --load-plan=PLAN_FILE       Load plan from file
   --write-facts=FILE          Write inititial task facts to FILE
+  --python-shell              Start an interactive (CL)Python shell
   -v,--verbose                Be verbose
 EOF
             # Examples:
@@ -111,6 +112,9 @@ EOF
             ;;
         --gui)
             export TMSMT_GUI=1
+            ;;
+        --python-shell)
+            export TMSMT_PYTHON_SHELL=1
             ;;
         -v|--verbose)
             export TMSMT_VERBOSE=1

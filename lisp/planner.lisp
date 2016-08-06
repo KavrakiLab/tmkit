@@ -235,7 +235,7 @@
                         (action-encoding :boolean)
                         goal)
   (let* ((operators (load-operators operators))
-         (facts (load-facts facts))
+         (facts (load-facts facts operators))
          (objects (append (pddl-operators-constants operators)
                           (pddl-facts-objects facts)))
          (type-objects (compute-type-map (pddl-operators-types operators)

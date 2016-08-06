@@ -104,20 +104,24 @@
     (when gui
       (robray::win-create :title "TMSMT"
                           :stop-on-quit t))
-    (if plan-file
-        ;; Load and display plan
-        (display-tm-plan-file scene-files nil plan-file)
-        ;; Find the plan
-        (tmp-driver :start-scene scene-files
-                    :goal-scene goal-files
-                    :scripts script-files
-                    :task-domain (uiop/os:getenv "TMSMT_TASK_DOMAIN")
-                    :max-steps max-steps
-                    :resolution resolution
-                    :gui gui
-                    :write-facts (uiop/os:getenv "TMSMT_WRITE_FACTS")
-                    :output (uiop/os:getenv "TMSMT_OUTPUT")
-                    :verbose (uiop/os:getenv "TMSMT_VERBOSE")))
+    (cond
+      ((uiop/os:getenv "TMSMT_PYTHON_SHELL")
+       (clpython:repl))
+      (plan-file
+       ;; Load and display plan
+       (display-tm-plan-file scene-files nil plan-file))
+      (t
+       ;; Find the plan
+       (tmp-driver :start-scene scene-files
+                   :goal-scene goal-files
+                   :scripts script-files
+                   :task-domain (uiop/os:getenv "TMSMT_TASK_DOMAIN")
+                   :max-steps max-steps
+                   :resolution resolution
+                   :gui gui
+                   :write-facts (uiop/os:getenv "TMSMT_WRITE_FACTS")
+                   :output (uiop/os:getenv "TMSMT_OUTPUT")
+                   :verbose (uiop/os:getenv "TMSMT_VERBOSE"))))
     ;; Join the window thread
     (when gui
       (robray::win-join))))

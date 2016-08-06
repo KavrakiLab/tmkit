@@ -3,16 +3,6 @@
 
 ;(defvar *itmp-cache*)
 
-(defun itmp-encode-location (object i j)
-  (smt-mangle object i j))
-
-(defun collect-range (dim increment)
-  ;(print (list dim increment))
-  (let ((a (loop for i from 0 to (/ dim 2) by increment collect i)))
-    ;(print a)
-    (append (map 'list #'- (reverse (cdr a)))
-            a)))
-
 
 (defun scene-collect-type (scene type)
   (let ((frames (make-tree-set (lambda (a b)
@@ -24,175 +14,14 @@
       (when (robray::scene-frame-geometry-isa frame type)
         (setf (tree-set-find frames) frame)))))
 
-(defun scene-state-pairs (scene
-                          &key
-                            (resolution *resolution*))
-  (labels ((frame-predicates (frame)
-             (let* ((name  (robray::scene-frame-name frame))
-                    (tf  (robray::scene-frame-fixed-tf frame))
-                    (translation  (tf-translation tf))
-                    (parent  (robray::scene-frame-parent frame))
-                    (x  (round (vec-x translation) resolution))
-                    (y  (round (vec-y translation) resolution)))
-               (list name parent x y))))
-    (let* ((scene (scene-graph scene))
-           (moveable-frames (scene-collect-type scene "moveable")))
-      (loop for frame in moveable-frames
-         collect (frame-predicates frame)))))
-
-
-(defun scene-state (scene resolution
-                    &key
-                      other-scene-graph
-                      moveable-objects
-                      (encoding :linear)
-                      goal)
-  (labels ((find-parent (parent)
-             (or (scene-graph-find scene parent)
-                 (scene-graph-find other-scene-graph parent)
-                 (error "Could not find parent ~A" parent)))
-           (fun-position (object location)
-             `(= (position ,object) ,location))
-           (surface-location (object parent i j)
-             (ecase encoding
-               (:quadratic (list 'at object (itmp-encode-location parent i j)))
-               (:linear (fun-position object (itmp-encode-location parent i j)))))
-           (parent-location (object parent)
-             (fun-position object parent))
-           (location-predicate (object parent i j)
-             (let ((parent-frame (find-parent parent)))
-               (cond
-                 ((robray::scene-frame-geometry-isa parent-frame "surface")
-                  (surface-location object parent i j))
-                 ((robray::scene-frame-geometry-isa parent-frame "stackable")
-                  (assert (eq encoding :linear))
-                  `(= (position ,object) ,parent))
-                 (t (error "Unkown type of parent ~A" parent)))))
-           (occupied-predicate (parent i j)
-             (list 'occupied (itmp-encode-location parent i j)))
-           (frame-predicates (name parent i j)
-             (let ((loc (location-predicate name parent i j)))
-               (if (or goal (eq encoding :linear))
-                   (list loc)
-                   (list loc (occupied-predicate parent i j))))))
-    (append (loop for object in moveable-objects
-               for f = (scene-graph-find scene object)
-               when f
-               collect (parent-location object (scene-graph-parent-name scene object)))
-            (loop for (name parent i j) in (scene-state-pairs scene :resolution resolution)
-               nconc
-                 (frame-predicates name parent i j)))))
-
-
-
-
-(defun scene-locations (scene resolution &key
-                                           max-count
-                                           (round t)
-                                           (encode t))
-  (labels ((encode (list)
-             (loop for (name x y) in list
-                for i = (if round (round x resolution) x)
-                for j = (if round (round y resolution) y)
-                collect
-                  (if encode
-                      (itmp-encode-location name i j)
-                      (list name i j))))
-           (subset (list count)
-             (subseq (sort list (lambda (a b)
-                                  (destructuring-bind (n-a x-a y-a) a
-                                    (destructuring-bind (n-b x-b y-b) b
-                                      (let ((r-a (sqrt (+ (* x-a x-a) (* y-a y-a))))
-                                            (r-b (sqrt (+ (* x-b x-b) (* y-b y-b)))))
-                                        (if (= r-a r-b)
-                                            (if (equal n-a n-a)
-                                                (if (= x-a x-b)
-                                                    (if (= y-a y-b)
-                                                        (error "Equal locations")
-                                                        (< y-a y-b))
-                                                    (< x-a x-b))
-                                                (cond-compare (n-a n-b #'gsymbol-compare)
-                                                              t
-                                                              nil
-                                                              nil))
-                                            (< r-a r-b)))))))
-                     0 count)))
-
-
-    (let* ((scene (scene-graph scene))
-           (stackable-frames (scene-collect-type scene "surface"))
-           (locations-list
-            (loop for frame in stackable-frames
-               for name = (robray::scene-frame-name frame)
-               append (loop for g in (robray::scene-frame-geometry frame)
-                         for shape = (robray::scene-geometry-shape g)
-                         for dimension = (robray::scene-box-dimension shape)
-                         for xrange = (collect-range (vec-x dimension) resolution)
-                         for yrange = (collect-range (vec-y dimension) resolution)
-                         when (robray::scene-geometry-collision g)
-                         append
-                           (progn
-                                        ;(print (list name dimension xrange yrange))
-                             (loop for x in xrange
-                                append (loop for y in yrange
-                                          collect
-                                            (list name x y))))))))
-      (encode
-       (if max-count
-           (subset locations-list max-count)
-           locations-list)))))
 
 (defun scene-facts (init-scene goal-scene
                     &key
-                      object-alist
-                      moveable-types
-                      max-locations
-                      (encoding :linear)
-                      (resolution *resolution*)
                       (problem 'itmp)
-                      (domain 'itmp))
-  (let* ((init-scene (scene-graph init-scene))
-         (goal-scene (scene-graph goal-scene))
-         (moveable-frames (scene-collect-type init-scene "moveable"))
-         (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
-         (stackable-frames (scene-collect-type init-scene "stackable"))
-         (stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
-         (extra-moveable-objects (loop for (type . objects) in object-alist
-                                    when (find type moveable-types)
-                                    append objects))
-         ;;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
-         (objects (loop for (type . objects) in object-alist
-                     append `(,@objects - ,type)))
-         (locations (scene-locations init-scene resolution
-                                     :max-count max-locations
-                                     :encode t
-                                     :round t)))
-    ;(print locations)
-    `(define (problem ,problem)
-         (:domain ,domain)
-       (:objects ,@moveable-objects - block
-                 ;,@stackable-objects
-                 ,@locations - location
-                 ,@objects)
-       (:init ,@(scene-state init-scene resolution
-                             :moveable-objects extra-moveable-objects
-                             :encoding encoding
-                             :goal nil))
-       (:goal (and ,@(scene-state goal-scene resolution
-                                  :moveable-objects extra-moveable-objects
-                                  :encoding encoding
-                                  :other-scene-graph init-scene
-                                  :goal t))))))
-
-
-
-(defun scene-facts2 (init-scene goal-scene
-                     &key
-                       (problem 'itmp)
-                       (domain 'itmp)
-                       (configuration (robray::make-configuration-map))
-                       (state-function *scene-state-function*)
-                       (objects-function *scene-objects-function*))
+                      (domain 'itmp)
+                      (configuration (robray::make-configuration-map))
+                      (state-function *scene-state-function*)
+                      (objects-function *scene-objects-function*))
   (let ((start-state (funcall state-function init-scene configuration))
         (goal-state (funcall state-function
                              goal-scene
@@ -438,8 +267,6 @@
 
 (defun itmp-rec (init-graph goal-graph operators
                  &key
-                   object-alist
-                   moveable-types
                    q-all-start
                    max-locations
                    (encoding :linear)
@@ -455,6 +282,7 @@
     (let* ((time-0 (get-internal-real-time))
            (cache (make-hash-table :test #'equal))
            (motion-time 0d0)
+           (operators (load-operators operators))
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
            ;; (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution
@@ -462,10 +290,10 @@
            ;;                          :moveable-types moveable-types
            ;;                          :max-locations max-locations))
 
-           (task-facts (scene-facts2 init-graph goal-graph))
-           (locations (scene-locations init-graph resolution :max-count max-locations
-                                       :encode nil
-                                       :round t))
+           (task-facts (scene-facts init-graph goal-graph))
+           ;; (locations (scene-locations init-graph resolution :max-count max-locations
+           ;;                             :encode nil
+           ;;                             :round t))
            (smt-cx (smt-plan-context :operators operators
                                      :facts task-facts
                                      :action-encoding action-encoding
@@ -493,21 +321,26 @@
                  (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*)
                  plan-steps)
                (invalidate-informed (failed-graph failed-op what-failed object)
-                 (let ((state (scene-state failed-graph resolution
-                                           :encoding encoding
-                                           :goal nil)))
-                   (ecase what-failed
-                     (:place
+                 (let ((state (canonize-exp (funcall *scene-state-function*
+                                                     failed-graph
+                                                     (robray::make-configuration-map))
+                                            (pddl-operators-canon operators))))
+                   ;; TODO: failed transfer picks should apply to all possible object locations
+                   ;;       Will have to handle in a domain script function
                       (smt-plan-invalidate-op smt-cx state failed-op))
-                     (:pick
-                      (if (rope= "TRANSFER" (first failed-op))
-                          ;; special case transfer
-                          (dolist (loc locations)
-                            (smt-plan-invalidate-op smt-cx
-                                                    state
-                                                    (list* "TRANSFER" object loc)))
-                          ;; default, deny op
-                          (smt-plan-invalidate-op smt-cx state failed-op))))))
+                   ;; (ecase what-failed
+                   ;;   (:place
+                   ;;    (smt-plan-invalidate-op smt-cx state failed-op))
+                   ;;   (:pick
+                   ;;    (if (rope= "TRANSFER" (first failed-op))
+                   ;;        ;; special case transfer
+                   ;;        (dolist (loc locations)
+                   ;;          (smt-plan-invalidate-op smt-cx
+                   ;;                                  state
+                   ;;                                  (list* "TRANSFER" object loc)))
+                   ;;        ;; default, deny op
+                   ;;        (smt-plan-invalidate-op smt-cx state failed-op))))
+                   )
                (invalidate (failed-graph failed-op what-failed object)
                  (format t "~&Failed operator: ~A" failed-op)
                  (if naive
@@ -528,3 +361,178 @@
                        (result plan-steps)
                        (invalidate failed-graph failed-op what-failed object)))))
         (next)))))
+
+
+
+
+
+;; (defun itmp-encode-location (object i j)
+;;   (smt-mangle object i j))
+
+;; (defun collect-range (dim increment)
+;;   ;(print (list dim increment))
+;;   (let ((a (loop for i from 0 to (/ dim 2) by increment collect i)))
+;;     ;(print a)
+;;     (append (map 'list #'- (reverse (cdr a)))
+;;             a)))
+
+
+;; (defun scene-state-pairs (scene
+;;                           &key
+;;                             (resolution *resolution*))
+;;   (labels ((frame-predicates (frame)
+;;              (let* ((name  (robray::scene-frame-name frame))
+;;                     (tf  (robray::scene-frame-fixed-tf frame))
+;;                     (translation  (tf-translation tf))
+;;                     (parent  (robray::scene-frame-parent frame))
+;;                     (x  (round (vec-x translation) resolution))
+;;                     (y  (round (vec-y translation) resolution)))
+;;                (list name parent x y))))
+;;     (let* ((scene (scene-graph scene))
+;;            (moveable-frames (scene-collect-type scene "moveable")))
+;;       (loop for frame in moveable-frames
+;;          collect (frame-predicates frame)))))
+
+
+;; (defun scene-state (scene resolution
+;;                     &key
+;;                       other-scene-graph
+;;                       moveable-objects
+;;                       (encoding :linear)
+;;                       goal)
+;;   (labels ((find-parent (parent)
+;;              (or (scene-graph-find scene parent)
+;;                  (scene-graph-find other-scene-graph parent)
+;;                  (error "Could not find parent ~A" parent)))
+;;            (fun-position (object location)
+;;              `(= (position ,object) ,location))
+;;            (surface-location (object parent i j)
+;;              (ecase encoding
+;;                (:quadratic (list 'at object (itmp-encode-location parent i j)))
+;;                (:linear (fun-position object (itmp-encode-location parent i j)))))
+;;            (parent-location (object parent)
+;;              (fun-position object parent))
+;;            (location-predicate (object parent i j)
+;;              (let ((parent-frame (find-parent parent)))
+;;                (cond
+;;                  ((robray::scene-frame-geometry-isa parent-frame "surface")
+;;                   (surface-location object parent i j))
+;;                  ((robray::scene-frame-geometry-isa parent-frame "stackable")
+;;                   (assert (eq encoding :linear))
+;;                   `(= (position ,object) ,parent))
+;;                  (t (error "Unkown type of parent ~A" parent)))))
+;;            (occupied-predicate (parent i j)
+;;              (list 'occupied (itmp-encode-location parent i j)))
+;;            (frame-predicates (name parent i j)
+;;              (let ((loc (location-predicate name parent i j)))
+;;                (if (or goal (eq encoding :linear))
+;;                    (list loc)
+;;                    (list loc (occupied-predicate parent i j))))))
+;;     (append (loop for object in moveable-objects
+;;                for f = (scene-graph-find scene object)
+;;                when f
+;;                collect (parent-location object (scene-graph-parent-name scene object)))
+;;             (loop for (name parent i j) in (scene-state-pairs scene :resolution resolution)
+;;                nconc
+;;                  (frame-predicates name parent i j)))))
+
+
+
+
+;; (defun scene-locations (scene resolution &key
+;;                                            max-count
+;;                                            (round t)
+;;                                            (encode t))
+;;   (labels ((encode (list)
+;;              (loop for (name x y) in list
+;;                 for i = (if round (round x resolution) x)
+;;                 for j = (if round (round y resolution) y)
+;;                 collect
+;;                   (if encode
+;;                       (itmp-encode-location name i j)
+;;                       (list name i j))))
+;;            (subset (list count)
+;;              (subseq (sort list (lambda (a b)
+;;                                   (destructuring-bind (n-a x-a y-a) a
+;;                                     (destructuring-bind (n-b x-b y-b) b
+;;                                       (let ((r-a (sqrt (+ (* x-a x-a) (* y-a y-a))))
+;;                                             (r-b (sqrt (+ (* x-b x-b) (* y-b y-b)))))
+;;                                         (if (= r-a r-b)
+;;                                             (if (equal n-a n-a)
+;;                                                 (if (= x-a x-b)
+;;                                                     (if (= y-a y-b)
+;;                                                         (error "Equal locations")
+;;                                                         (< y-a y-b))
+;;                                                     (< x-a x-b))
+;;                                                 (cond-compare (n-a n-b #'gsymbol-compare)
+;;                                                               t
+;;                                                               nil
+;;                                                               nil))
+;;                                             (< r-a r-b)))))))
+;;                      0 count)))
+
+
+;;     (let* ((scene (scene-graph scene))
+;;            (stackable-frames (scene-collect-type scene "surface"))
+;;            (locations-list
+;;             (loop for frame in stackable-frames
+;;                for name = (robray::scene-frame-name frame)
+;;                append (loop for g in (robray::scene-frame-geometry frame)
+;;                          for shape = (robray::scene-geometry-shape g)
+;;                          for dimension = (robray::scene-box-dimension shape)
+;;                          for xrange = (collect-range (vec-x dimension) resolution)
+;;                          for yrange = (collect-range (vec-y dimension) resolution)
+;;                          when (robray::scene-geometry-collision g)
+;;                          append
+;;                            (progn
+;;                                         ;(print (list name dimension xrange yrange))
+;;                              (loop for x in xrange
+;;                                 append (loop for y in yrange
+;;                                           collect
+;;                                             (list name x y))))))))
+;;       (encode
+;;        (if max-count
+;;            (subset locations-list max-count)
+;;            locations-list)))))
+
+;; (defun scene-facts (init-scene goal-scene
+;;                     &key
+;;                       object-alist
+;;                       moveable-types
+;;                       max-locations
+;;                       (encoding :linear)
+;;                       (resolution *resolution*)
+;;                       (problem 'itmp)
+;;                       (domain 'itmp))
+;;   (let* ((init-scene (scene-graph init-scene))
+;;          (goal-scene (scene-graph goal-scene))
+;;          (moveable-frames (scene-collect-type init-scene "moveable"))
+;;          (moveable-objects (map 'list #'robray::scene-frame-name moveable-frames))
+;;          (stackable-frames (scene-collect-type init-scene "stackable"))
+;;          (stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
+;;          (extra-moveable-objects (loop for (type . objects) in object-alist
+;;                                     when (find type moveable-types)
+;;                                     append objects))
+;;          ;;(stackable-objects (map 'list #'robray::scene-frame-name stackable-frames))
+;;          (objects (loop for (type . objects) in object-alist
+;;                      append `(,@objects - ,type)))
+;;          (locations (scene-locations init-scene resolution
+;;                                      :max-count max-locations
+;;                                      :encode t
+;;                                      :round t)))
+;;     ;(print locations)
+;;     `(define (problem ,problem)
+;;          (:domain ,domain)
+;;        (:objects ,@moveable-objects - block
+;;                  ;,@stackable-objects
+;;                  ,@locations - location
+;;                  ,@objects)
+;;        (:init ,@(scene-state init-scene resolution
+;;                              :moveable-objects extra-moveable-objects
+;;                              :encoding encoding
+;;                              :goal nil))
+;;        (:goal (and ,@(scene-state goal-scene resolution
+;;                                   :moveable-objects extra-moveable-objects
+;;                                   :encoding encoding
+;;                                   :other-scene-graph init-scene
+;;                                   :goal t))))))
