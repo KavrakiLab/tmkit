@@ -1,4 +1,21 @@
-# python
+#########################
+### Domain Parameters ###
+#########################
+
+# Table grid resolution
+RESOLUTION=0.1
+
+# End-Effector Frame
+FRAME = "end_effector_grasp"
+
+# Object placement tolerance
+EPSILON = 1e-4
+
+
+
+########################
+### Imported Modules ###
+########################
 
 # Import our planning packages
 import aminopy as aa
@@ -13,16 +30,9 @@ from math import pi
 import CL as cl
 
 
-## Some domain parameters
-
-# Table grid resolution
-RESOLUTION=0.1
-
-# End-Effector Frame
-FRAME = "end_effector_grasp"
-
-# Object placement tolerance
-EPSILON = 1e-4
+##########################
+## Scene State Function ##
+##########################
 
 def scene_state_linear(scene, configuration):
     '''Map the scene graph `scene' to a task state expression'''
@@ -56,8 +66,10 @@ def scene_state_linear(scene, configuration):
 
     return conjunction
 
-## END def scene_state_linear
 
+############################
+## Scene Objects Function ##
+############################
 
 def scene_objects_linear(scene):
     '''Return the PDDL objects for `scene'.'''
@@ -99,23 +111,19 @@ def scene_objects_linear(scene):
                         j+=1
                     x +=  RESOLUTION
                     i+=1
-
-    #print surface
     return [moveable, locations]
-
-## END def scene_objects_linear(scene):
-
 
 ############################
 ### Operator Definitions ###
 ############################
 
-def motion_plan(op,frame, goal):
+
+def motion_plan(op, frame, goal):
     scene = op['final_scene']
-    ssg = aa.scene_chain(scene, "", frame)
-    mp = tm.op_motion( op, ssg, goal )
+    sub_scenegraph = aa.scene_chain(scene, "", frame)
+    mp = tm.op_motion( op, sub_scenegraph, goal )
     if False == mp: raise tm.PlanningFailure()
-    return mp
+    else: return mp
 
 def pick(op, obj):
     mp = motion_plan(op, FRAME, tm.op_tf_abs(op,obj))
@@ -161,7 +169,11 @@ def op_stack(scene, config, op):
     op_pick = pick(nop, obj)
     return stack( op_pick, obj, dst )
 
-## Register functions
+
+##########################
+### Register functions ###
+##########################
+
 tm.bind_scene_state(scene_state_linear)
 tm.bind_scene_objects(scene_objects_linear)
 tm.bind_refine_operator(op_transfer, "TRANSFER")
