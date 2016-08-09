@@ -4,6 +4,7 @@
 
 (defvar *scene-state-function*)
 (defvar *scene-objects-function*)
+(defvar *refine-operator-function*)
 
 
 

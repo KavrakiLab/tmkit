@@ -105,3 +105,12 @@ clause:
 (:objects  "block_a" "block_b" "block_c" - block
            "location_0" "location_1" "location_2" - location)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Refine Operator Function {#domain_script_fun_refine}
+----------------------
+
+* **Input:** `SCENE-GRAPH, CONFIGURATION, OPERATOR`
+* **Output:** `PLAN`
+
+The refine operator function computes the motion plan instantiations
+of task operators.

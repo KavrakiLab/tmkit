@@ -1,11 +1,33 @@
 # python
 
+# Import our planning packages
 import aminopy as aa
 import tmsmtpy as tm
-import CL
-import math
 
+import TMSMT
+
+# Import python math package
+from math import pi
+
+# The Common Lisp runtime is also available
+import CL as cl
+
+
+## Some domain parameters
+
+# Table grid resolution
 RESOLUTION=0.1
+
+# End-Effector Frame
+FRAME = "right_endpoint"
+
+# Object placement tolerance
+EPSILON = 1e-4
+
+# Nominal relative grasp pose
+GRASP = aa.tf2( aa.yangle(pi),
+                aa.vec3([0.00, 0.00, 0.075]))
+
 
 def scene_state_linear(scene, configuration):
     '''Map the scene graph `scene' to a task state expression'''
@@ -19,6 +41,8 @@ def scene_state_linear(scene, configuration):
         position = parent_name
 
         try:
+            # If parent frame is a placement surface, position is the
+            # appropriate grid cell on the surface.
             parent_frame = scene[parent_name]
             if aa.frame_isa(parent_frame, "surface"):
                 trans = aa.translation( aa.frame_fixed_tf(frame) )
@@ -39,7 +63,9 @@ def scene_state_linear(scene, configuration):
 
 ## END def scene_state_linear
 
+
 def scene_objects_linear(scene):
+    '''Return the PDDL objects for `scene'.'''
     obj = []
 
     def type_names(thing):
@@ -85,8 +111,134 @@ def scene_objects_linear(scene):
 ## END def scene_objects_linear(scene):
 
 
+def motion_plan(scene,config,goal):
+    ssg = aa.scene_chain(scene, "", FRAME)
+    mp = aa.motion_plan( ssg, config, goal )
+    if False == mp:
+        return False
+    else:
+        return tm.op_motion( mp )
+
+def pick(scene, config, obj) :
+    g_tf_o = aa.scene_tf_abs(scene,config,obj)
+    g_tf_e = aa.mul(g_tf_o, GRASP)
+    # print("PY Pick")
+    # cl.PRINT(GRASP)
+    # cl.PRINT(g_tf_o)
+    # cl.PRINT(g_tf_e)
+
+    return motion_plan(scene, config, g_tf_e)
+
+
+def place_height(scene,name):
+    g = scene[name]['collision']
+    s = g[0]['shape']
+    if aa.shape_is_box(s):
+        return s['dimension'][2] / 2
+
+def place(scene, config, obj, dst, i, j):
+    x = i*RESOLUTION
+    y = j*RESOLUTION
+    z = place_height(scene,obj) + place_height(scene,dst) + EPSILON
+    d_tf_o = aa.tf2( 1, [x,y,z] )
+    g_tf_d = aa.scene_tf_abs(scene,config,dst)
+    o_tf_e = aa.scene_tf_rel(scene,config,obj,FRAME)
+
+    g_tf_e = aa.mul( g_tf_d, d_tf_o, o_tf_e )
+
+    return motion_plan(scene,config,g_tf_e)
+
+
+
+def op_transfer(scene, config, op):
+    obj = op[1]
+    dst_frame = op[2]
+    dst_i = op[3]
+    dst_j = op[4]
+
+    op_pick = pick(scene,config,obj)
+    if False == op_pick:
+        print "Pick failed"
+        return False
+
+    op_reparent0 = tm.op_reparent( op_pick['final_scene'],
+                                   op_pick['final_config'],
+                                   FRAME, obj )
+
+    op_place = place( op_reparent0['final_scene'],
+                      op_reparent0['final_config'],
+                      obj, dst_frame, dst_i, dst_j )
+
+    if False == op_place:
+        print "Place failed"
+        return False
+
+    op_reparent1 = tm.op_reparent( op_place['final_scene'],
+                                   op_place['final_config'],
+                                   dst_frame, obj )
+
+    return [op_pick, op_reparent0, op_place, op_reparent1]
+
+def stack( scene, config, obj, dst ):
+    g_tf_d = aa.scene_tf_abs(scene,config,dst)
+    d_tf_o = aa.tf2(1, [0,0, place_height(scene,obj) + place_height(scene,dst) + EPSILON])
+    o_tf_e = aa.scene_tf_rel(scene,config,obj,FRAME)
+    g_tf_e = aa.mul( g_tf_d, d_tf_o, o_tf_e )
+    return motion_plan(scene, config, g_tf_e)
+
+
+def op_stack( scene, config, op):
+    print op
+    obj = op[1]
+    dst = op[2]
+
+    op_pick = pick(scene,config,obj)
+    if False == op_pick:
+        print "Pick failed"
+        return False
+
+    op_reparent0 = tm.op_reparent( op_pick['final_scene'],
+                                   op_pick['final_config'],
+                                   FRAME, obj )
+
+    op_place = stack( op_reparent0['final_scene'],
+                      op_reparent0['final_config'],
+                      obj, dst )
+
+    if False == op_place:
+        print "Place failed"
+        return False
+
+    op_reparent1 = tm.op_reparent( op_place['final_scene'],
+                                   op_place['final_config'],
+                                   dst, obj )
+
+    return [op_pick, op_reparent0, op_place, op_reparent1]
+
+
+def refine_operator_linear(scene,config,op):
+    print "\n\n** START REFINE **"
+    cl.PRINT(op)
+
+    op_name = op[0]
+
+    result = 0
+    if op_name == "TRANSFER":
+        print "transfer"
+        result = op_transfer(scene,config,op)
+    elif op_name == "STACK":
+        print "stack"
+        result = op_stack(scene,config,op)
+    else:
+        print "Unknown operator"
+
+    print "** END REFINE **\n\n"
+    return result
+
 ## Register functions
 tm.bind_scene_state(scene_state_linear)
 tm.bind_scene_objects(scene_objects_linear)
+tm.bind_refine_operator(refine_operator_linear)
 
 0
+False

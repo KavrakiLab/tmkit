@@ -128,11 +128,24 @@ EOF
     shift
 done
 
+
+
+if [ -z "$TMSMT_PYTHON_SHELL" ]; then
+    TMSMT_LISP="sbcl --non-interactive"
+else
+    TMSMT_LISP="sbcl"
+fi
+
+
+
 if [ -n "$TMSMT_VERBOSE" ]; then
    env | grep "^TMSMT_"
 fi
 
 
-sbcl --non-interactive --eval '(require :tmsmt)' --eval '(tmsmt::tmp-command)'
+
+$TMSMT_LISP  --eval '(require :tmsmt)' --eval '(tmsmt::tmp-command)'
+
+
 
 # exec tmsmt.core --non-interactive --eval '(tmsmt::tmp-command)'

@@ -12,6 +12,11 @@
    ;; binders
    |bind_scene_state|
    |bind_scene_objects|
+   |bind_refine_operator|
+
+   ;; Operators
+   |op_motion|
+   |op_reparent|
 
    ;; helpers
    |collect_frame_type|

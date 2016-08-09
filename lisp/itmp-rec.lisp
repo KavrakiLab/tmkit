@@ -125,6 +125,7 @@
     (act-push-tf scene-graph frame start obj *tf-push-rel* dst)))
 
 
+
 (defun itmp-action (scene-graph sexp
                              &key
                                start
@@ -135,34 +136,60 @@
                                )
   (declare (type number resolution)
            (type robray::scene-graph scene-graph))
-  ;(print sexp)
-  (destructuring-bind (action &rest args)
-      sexp
-    (declare (ignore args))
-    (multiple-value-bind (plan what frame)
-        (cond
-          ((rope= "TRANSFER" action)
-           (itmp-transfer-action scene-graph sexp
-                                 :start start
-                                 :encoding encoding
-                                 :resolution resolution
-                                 :z-epsilon z-epsilon
-                                 :frame frame))
-          ((rope= "STACK" action)
-           (itmp-stack-action scene-graph sexp
-                              :start start
-                              :z-epsilon z-epsilon
-                              :frame frame))
-          ((rope= "PUSH-TRAY" action)
-           (itmp-push-action scene-graph sexp
-                             :start start
-                             :z-epsilon z-epsilon
-                             :frame frame))
-          (t (error "Urecognized action: ~A" sexp)))
-      (values (when plan
-                (tm-plan (tm-op-action sexp scene-graph start)
-                         plan))
-                what frame))))
+  (let ((plan (funcall *refine-operator-function*
+                       scene-graph start
+                       sexp)))
+    (if (or (null plan)
+            (and (numberp plan)
+                 (zerop plan)))
+        ;; refinement failed
+        nil
+        ;; plan worked
+        (progn
+          (format t "~&plan found")
+          (finish-output)
+          (tm-plan-list (listify plan))))))
+
+
+
+;; (defun itmp-action (scene-graph sexp
+;;                              &key
+;;                                start
+;;                                encoding
+;;                                resolution
+;;                                (z-epsilon 1d-4)
+;;                                frame
+;;                                )
+;;   (declare (type number resolution)
+;;            (type robray::scene-graph scene-graph))
+;;   ;(print sexp)
+;;   (destructuring-bind (action &rest args)
+;;       sexp
+;;     (declare (ignore args))
+;;     (multiple-value-bind (plan what frame)
+;;         (cond
+;;           ((rope= "TRANSFER" action)
+;;            (itmp-transfer-action scene-graph sexp
+;;                                  :start start
+;;                                  :encoding encoding
+;;                                  :resolution resolution
+;;                                  :z-epsilon z-epsilon
+;;                                  :frame frame))
+;;           ((rope= "STACK" action)
+;;            (itmp-stack-action scene-graph sexp
+;;                               :start start
+;;                               :z-epsilon z-epsilon
+;;                               :frame frame))
+;;           ((rope= "PUSH-TRAY" action)
+;;            (itmp-push-action scene-graph sexp
+;;                              :start start
+;;                              :z-epsilon z-epsilon
+;;                              :frame frame))
+;;           (t (error "Urecognized action: ~A" sexp)))
+;;       (values (when plan
+;;                 (tm-plan (tm-op-action sexp scene-graph start)
+;;                          plan))
+;;                 what frame))))
 
 
 
