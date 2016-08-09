@@ -20,12 +20,27 @@
 (defun |bind_refine_operator| (x)
   (setq tmsmt::*refine-operator-function* x))
 
-(defun |op_motion| (motion-plan)
-  (tmsmt::tm-op-motion motion-plan))
+;;;;;;;;;;;;;;;;;
+;;; Operators ;;;
+;;;;;;;;;;;;;;;;;
 
-(defun |op_reparent| (scene config parent frame)
-  (tmsmt::tm-op-reparent scene parent frame
-                         :configuration-map config))
+(defun |op_nop| (scene config)
+  (tmsmt::tm-op-nop scene config))
+
+(defun |op_motion| (previous-op sub-scene-graph goal)
+  (let ((mp (motion-plan sub-scene-graph
+                         (tmsmt::tm-op-final-config previous-op)
+                         :workspace-goal goal
+                         :simplify t
+                         :timeout 1d0)))
+    (if mp
+        (tmsmt::tm-op-motion mp)
+        (clpython:py-bool nil))))
+
+(defun |op_reparent| (previous-op parent frame)
+  (tmsmt::tm-op-reparent (tmsmt::tm-op-final-scene-graph previous-op)
+                         parent frame
+                         :configuration-map (tmsmt::tm-op-final-config previous-op)))
 
 
 (aminopy::def-subs-accessors tmsmt::tm-op

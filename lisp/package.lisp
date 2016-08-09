@@ -15,6 +15,7 @@
    |bind_refine_operator|
 
    ;; Operators
+   |op_nop|
    |op_motion|
    |op_reparent|
 

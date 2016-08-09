@@ -111,23 +111,18 @@ def scene_objects_linear(scene):
 ## END def scene_objects_linear(scene):
 
 
-def motion_plan(scene,config,goal):
+def motion_plan(op,goal):
+    scene = op['final_scene']
     ssg = aa.scene_chain(scene, "", FRAME)
-    mp = aa.motion_plan( ssg, config, goal )
-    if False == mp:
-        return False
-    else:
-        return tm.op_motion( mp )
+    return tm.op_motion( op, ssg, goal )
 
-def pick(scene, config, obj) :
+def pick(op, obj):
+    scene = op['final_scene']
+    config = op['final_config']
     g_tf_o = aa.scene_tf_abs(scene,config,obj)
     g_tf_e = aa.mul(g_tf_o, GRASP)
-    # print("PY Pick")
-    # cl.PRINT(GRASP)
-    # cl.PRINT(g_tf_o)
-    # cl.PRINT(g_tf_e)
 
-    return motion_plan(scene, config, g_tf_e)
+    return motion_plan(op, g_tf_e)
 
 
 def place_height(scene,name):
@@ -136,7 +131,9 @@ def place_height(scene,name):
     if aa.shape_is_box(s):
         return s['dimension'][2] / 2
 
-def place(scene, config, obj, dst, i, j):
+def place(op, obj, dst, i, j):
+    scene = op['final_scene']
+    config = op['final_config']
     x = i*RESOLUTION
     y = j*RESOLUTION
     z = place_height(scene,obj) + place_height(scene,dst) + EPSILON
@@ -146,7 +143,7 @@ def place(scene, config, obj, dst, i, j):
 
     g_tf_e = aa.mul( g_tf_d, d_tf_o, o_tf_e )
 
-    return motion_plan(scene,config,g_tf_e)
+    return motion_plan(op, g_tf_e)
 
 
 
@@ -156,35 +153,33 @@ def op_transfer(scene, config, op):
     dst_i = op[3]
     dst_j = op[4]
 
-    op_pick = pick(scene,config,obj)
+    nop = tm.op_nop(scene,config)
+
+    op_pick = pick(nop,obj)
     if False == op_pick:
         print "Pick failed"
         return False
 
-    op_reparent0 = tm.op_reparent( op_pick['final_scene'],
-                                   op_pick['final_config'],
-                                   FRAME, obj )
+    op_reparent0 = tm.op_reparent( op_pick, FRAME, obj )
 
-    op_place = place( op_reparent0['final_scene'],
-                      op_reparent0['final_config'],
-                      obj, dst_frame, dst_i, dst_j )
+    op_place = place( op_reparent0, obj, dst_frame, dst_i, dst_j )
 
     if False == op_place:
         print "Place failed"
         return False
 
-    op_reparent1 = tm.op_reparent( op_place['final_scene'],
-                                   op_place['final_config'],
-                                   dst_frame, obj )
+    op_reparent1 = tm.op_reparent( op_place, dst_frame, obj )
 
     return [op_pick, op_reparent0, op_place, op_reparent1]
 
-def stack( scene, config, obj, dst ):
+def stack( op, obj, dst ):
+    scene = op['final_scene']
+    config = op['final_config']
     g_tf_d = aa.scene_tf_abs(scene,config,dst)
     d_tf_o = aa.tf2(1, [0,0, place_height(scene,obj) + place_height(scene,dst) + EPSILON])
     o_tf_e = aa.scene_tf_rel(scene,config,obj,FRAME)
     g_tf_e = aa.mul( g_tf_d, d_tf_o, o_tf_e )
-    return motion_plan(scene, config, g_tf_e)
+    return motion_plan(op, g_tf_e)
 
 
 def op_stack( scene, config, op):
@@ -192,26 +187,21 @@ def op_stack( scene, config, op):
     obj = op[1]
     dst = op[2]
 
-    op_pick = pick(scene,config,obj)
+    nop = tm.op_nop(scene,config)
+    op_pick = pick(nop, obj)
     if False == op_pick:
         print "Pick failed"
         return False
 
-    op_reparent0 = tm.op_reparent( op_pick['final_scene'],
-                                   op_pick['final_config'],
-                                   FRAME, obj )
+    op_reparent0 = tm.op_reparent( op_pick, FRAME, obj )
 
-    op_place = stack( op_reparent0['final_scene'],
-                      op_reparent0['final_config'],
-                      obj, dst )
+    op_place = stack( op_reparent0, obj, dst )
 
     if False == op_place:
         print "Place failed"
         return False
 
-    op_reparent1 = tm.op_reparent( op_place['final_scene'],
-                                   op_place['final_config'],
-                                   dst, obj )
+    op_reparent1 = tm.op_reparent( op_place, dst, obj )
 
     return [op_pick, op_reparent0, op_place, op_reparent1]
 
