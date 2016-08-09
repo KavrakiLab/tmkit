@@ -17,12 +17,16 @@
 (defun |mangle| (&rest args)
   (tmsmt::smt-mangle-list args))
 
-(defun |bind_refine_operator| (x)
-  (setq tmsmt::*refine-operator-function* x))
+(defun |bind_refine_operator| (x operator)
+  (setf (gethash operator tmsmt::*refine-functions*)
+        x))
 
 ;;;;;;;;;;;;;;;;;
 ;;; Operators ;;;
 ;;;;;;;;;;;;;;;;;
+
+(defun |plan| (&rest ops)
+  (tmsmt::tm-plan ops))
 
 (defun |op_nop| (scene config)
   (tmsmt::tm-op-nop scene config))
@@ -34,17 +38,14 @@
                          :simplify t
                          :timeout 1d0)))
     (if mp
-        (tmsmt::tm-op-motion mp)
+        (|plan| previous-op (tmsmt::tm-op-motion mp))
         (clpython:py-bool nil))))
 
 (defun |op_reparent| (previous-op parent frame)
-  (tmsmt::tm-op-reparent (tmsmt::tm-op-final-scene-graph previous-op)
-                         parent frame
-                         :configuration-map (tmsmt::tm-op-final-config previous-op)))
-
-
-(defun |plan| (&rest ops)
-  (tmsmt::tm-plan ops))
+  (|plan| previous-op
+          (tmsmt::tm-op-reparent (tmsmt::tm-op-final-scene-graph previous-op)
+                                 parent frame
+                                 :configuration-map (tmsmt::tm-op-final-config previous-op))))
 
 (aminopy::def-subs-accessors tmsmt::tm-op
   ("initial_config" tmsmt::tm-op-initial-config)

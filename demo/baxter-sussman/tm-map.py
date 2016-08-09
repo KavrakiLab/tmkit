@@ -110,7 +110,6 @@ def scene_objects_linear(scene):
 ### Operator Definitions ###
 ############################
 
-
 def motion_plan(op,frame, goal):
     scene = op['final_scene']
     ssg = aa.scene_chain(scene, "", frame)
@@ -120,11 +119,11 @@ def motion_plan(op,frame, goal):
 
 def pick(op, obj):
     mp = motion_plan(op, FRAME, tm.op_tf_abs(op,obj))
-    return tm.plan(mp, tm.op_reparent(mp, FRAME, obj))
+    return tm.op_reparent(mp, FRAME, obj)
 
 def place_tf(op, obj, dst_frame, g_tf_o ):
     mp =  motion_plan(op, obj, g_tf_o)
-    return tm.plan(mp, tm.op_reparent(mp, dst_frame, obj))
+    return tm.op_reparent(mp, dst_frame, obj)
 
 def place_height(scene,name):
     g = scene[name]['collision']
@@ -142,14 +141,7 @@ def place(op, obj, dst, i, j):
     g_tf_o = aa.mul(g_tf_d, d_tf_o );
     return place_tf(op, obj, dst, g_tf_o)
 
-def op_transfer(scene, config, op):
-    (act, obj, dst_frame, dst_i, dst_j) = op
-    nop = tm.op_nop(scene,config)
-    op_pick = pick(nop,obj)
-    op_place = place( op_pick, obj, dst_frame, dst_i, dst_j )
-    return tm.plan(op_pick, op_place)
-
-def stack( op, obj, dst ):
+def stack(op, obj, dst ):
     scene = op['final_scene']
     config = op['final_config']
     g_tf_d = tm.op_tf_abs(op,dst)
@@ -157,26 +149,20 @@ def stack( op, obj, dst ):
     g_tf_o = aa.mul(g_tf_d, d_tf_o)
     return place_tf(op, obj, dst, g_tf_o)
 
+def op_transfer(scene, config, op):
+    (act, obj, dst_frame, dst_i, dst_j) = op
+    nop = tm.op_nop(scene,config)
+    op_pick = pick(nop,obj)
+    return place( op_pick, obj, dst_frame, dst_i, dst_j )
 
-def op_stack( scene, config, op):
+def op_stack(scene, config, op):
     (act,obj,dst) = op
     nop = tm.op_nop(scene,config)
     op_pick = pick(nop, obj)
-    op_place = stack( op_pick, obj, dst )
-    return tm.plan(op_pick, op_place)
-
-
-def refine_operator_linear(scene,config,op):
-    print "\n\nREFINE\n\n"
-    op_name = op[0]
-    if op_name == "TRANSFER":
-        return op_transfer(scene,config,op)
-    elif op_name == "STACK":
-        return op_stack(scene,config,op)
-    else:
-        print "Unknown operator"
+    return stack( op_pick, obj, dst )
 
 ## Register functions
 tm.bind_scene_state(scene_state_linear)
 tm.bind_scene_objects(scene_objects_linear)
-tm.bind_refine_operator(refine_operator_linear)
+tm.bind_refine_operator(op_transfer, "TRANSFER")
+tm.bind_refine_operator(op_stack, "STACK")

@@ -67,6 +67,8 @@
              (etypecase ops
                (tm-plan
                 (rec (tm-plan-ops ops)))
+               (tm-op-nop
+                nil)
                (list
                 (loop for op in ops
                    nconc (rec op)))

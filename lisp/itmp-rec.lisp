@@ -3,6 +3,7 @@
 
 ;(defvar *itmp-cache*)
 
+(defvar *refine-functions* (make-hash-table :test #'equal))
 
 (defun scene-collect-type (scene type)
   (let ((frames (make-tree-set (lambda (a b)
@@ -40,7 +41,8 @@
                              &key
                                start)
   (handler-case
-      (let ((plan (funcall *refine-operator-function*
+      (let* ((function (gethash (car sexp) *refine-functions*))
+             (plan (funcall function
                            scene-graph start
                            sexp)))
         (tm-plan-list (listify plan)))
