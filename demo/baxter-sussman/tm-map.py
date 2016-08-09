@@ -19,15 +19,10 @@ import CL as cl
 RESOLUTION=0.1
 
 # End-Effector Frame
-FRAME = "right_endpoint"
+FRAME = "end_effector_grasp"
 
 # Object placement tolerance
 EPSILON = 1e-4
-
-# Nominal relative grasp pose
-GRASP = aa.tf2( aa.yangle(pi),
-                aa.vec3([0.00, 0.00, 0.075]))
-
 
 def scene_state_linear(scene, configuration):
     '''Map the scene graph `scene' to a task state expression'''
@@ -124,9 +119,7 @@ def motion_plan(op,frame, goal):
     return mp
 
 def pick(op, obj):
-    g_tf_o = tm.op_tf_abs(op,obj)
-    g_tf_e = aa.mul(g_tf_o, GRASP)
-    mp = motion_plan(op, FRAME, g_tf_e)
+    mp = motion_plan(op, FRAME, tm.op_tf_abs(op,obj))
     return tm.plan(mp, tm.op_reparent(mp, FRAME, obj))
 
 def place_tf(op, obj, dst_frame, g_tf_o ):

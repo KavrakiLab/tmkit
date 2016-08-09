@@ -54,3 +54,12 @@ class tray {
 def table_stack (block_size + table_size)/2 + .1*mm;
 def block_stack block_size + .1*mm;
 def tray_stack (tray_size + table_size)/2 + .1*mm;
+
+
+
+/** Grasp **/
+frame end_effector_grasp {
+    parent right_endpoint;
+    quaternion [0,1,0,0];
+    translation [0,0,.075];
+}
