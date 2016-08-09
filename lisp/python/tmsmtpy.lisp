@@ -57,3 +57,6 @@
 
 (defun |op_tf_rel| (op parent child)
   (tmsmt::tm-op-tf-rel op parent child))
+
+(defun |PlanningFailure| (&optional value)
+  (make-instance 'tmsmt::planning-failure :value value))

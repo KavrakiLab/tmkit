@@ -39,15 +39,12 @@
 (defun itmp-action (scene-graph sexp
                              &key
                                start)
-  (let ((plan (funcall *refine-operator-function*
-                       scene-graph start
-                       sexp)))
-    (unless (or (null plan)
-            (and (numberp plan)
-                 (zerop plan)))
-      ;;(format t "~&plan found")
-      ;;(finish-output)
-      (tm-plan-list (listify plan)))))
+  (handler-case
+      (let ((plan (funcall *refine-operator-function*
+                           scene-graph start
+                           sexp)))
+        (tm-plan-list (listify plan)))
+    (planning-failure nil)))
 
 
 (defun itmp-abort ()

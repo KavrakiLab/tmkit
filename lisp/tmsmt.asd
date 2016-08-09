@@ -34,5 +34,5 @@
                ;(:file "planvis" :depends-on ("util"))
 
                ;;; Python Interface
-               (:file "python/tmsmtpy" :depends-on ("package" "util"))
+               (:file "python/tmsmtpy" :depends-on ("package" "util" "tm-plan"))
                ))

@@ -115,32 +115,31 @@ def scene_objects_linear(scene):
 ### Operator Definitions ###
 ############################
 
+
 def motion_plan(op,goal):
     scene = op['final_scene']
     ssg = aa.scene_chain(scene, "", FRAME)
-    return tm.op_motion( op, ssg, goal )
+    mp = tm.op_motion( op, ssg, goal )
+    if False == mp: raise tm.PlanningFailure()
+    return mp
 
 def pick(op, obj):
     g_tf_o = tm.op_tf_abs(op,obj)
     g_tf_e = aa.mul(g_tf_o, GRASP)
     mp = motion_plan(op, g_tf_e)
-    if False == mp: return False
-
     return tm.plan(mp, tm.op_reparent(mp, FRAME, obj))
+
+def place_tf(op, obj, dst_frame, g_tf_o ):
+    o_tf_e = tm.op_tf_rel(op,obj,FRAME)
+    g_tf_e = aa.mul( g_tf_o, o_tf_e )
+    mp =  motion_plan(op, g_tf_e)
+    return tm.plan(mp, tm.op_reparent(mp, dst_frame, obj))
 
 def place_height(scene,name):
     g = scene[name]['collision']
     s = g[0]['shape']
     if aa.shape_is_box(s):
         return s['dimension'][2] / 2
-
-def place_tf(op, obj, dst_frame, g_tf_o ):
-    o_tf_e = tm.op_tf_rel(op,obj,FRAME)
-    g_tf_e = aa.mul( g_tf_o, o_tf_e )
-    mp =  motion_plan(op, g_tf_e)
-    if False == mp: return False
-
-    return tm.plan(mp, tm.op_reparent(mp, dst_frame, obj))
 
 def place(op, obj, dst, i, j):
     scene = op['final_scene']
@@ -154,14 +153,9 @@ def place(op, obj, dst, i, j):
 
 def op_transfer(scene, config, op):
     (act, obj, dst_frame, dst_i, dst_j) = op
-
     nop = tm.op_nop(scene,config)
     op_pick = pick(nop,obj)
-    if False == op_pick: return False
-
     op_place = place( op_pick, obj, dst_frame, dst_i, dst_j )
-    if False == op_place: return False
-
     return tm.plan(op_pick, op_place)
 
 def stack( op, obj, dst ):
@@ -175,32 +169,23 @@ def stack( op, obj, dst ):
 
 def op_stack( scene, config, op):
     (act,obj,dst) = op
-
     nop = tm.op_nop(scene,config)
     op_pick = pick(nop, obj)
-    if False == op_pick: return False
-
     op_place = stack( op_pick, obj, dst )
-    if False == op_place: return False
-
     return tm.plan(op_pick, op_place)
 
 
 def refine_operator_linear(scene,config,op):
+    print "\n\nREFINE\n\n"
     op_name = op[0]
-    result = 0
     if op_name == "TRANSFER":
-        result = op_transfer(scene,config,op)
+        return op_transfer(scene,config,op)
     elif op_name == "STACK":
-        result = op_stack(scene,config,op)
+        return op_stack(scene,config,op)
     else:
         print "Unknown operator"
-
-    return result
 
 ## Register functions
 tm.bind_scene_state(scene_state_linear)
 tm.bind_scene_objects(scene_objects_linear)
 tm.bind_refine_operator(refine_operator_linear)
-
-True

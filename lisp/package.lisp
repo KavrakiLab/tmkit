@@ -22,6 +22,8 @@
    |op_tf_rel|
    |plan|
 
+   |PlanningFailure|
+
    ;; helpers
    |collect_frame_type|
    |mangle|
