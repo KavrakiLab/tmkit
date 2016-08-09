@@ -111,19 +111,22 @@ def scene_objects_linear(scene):
 ## END def scene_objects_linear(scene):
 
 
+############################
+### Operator Definitions ###
+############################
+
 def motion_plan(op,goal):
     scene = op['final_scene']
     ssg = aa.scene_chain(scene, "", FRAME)
     return tm.op_motion( op, ssg, goal )
 
 def pick(op, obj):
-    scene = op['final_scene']
-    config = op['final_config']
-    g_tf_o = aa.scene_tf_abs(scene,config,obj)
+    g_tf_o = tm.op_tf_abs(op,obj)
     g_tf_e = aa.mul(g_tf_o, GRASP)
+    mp = motion_plan(op, g_tf_e)
+    if False == mp: return False
 
-    return motion_plan(op, g_tf_e)
-
+    return tm.plan(mp, tm.op_reparent(mp, FRAME, obj))
 
 def place_height(scene,name):
     g = scene[name]['collision']
@@ -131,98 +134,68 @@ def place_height(scene,name):
     if aa.shape_is_box(s):
         return s['dimension'][2] / 2
 
+def place_tf(op, obj, dst_frame, g_tf_o ):
+    o_tf_e = tm.op_tf_rel(op,obj,FRAME)
+    g_tf_e = aa.mul( g_tf_o, o_tf_e )
+    mp =  motion_plan(op, g_tf_e)
+    if False == mp: return False
+
+    return tm.plan(mp, tm.op_reparent(mp, dst_frame, obj))
+
 def place(op, obj, dst, i, j):
     scene = op['final_scene']
-    config = op['final_config']
     x = i*RESOLUTION
     y = j*RESOLUTION
     z = place_height(scene,obj) + place_height(scene,dst) + EPSILON
     d_tf_o = aa.tf2( 1, [x,y,z] )
-    g_tf_d = aa.scene_tf_abs(scene,config,dst)
-    o_tf_e = aa.scene_tf_rel(scene,config,obj,FRAME)
-
-    g_tf_e = aa.mul( g_tf_d, d_tf_o, o_tf_e )
-
-    return motion_plan(op, g_tf_e)
-
-
+    g_tf_d = tm.op_tf_abs(op,dst)
+    g_tf_o = aa.mul(g_tf_d, d_tf_o );
+    return place_tf(op, obj, dst, g_tf_o)
 
 def op_transfer(scene, config, op):
-    obj = op[1]
-    dst_frame = op[2]
-    dst_i = op[3]
-    dst_j = op[4]
+    (act, obj, dst_frame, dst_i, dst_j) = op
 
     nop = tm.op_nop(scene,config)
-
     op_pick = pick(nop,obj)
-    if False == op_pick:
-        print "Pick failed"
-        return False
+    if False == op_pick: return False
 
-    op_reparent0 = tm.op_reparent( op_pick, FRAME, obj )
+    op_place = place( op_pick, obj, dst_frame, dst_i, dst_j )
+    if False == op_place: return False
 
-    op_place = place( op_reparent0, obj, dst_frame, dst_i, dst_j )
-
-    if False == op_place:
-        print "Place failed"
-        return False
-
-    op_reparent1 = tm.op_reparent( op_place, dst_frame, obj )
-
-    return [op_pick, op_reparent0, op_place, op_reparent1]
+    return tm.plan(op_pick, op_place)
 
 def stack( op, obj, dst ):
     scene = op['final_scene']
     config = op['final_config']
-    g_tf_d = aa.scene_tf_abs(scene,config,dst)
+    g_tf_d = tm.op_tf_abs(op,dst)
     d_tf_o = aa.tf2(1, [0,0, place_height(scene,obj) + place_height(scene,dst) + EPSILON])
-    o_tf_e = aa.scene_tf_rel(scene,config,obj,FRAME)
-    g_tf_e = aa.mul( g_tf_d, d_tf_o, o_tf_e )
-    return motion_plan(op, g_tf_e)
+    g_tf_o = aa.mul(g_tf_d, d_tf_o)
+    return place_tf(op, obj, dst, g_tf_o)
 
 
 def op_stack( scene, config, op):
-    print op
-    obj = op[1]
-    dst = op[2]
+    (act,obj,dst) = op
 
     nop = tm.op_nop(scene,config)
     op_pick = pick(nop, obj)
-    if False == op_pick:
-        print "Pick failed"
-        return False
+    if False == op_pick: return False
 
-    op_reparent0 = tm.op_reparent( op_pick, FRAME, obj )
+    op_place = stack( op_pick, obj, dst )
+    if False == op_place: return False
 
-    op_place = stack( op_reparent0, obj, dst )
-
-    if False == op_place:
-        print "Place failed"
-        return False
-
-    op_reparent1 = tm.op_reparent( op_place, dst, obj )
-
-    return [op_pick, op_reparent0, op_place, op_reparent1]
+    return tm.plan(op_pick, op_place)
 
 
 def refine_operator_linear(scene,config,op):
-    print "\n\n** START REFINE **"
-    cl.PRINT(op)
-
     op_name = op[0]
-
     result = 0
     if op_name == "TRANSFER":
-        print "transfer"
         result = op_transfer(scene,config,op)
     elif op_name == "STACK":
-        print "stack"
         result = op_stack(scene,config,op)
     else:
         print "Unknown operator"
 
-    print "** END REFINE **\n\n"
     return result
 
 ## Register functions
@@ -230,5 +203,4 @@ tm.bind_scene_state(scene_state_linear)
 tm.bind_scene_objects(scene_objects_linear)
 tm.bind_refine_operator(refine_operator_linear)
 
-0
-False
+True

@@ -18,6 +18,9 @@
    |op_nop|
    |op_motion|
    |op_reparent|
+   |op_tf_abs|
+   |op_tf_rel|
+   |plan|
 
    ;; helpers
    |collect_frame_type|

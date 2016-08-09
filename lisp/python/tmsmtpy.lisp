@@ -43,8 +43,17 @@
                          :configuration-map (tmsmt::tm-op-final-config previous-op)))
 
 
+(defun |plan| (&rest ops)
+  (tmsmt::tm-plan ops))
+
 (aminopy::def-subs-accessors tmsmt::tm-op
   ("initial_config" tmsmt::tm-op-initial-config)
   ("initial_scene" tmsmt::tm-op-initial-scene-graph)
   ("final_config" tmsmt::tm-op-final-config)
   ("final_scene" tmsmt::tm-op-final-scene-graph))
+
+(defun |op_tf_abs| (op frame)
+  (tmsmt::tm-op-tf-abs op frame))
+
+(defun |op_tf_rel| (op parent child)
+  (tmsmt::tm-op-tf-rel op parent child))

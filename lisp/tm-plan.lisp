@@ -58,20 +58,26 @@
   ops)
 
 (defun tm-plan-list (ops)
-  (declare (type list ops))
-  (let* ((ops (loop for op in ops ; flatten subplans
-                 when op
-                 nconc (if (tm-plan-p op)
-                           (tm-plan-ops op)
-                           (list op))))
-         (first (first ops))
-         (last (car (last ops))))
-    (declare (type tm-op first last))
-    (make-tm-plan :ops ops
-                  :initial-scene-graph (tm-op-initial-scene-graph first)
-                  :initial-config (tm-op-initial-config first)
-                  :final-scene-graph (tm-op-final-scene-graph last)
-                  :final-config (tm-op-final-config last))))
+  (labels ((rec (ops)
+             (etypecase ops
+               (tm-plan
+                (rec (tm-plan-ops ops)))
+               (list
+                (loop for op in ops
+                   nconc (rec op)))
+               (vector
+                (loop for op across ops
+                   nconc (rec op)))
+               (tm-op (list ops)))))
+    (let* ((ops (rec ops))
+           (first (first ops))
+           (last (car (last ops))))
+      (declare (type tm-op first last))
+      (make-tm-plan :ops ops
+                    :initial-scene-graph (tm-op-initial-scene-graph first)
+                    :initial-config (tm-op-initial-config first)
+                    :final-scene-graph (tm-op-final-scene-graph last)
+                    :final-config (tm-op-final-config last)))))
 
 (defun tm-plan (&rest ops)
   (tm-plan-list ops))
@@ -114,3 +120,14 @@
 
 (defmethod object-rope ((object tm-plan))
   (rope (tm-plan-ops object)))
+
+
+(defun tm-op-tf-abs (op frame)
+  (robray::scene-graph-tf-absolute (tm-op-final-scene-graph op)
+                                   frame
+                                   :configuration-map (tm-op-final-config op)))
+
+(defun tm-op-tf-rel (op parent child)
+  (robray::scene-graph-tf-relative (tm-op-final-scene-graph op)
+                                    parent child
+                                    :configuration-map (tm-op-final-config op)))
