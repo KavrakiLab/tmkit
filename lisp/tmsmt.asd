@@ -26,8 +26,8 @@
                (:file "placement-graph" :depends-on ("pddl"))
                (:file "motion-plan" :depends-on ("util"))
                ;(:file "moveit" :depends-on ("ros/ros-scene" "ros/ros-container" "motion-plan"))
-               (:file "m-actions" :depends-on ("util" "motion-plan"))
-               (:file "itmp-rec" :depends-on ("util" "m-actions"))
+               ;(:file "m-actions" :depends-on ("util" "motion-plan"))
+               (:file "itmp-rec" :depends-on ("util"))
                (:file "driver" :depends-on ("itmp-rec"))
 
                (:file "foreign-tmplan" :depends-on ("tm-plan"))

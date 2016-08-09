@@ -26,12 +26,9 @@
                      scripts
                      verbose
                      (max-steps 3)
-                     (resolution .15)
                      ;; FIXME:
                      output
                      write-facts
-                     (encoding :linear)
-                     (frame "right_endpoint")
                      (start (robray::alist-configuration-map `(("right_s0" . ,(/ pi 5)))))
                      )
 
@@ -46,8 +43,6 @@
     (error "TMSMT: No goal scene specified."))
   (unless task-domain
     (error "TMSMT: No task domain specified."))
-  (unless frame
-    (error "TMSMT: No frame specified."))
   ;; gen scenes
   (let ((start-scene-graph (robray::load-scene-files start-scene))
         (goal-scene-graph (robray::load-scene-files goal-scene))
@@ -62,10 +57,7 @@
     (let ((plan (itmp-rec start-scene-graph goal-scene-graph
                           task-domain
                           :q-all-start start
-                          :frame frame
-                          :encoding encoding
-                          :max-steps max-steps
-                          :resolution resolution)))
+                          :max-steps max-steps)))
       ;; Maybe display scene
       (when (and plan gui)
         (robray::win-display-motion-plan-sequence (tm-plan-motion-plans plan)))
@@ -95,9 +87,6 @@
          (max-steps (if-let ((s (uiop/os:getenv "TMSMT_MAX_STEPS")))
                       (parse-integer s)
                       5))
-         (resolution (if-let ((s (uiop/os:getenv "TMSMT_RESOLUTION")))
-                       (parse-float s)
-                       .1))
          (plan-file (uiop/os:getenv "TMSMT_INPUT"))
          (gui (or (uiop/os:getenv "TMSMT_GUI")
                   plan-file)))
@@ -117,7 +106,6 @@
                    :scripts script-files
                    :task-domain (uiop/os:getenv "TMSMT_TASK_DOMAIN")
                    :max-steps max-steps
-                   :resolution resolution
                    :gui gui
                    :write-facts (uiop/os:getenv "TMSMT_WRITE_FACTS")
                    :output (uiop/os:getenv "TMSMT_OUTPUT")

@@ -36,161 +36,18 @@
        ,(cons :init start-state)
        (:goal ,(cons 'and goal-state)))))
 
-
-(defun itmp-transfer-z (scene-graph object)
-  ;; todo: other shapes
-  (let ((g (robray::scene-frame-geometry-collision (scene-graph-find scene-graph object))))
-    (assert (= 1 (length g)))
-    (let ((shape (robray::scene-geometry-shape (elt g 0))))
-      (etypecase shape
-        (robray::scene-box (* .5d0 (vec-z (robray::scene-box-dimension shape))))))))
-
-(defun itmp-transfer-action (scene-graph sexp
-                             &key
-                               start
-                               encoding
-                               resolution
-                               (z-epsilon 1d-4)
-                               frame
-                               ;(plan-context *plan-context*)
-                               ;(link)
-                               ;(group)
-                               )
-  (declare (type number resolution)
-           (type robray::scene-graph scene-graph))
-  ;(print sexp)
-  (destructuring-bind (-transfer object &rest rest)
-      sexp
-    (assert (equalp "TRANSFER" -transfer))
-    (multiple-value-bind (src-name src-i src-j dst-name dst-i dst-j)
-        (ecase encoding
-          (:quadratic
-           (values (first rest) (second rest) (third rest)
-                   (fourth rest) (fifth rest) (sixth rest)))
-          (:linear
-           (let* ((frame (scene-graph-find scene-graph object))
-                  (parent (robray::scene-frame-parent frame))
-                  (tf (robray::scene-frame-tf frame))
-                  (v (tf-translation tf)))
-             (values parent (round (vec-x v) resolution) (round (vec-y v) resolution)
-                     (first rest) (second rest) (third rest)))))
-      (let* ((dst-x (* dst-i resolution))
-             (dst-y (* dst-j resolution))
-             (tf-0 (robray::scene-graph-tf-relative scene-graph src-name object
-                                                    :configuration-map start))
-             ;;(src-x (* src-i resolution))
-             ;;(src-y (* src-j resolution))
-             (act-x (vec-x (tf-translation tf-0)))
-             (act-y (vec-y (tf-translation tf-0)))
-             (tf-dst (tf* nil ; TODO: is identity correct?
-                          (vec3* dst-x dst-y (+ (itmp-transfer-z scene-graph object)
-                                                (itmp-transfer-z scene-graph dst-name)
-                                                z-epsilon)))))
-        (assert (and (= src-i (round act-x resolution))
-                     (= src-j (round act-y resolution))))
-                                        ;(print object)
-                                        ;(print tf-0)
-                                        ;(print tf-dst)
-        ;(context-apply-scene plan-context scene-graph)
-        (act-transfer-tf scene-graph frame start object *tf-grasp-rel*
-                         dst-name tf-dst)))))
-
-(defun itmp-stack-action (scene-graph sexp
-                          &key
-                            start
-                            (z-epsilon 1d-4)
-                            frame)
-  (destructuring-bind (-stack obj-a obj-b)
-      sexp
-    (assert (rope= "STACK" -stack))
-    (let* ((z-a (itmp-transfer-z scene-graph obj-a))
-           (z-b (itmp-transfer-z scene-graph obj-b))
-           (tf-dst (tf* nil (vec3* 0 0 (+ z-a z-b z-epsilon)))))
-      ;(break)
-      (act-transfer-tf scene-graph frame start obj-a *tf-grasp-rel*
-                       obj-b tf-dst)
-      )))
-
-(defvar *tf-push-rel*)
-
-(defun itmp-push-action (scene-graph sexp
-                          &key
-                            start
-                            (z-epsilon 1d-4)
-                            frame)
-  (declare (ignore z-epsilon))
-  (destructuring-bind (action obj dst)
-      sexp
-    (assert (rope= "PUSH-TRAY" action))
-    (act-push-tf scene-graph frame start obj *tf-push-rel* dst)))
-
-
-
 (defun itmp-action (scene-graph sexp
                              &key
-                               start
-                               encoding
-                               resolution
-                               (z-epsilon 1d-4)
-                               frame
-                               )
-  (declare (type number resolution)
-           (type robray::scene-graph scene-graph))
+                               start)
   (let ((plan (funcall *refine-operator-function*
                        scene-graph start
                        sexp)))
-    (if (or (null plan)
+    (unless (or (null plan)
             (and (numberp plan)
                  (zerop plan)))
-        ;; refinement failed
-        nil
-        ;; plan worked
-        (progn
-          (format t "~&plan found")
-          (finish-output)
-          (tm-plan-list (listify plan))))))
-
-
-
-;; (defun itmp-action (scene-graph sexp
-;;                              &key
-;;                                start
-;;                                encoding
-;;                                resolution
-;;                                (z-epsilon 1d-4)
-;;                                frame
-;;                                )
-;;   (declare (type number resolution)
-;;            (type robray::scene-graph scene-graph))
-;;   ;(print sexp)
-;;   (destructuring-bind (action &rest args)
-;;       sexp
-;;     (declare (ignore args))
-;;     (multiple-value-bind (plan what frame)
-;;         (cond
-;;           ((rope= "TRANSFER" action)
-;;            (itmp-transfer-action scene-graph sexp
-;;                                  :start start
-;;                                  :encoding encoding
-;;                                  :resolution resolution
-;;                                  :z-epsilon z-epsilon
-;;                                  :frame frame))
-;;           ((rope= "STACK" action)
-;;            (itmp-stack-action scene-graph sexp
-;;                               :start start
-;;                               :z-epsilon z-epsilon
-;;                               :frame frame))
-;;           ((rope= "PUSH-TRAY" action)
-;;            (itmp-push-action scene-graph sexp
-;;                              :start start
-;;                              :z-epsilon z-epsilon
-;;                              :frame frame))
-;;           (t (error "Urecognized action: ~A" sexp)))
-;;       (values (when plan
-;;                 (tm-plan (tm-op-action sexp scene-graph start)
-;;                          plan))
-;;                 what frame))))
-
+      ;;(format t "~&plan found")
+      ;;(finish-output)
+      (tm-plan-list (listify plan)))))
 
 
 (defun itmp-abort ()
@@ -205,10 +62,7 @@
 (defvar *itmp-total-time*)
 
 (defun tmp-reify (cache task-plan init-graph start &key
-                                                     frame
-                                                     naive
-                                                     encoding
-                                                     resolution)
+                                                     naive)
   (declare (type list task-plan)
            (type hash-table cache))
   (let ((motion-time 0))
@@ -269,9 +123,6 @@
                             (sycamore-util:with-timing
                               (multiple-value-list
                                (itmp-action graph op
-                                            :encoding encoding
-                                            :resolution resolution
-                                            :frame frame
                                             :start start)))
                           (incf motion-time run-time)
                           (apply #'values result))
@@ -295,13 +146,9 @@
 (defun itmp-rec (init-graph goal-graph operators
                  &key
                    q-all-start
-                   max-locations
-                   (encoding :linear)
                    (action-encoding :boolean)
                    (naive nil)
                    (max-steps 3)
-                   (resolution 0.2d0)
-                   frame
                    )
   (declare (optimize (speed 0) (debug 3))
            (type robray::configuration-map q-all-start))
@@ -378,10 +225,7 @@
                  (multiple-value-bind (plan-steps new-cache new-motion-time
                                                   failed-graph failed-op what-failed object)
                      (tmp-reify cache plan init-graph q-all-start
-                                :frame frame
-                                :naive naive
-                                :encoding encoding
-                                :resolution resolution)
+                                :naive naive)
                    (setq cache new-cache)
                    (incf motion-time new-motion-time)
                    (if plan-steps
@@ -563,3 +407,134 @@
 ;;                                   :encoding encoding
 ;;                                   :other-scene-graph init-scene
 ;;                                   :goal t))))))
+
+
+
+;; (defun itmp-transfer-z (scene-graph object)
+;;   ;; todo: other shapes
+;;   (let ((g (robray::scene-frame-geometry-collision (scene-graph-find scene-graph object))))
+;;     (assert (= 1 (length g)))
+;;     (let ((shape (robray::scene-geometry-shape (elt g 0))))
+;;       (etypecase shape
+;;         (robray::scene-box (* .5d0 (vec-z (robray::scene-box-dimension shape))))))))
+
+;; (defun itmp-transfer-action (scene-graph sexp
+;;                              &key
+;;                                start
+;;                                encoding
+;;                                resolution
+;;                                (z-epsilon 1d-4)
+;;                                frame
+;;                                ;(plan-context *plan-context*)
+;;                                ;(link)
+;;                                ;(group)
+;;                                )
+;;   (declare (type number resolution)
+;;            (type robray::scene-graph scene-graph))
+;;   ;(print sexp)
+;;   (destructuring-bind (-transfer object &rest rest)
+;;       sexp
+;;     (assert (equalp "TRANSFER" -transfer))
+;;     (multiple-value-bind (src-name src-i src-j dst-name dst-i dst-j)
+;;         (ecase encoding
+;;           (:quadratic
+;;            (values (first rest) (second rest) (third rest)
+;;                    (fourth rest) (fifth rest) (sixth rest)))
+;;           (:linear
+;;            (let* ((frame (scene-graph-find scene-graph object))
+;;                   (parent (robray::scene-frame-parent frame))
+;;                   (tf (robray::scene-frame-tf frame))
+;;                   (v (tf-translation tf)))
+;;              (values parent (round (vec-x v) resolution) (round (vec-y v) resolution)
+;;                      (first rest) (second rest) (third rest)))))
+;;       (let* ((dst-x (* dst-i resolution))
+;;              (dst-y (* dst-j resolution))
+;;              (tf-0 (robray::scene-graph-tf-relative scene-graph src-name object
+;;                                                     :configuration-map start))
+;;              ;;(src-x (* src-i resolution))
+;;              ;;(src-y (* src-j resolution))
+;;              (act-x (vec-x (tf-translation tf-0)))
+;;              (act-y (vec-y (tf-translation tf-0)))
+;;              (tf-dst (tf* nil ; TODO: is identity correct?
+;;                           (vec3* dst-x dst-y (+ (itmp-transfer-z scene-graph object)
+;;                                                 (itmp-transfer-z scene-graph dst-name)
+;;                                                 z-epsilon)))))
+;;         (assert (and (= src-i (round act-x resolution))
+;;                      (= src-j (round act-y resolution))))
+;;                                         ;(print object)
+;;                                         ;(print tf-0)
+;;                                         ;(print tf-dst)
+;;         ;(context-apply-scene plan-context scene-graph)
+;;         (act-transfer-tf scene-graph frame start object *tf-grasp-rel*
+;;                          dst-name tf-dst)))))
+
+;; (defun itmp-stack-action (scene-graph sexp
+;;                           &key
+;;                             start
+;;                             (z-epsilon 1d-4)
+;;                             frame)
+;;   (destructuring-bind (-stack obj-a obj-b)
+;;       sexp
+;;     (assert (rope= "STACK" -stack))
+;;     (let* ((z-a (itmp-transfer-z scene-graph obj-a))
+;;            (z-b (itmp-transfer-z scene-graph obj-b))
+;;            (tf-dst (tf* nil (vec3* 0 0 (+ z-a z-b z-epsilon)))))
+;;       ;(break)
+;;       (act-transfer-tf scene-graph frame start obj-a *tf-grasp-rel*
+;;                        obj-b tf-dst)
+;;       )))
+
+;; (defvar *tf-push-rel*)
+
+;; (defun itmp-push-action (scene-graph sexp
+;;                           &key
+;;                             start
+;;                             (z-epsilon 1d-4)
+;;                             frame)
+;;   (declare (ignore z-epsilon))
+;;   (destructuring-bind (action obj dst)
+;;       sexp
+;;     (assert (rope= "PUSH-TRAY" action))
+;;     (act-push-tf scene-graph frame start obj *tf-push-rel* dst)))
+
+
+
+
+;; (defun itmp-action (scene-graph sexp
+;;                              &key
+;;                                start
+;;                                encoding
+;;                                resolution
+;;                                (z-epsilon 1d-4)
+;;                                frame
+;;                                )
+;;   (declare (type number resolution)
+;;            (type robray::scene-graph scene-graph))
+;;   ;(print sexp)
+;;   (destructuring-bind (action &rest args)
+;;       sexp
+;;     (declare (ignore args))
+;;     (multiple-value-bind (plan what frame)
+;;         (cond
+;;           ((rope= "TRANSFER" action)
+;;            (itmp-transfer-action scene-graph sexp
+;;                                  :start start
+;;                                  :encoding encoding
+;;                                  :resolution resolution
+;;                                  :z-epsilon z-epsilon
+;;                                  :frame frame))
+;;           ((rope= "STACK" action)
+;;            (itmp-stack-action scene-graph sexp
+;;                               :start start
+;;                               :z-epsilon z-epsilon
+;;                               :frame frame))
+;;           ((rope= "PUSH-TRAY" action)
+;;            (itmp-push-action scene-graph sexp
+;;                              :start start
+;;                              :z-epsilon z-epsilon
+;;                              :frame frame))
+;;           (t (error "Urecognized action: ~A" sexp)))
+;;       (values (when plan
+;;                 (tm-plan (tm-op-action sexp scene-graph start)
+;;                          plan))
+;;                 what frame))))
