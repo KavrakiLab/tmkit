@@ -116,9 +116,9 @@ def scene_objects_linear(scene):
 ############################
 
 
-def motion_plan(op,goal):
+def motion_plan(op,frame, goal):
     scene = op['final_scene']
-    ssg = aa.scene_chain(scene, "", FRAME)
+    ssg = aa.scene_chain(scene, "", frame)
     mp = tm.op_motion( op, ssg, goal )
     if False == mp: raise tm.PlanningFailure()
     return mp
@@ -126,13 +126,11 @@ def motion_plan(op,goal):
 def pick(op, obj):
     g_tf_o = tm.op_tf_abs(op,obj)
     g_tf_e = aa.mul(g_tf_o, GRASP)
-    mp = motion_plan(op, g_tf_e)
+    mp = motion_plan(op, FRAME, g_tf_e)
     return tm.plan(mp, tm.op_reparent(mp, FRAME, obj))
 
 def place_tf(op, obj, dst_frame, g_tf_o ):
-    o_tf_e = tm.op_tf_rel(op,obj,FRAME)
-    g_tf_e = aa.mul( g_tf_o, o_tf_e )
-    mp =  motion_plan(op, g_tf_e)
+    mp =  motion_plan(op, obj, g_tf_o)
     return tm.plan(mp, tm.op_reparent(mp, dst_frame, obj))
 
 def place_height(scene,name):
