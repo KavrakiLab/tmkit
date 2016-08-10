@@ -565,7 +565,7 @@
          (old-time (smt-runtime smt))
          (is-sat (smt-eval smt '(|check-sat|)))
          (new-time (smt-runtime smt)))
-    (format t "~&~S (~Fs)" is-sat (let ((r 1d-4)) (* (round (- new-time old-time) r)
+    (format t "~&~S (~Fs)~%" is-sat (let ((r 1d-4)) (* (round (- new-time old-time) r)
                                                    r)))
     (case is-sat
       ((sat |sat|)
@@ -595,7 +595,7 @@
                (smt-eval smt exp))
              (stmt-list (list)
                (map nil #'stmt list)))
-      (format t "~&trying step ~D" i)
+      (format t "~&trying step ~D~%" i)
       ;; step declarations
       (stmt-list (smt-plan-step-stmts domain i))
       ;; namespace

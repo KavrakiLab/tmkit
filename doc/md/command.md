@@ -61,6 +61,9 @@ Option Summary {#planner_command_options}
     -d TASK_DOMAIN_FILE
         Task Domain (PDDL) file
 
+    -f TASK_FACTS_FILE
+        Task Facts (PDDL) file
+
     -l SCRIPT_FILE
         Load Script File
 
@@ -89,10 +92,28 @@ Option Summary {#planner_command_options}
 Examples {#planner_command_examples}
 ========
 
-When loading scenes from URDF, it is necessary to set the
-`ROS_PACKAGE_PATH` environment variable (because URDF references files
-via ROS packages).
+The `demo` directory in the source distribution provides several
+example domains and use cases for the planner command.  A few of these
+cases are described in detail here.
 
+Pure Task Planning
+------------------
+
+When given only the task domain and facts, the planner command will
+compute a pure task plan.  Using the blocksworld domain included in
+the source distribution, call the planner as:
+
+    tmsmt -d demo/domains/blocksworld/blocks-domain.pddl \
+          -f demo/domains/blocksworld/sussman-anomaly.pddl
+
+Task-Motion Planning
+--------------------
+
+When loading scenes from URDF, it is necessary to set the
+`ROS_PACKAGE_PATH` environment variable because URDF external files
+such as meshes via ROS packages.
+
+    # Assuming you have install ROS indigo under /opt
     export ROS_PACKAGE_PATH=/opt/ros/indigo/share
 
 The following command will compute a task-motion plan for the Baxter

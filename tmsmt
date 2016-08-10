@@ -58,6 +58,7 @@ Options:
   -o OUTPUT_PLAN_FILE         Output plan file
   -r RESOLUTION               Discretization resolution
   -l SCRIPT_FILE              Load script file
+  -f TASK_FACTS               Task Facts (PDDL) file
   -m MAX_STEPS                Maximum number of task steps
   --gui                       Enable graphical interface
   --load-plan=PLAN_FILE       Load plan from file
@@ -90,6 +91,11 @@ EOF
             shift;
             # TODO: escape special characters
             export TMSMT_TASK_DOMAIN="$1"
+            ;;
+        -f)
+            shift;
+            # TODO: escape special characters
+            export TMSMT_TASK_FACTS="$1"
             ;;
         -o)
             shift;

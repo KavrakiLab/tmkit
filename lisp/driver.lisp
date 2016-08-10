@@ -22,10 +22,11 @@
                      task-domain
                      start-scene
                      goal-scene
+                     task-facts
                      gui
                      scripts
                      verbose
-                     (max-steps 3)
+                     (max-steps 10)
                      ;; FIXME:
                      output
                      write-facts
@@ -35,43 +36,50 @@
   (when verbose
     (format t "~&Start scene files: ~{~A~^, ~}~%" (ensure-list start-scene))
     (format t "~&Goal scene files:  ~{~A~^, ~}~%" (ensure-list goal-scene)))
+  ;; Load Scripts
   (map nil #'tmp-script scripts)
-  ;; Check parameters
-  (unless start-scene
-    (error "TMSMT: No start scene specified."))
-  (unless goal-scene
-    (error "TMSMT: No goal scene specified."))
-  (unless task-domain
-    (error "TMSMT: No task domain specified."))
-  ;; gen scenes
+  ;; Load scenes
   (let ((start-scene-graph (robray::load-scene-files start-scene))
         (goal-scene-graph (robray::load-scene-files goal-scene))
         (output (or output *standard-output*)))
     (finish-output *standard-output*)
     ;; Maybe display scene
-    (when gui
+    (when (and gui start-scene)
       (robray::win-set-scene-graph start-scene-graph)
       (robray::win-set-config start))
     ;;(break)
     ;; Now plan!
-    (let ((plan (itmp-rec start-scene-graph goal-scene-graph
-                          task-domain
-                          :q-all-start start
-                          :max-steps max-steps)))
-      ;; Maybe display scene
-      (when (and plan gui)
-        (robray::win-display-motion-plan-sequence (tm-plan-motion-plans plan)))
-
-      (if plan
-          (output-rope (rope (loop for scene in start-scene
-                                collect (rope "# Start Scene: " scene #\Newline))
-                             (rope "# Task Domain: " task-domain #\Newline)
-                             (loop for scene in goal-scene
-                                collect (rope "# Goal Scene: " scene #\Newline))
-                             (object-rope plan))
-                       output :if-exists :supersede)
-          (format *error-output* "~&ERROR: no plan found.~&"))
-      plan)))
+    (cond
+      ((and start-scene task-domain)
+       (if-let ((plan (mp-plan (itmp-rec start-scene-graph goal-scene-graph
+                                         task-domain
+                                         :q-all-start start
+                                         :max-steps max-steps))))
+         (progn
+           ;; Maybe display scene
+           (when gui
+             (robray::win-display-motion-plan-sequence (tm-plan-motion-plans plan)))
+           ;; output plan
+           (output-rope (rope (loop for scene in start-scene
+                                 collect (rope "# Start Scene: " scene #\Newline))
+                              (rope "# Task Domain: " task-domain #\Newline)
+                              (loop for scene in goal-scene
+                                 collect (rope "# Goal Scene: " scene #\Newline))
+                              (object-rope plan))
+                        output :if-exists :supersede)
+           plan)
+         ;; no plan
+         (format *error-output* "~&ERROR: no plan found.~&")))
+      ;; Task plan only
+      ((and task-domain task-facts)
+       (if-let ((plan (smt-plan task-domain task-facts :max-steps max-steps)))
+         (output-rope (rope (rope "# Task Domain: " task-domain #\Newline)
+                            (rope "# Task Facts: "  task-facts #\Newline)
+                            (loop for op in plan collect (tm-op-action op nil nil)))
+                      output :if-exists :supersede)
+         (format *error-output* "~&ERROR: no plan found.~&")))
+      (t
+       (format *error-output* "~&ERROR: invalid parameters.~&")))))
 
 ;; TODO: start configuration
 
@@ -86,7 +94,7 @@
          (script-files (env-list "TMSMT_SCRIPT_FILES"))
          (max-steps (if-let ((s (uiop/os:getenv "TMSMT_MAX_STEPS")))
                       (parse-integer s)
-                      5))
+                      10))
          (plan-file (uiop/os:getenv "TMSMT_INPUT"))
          (gui (or (uiop/os:getenv "TMSMT_GUI")
                   plan-file)))
@@ -105,6 +113,7 @@
                    :goal-scene goal-files
                    :scripts script-files
                    :task-domain (uiop/os:getenv "TMSMT_TASK_DOMAIN")
+                   :task-facts (uiop/os:getenv "TMSMT_TASK_FACTS")
                    :max-steps max-steps
                    :gui gui
                    :write-facts (uiop/os:getenv "TMSMT_WRITE_FACTS")
