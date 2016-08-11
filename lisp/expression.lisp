@@ -1,6 +1,6 @@
 (in-package :tmsmt)
 
-(defun canonize-exp (exp map)
+(defun canonize-exp (exp &optional map)
   "Canonicalize terms in `EXP', substituting from `map'.
 
 Converts arrays to lists."
@@ -10,7 +10,9 @@ Converts arrays to lists."
                 (cons (rec (car exp))
                       (rec (cdr exp))))
                ((or string symbol)
-                (tree-map-find map exp exp))
+                (if map
+                    (tree-map-find map exp exp)
+                    exp))
                (vector (map 'list #'rec exp))
                (t exp))))
     (rec exp)))

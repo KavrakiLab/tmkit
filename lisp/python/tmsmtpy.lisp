@@ -7,6 +7,8 @@
 (defun |bind_scene_state| (x)
   (setq tmsmt::*scene-state-function* x))
 
+(defun |bind_goal_state| (x)
+  (setq tmsmt::*goal-state-function* x))
 
 (defun |bind_scene_objects| (x)
   (setq tmsmt::*scene-objects-function* x))

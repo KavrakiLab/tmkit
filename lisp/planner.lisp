@@ -91,8 +91,8 @@
                (etypecase e
                  (pddl-quantifier
                   (let ((fun (ecase (pddl-quantifier-head e)
-                               (exists 'or)
-                               (forall 'and))))
+                               (tmsmt/pddl::exists 'or)
+                               (tmsmt/pddl::forall 'and))))
                     `(,fun
                       ,@(loop for a in (collect-args (pddl-quantifier-parameters e)
                                                      type-map)
@@ -235,6 +235,7 @@
                         (action-encoding :boolean)
                         goal)
   (let* ((operators (load-operators operators))
+         (canon (pddl-operators-canon operators))
          (facts (load-facts facts operators))
          (objects (append (pddl-operators-constants operators)
                           (pddl-facts-objects facts)))
@@ -250,6 +251,8 @@
                        when (eq 'bool (tree-map-find variable-type g))
                        collect g))
          (initial-false (set-difference  bool-vars initial-true :test #'equal)))
+    (print operators)
+    (print facts)
     (ecase action-encoding
       (:boolean)
       (:enum (push (make-ground-action :name 'no-op

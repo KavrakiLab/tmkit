@@ -175,6 +175,7 @@ def op_stack(scene, config, op):
 ##########################
 
 tm.bind_scene_state(scene_state_linear)
+tm.bind_goal_state(scene_state_linear)
 tm.bind_scene_objects(scene_objects_linear)
 tm.bind_refine_operator(op_transfer, "TRANSFER")
 tm.bind_refine_operator(op_stack, "STACK")

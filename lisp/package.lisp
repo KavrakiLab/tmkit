@@ -1,5 +1,12 @@
+(defpackage tmsmt/pddl
+  (:use :cl)
+  (:export
+   :exists
+   :forall))
+
 (defpackage :tmsmt
-  (:use :cl :alexandria :sycamore :amino :sycamore :robray :sycamore-util :sycamore-cgen)
+  (:use :cl :alexandria :sycamore :amino :sycamore :robray :sycamore-util :sycamore-cgen
+        :tmsmt/pddl)
   (:export
    ))
 
@@ -10,6 +17,7 @@
   (:export
 
    ;; binders
+   |bind_goal_state|
    |bind_scene_state|
    |bind_scene_objects|
    |bind_refine_operator|

@@ -36,25 +36,38 @@
   (when verbose
     (format t "~&Start scene files: ~{~A~^, ~}~%" (ensure-list start-scene))
     (format t "~&Goal scene files:  ~{~A~^, ~}~%" (ensure-list goal-scene)))
+
   ;; Load Scripts
   (map nil #'tmp-script scripts)
+
   ;; Load scenes
   (let ((start-scene-graph (robray::load-scene-files start-scene))
         (goal-scene-graph (robray::load-scene-files goal-scene))
         (output (or output *standard-output*)))
     (finish-output *standard-output*)
+
+    ;; Maybe write facts
+    (when write-facts
+      (format t "~&Write Facts: ~A~%" write-facts)
+      (output-rope (pddl-exp-rope (scene-facts start-scene-graph goal-scene-graph
+                                               :configuration start))
+                   write-facts
+                   :if-exists :supersede))
+
     ;; Maybe display scene
     (when (and gui start-scene)
       (robray::win-set-scene-graph start-scene-graph)
       (robray::win-set-config start))
-    ;;(break)
+
     ;; Now plan!
     (cond
+
+      ;; Task-Motion Planning
       ((and start-scene task-domain)
-       (if-let ((plan (mp-plan (itmp-rec start-scene-graph goal-scene-graph
-                                         task-domain
-                                         :q-all-start start
-                                         :max-steps max-steps))))
+       (if-let ((plan (itmp-rec start-scene-graph goal-scene-graph
+                                task-domain
+                                :q-all-start start
+                                :max-steps max-steps)))
          (progn
            ;; Maybe display scene
            (when gui
@@ -70,6 +83,7 @@
            plan)
          ;; no plan
          (format *error-output* "~&ERROR: no plan found.~&")))
+
       ;; Task plan only
       ((and task-domain task-facts)
        (if-let ((plan (smt-plan task-domain task-facts :max-steps max-steps)))
@@ -78,6 +92,8 @@
                             (loop for op in plan collect (tm-op-action op nil nil)))
                       output :if-exists :supersede)
          (format *error-output* "~&ERROR: no plan found.~&")))
+
+      ;; Unknowm mode
       (t
        (format *error-output* "~&ERROR: invalid parameters.~&")))))
 

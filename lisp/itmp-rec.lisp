@@ -15,19 +15,19 @@
       (when (robray::scene-frame-geometry-isa frame type)
         (setf (tree-set-find frames) frame)))))
 
-
 (defun scene-facts (init-scene goal-scene
                     &key
                       (problem 'itmp)
                       (domain 'itmp)
                       (configuration (robray::make-configuration-map))
                       (state-function *scene-state-function*)
+                      (goal-function *goal-state-function*)
                       (objects-function *scene-objects-function*))
   (let ((start-state (funcall state-function init-scene configuration))
-        (goal-state (funcall state-function
+        (goal-state (funcall goal-function
                              goal-scene
                              configuration))
-        (objects (listify (funcall objects-function init-scene))))
+        (objects (canonize-exp (funcall objects-function init-scene))))
 
     `(define (problem ,problem)
          (:domain ,domain)
@@ -45,7 +45,7 @@
              (plan (funcall function
                            scene-graph start
                            sexp)))
-        (tm-plan-list (listify plan)))
+        (tm-plan-list (canonize-exp plan)))
     (planning-failure nil)))
 
 

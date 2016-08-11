@@ -30,15 +30,62 @@ from math import pi
 import CL as cl
 
 
+#############
+## Helpers ##
+#############
+
+def map_locations(function, scene):
+    for frame in tm.collect_frame_type(scene,"surface"):
+        name = frame['name']
+        for geom in frame['geometry']:
+            shape = geom['shape']
+            if aa.shape_is_box(shape):
+                d = shape['dimension']
+                x_max = d[0] / 2
+                y_max = d[1] / 2
+                x = 0
+                i = 0
+                while x <= x_max:
+                    y = 0
+                    j = 0
+                    while y <= y_max:
+                        function(name,i,j)
+                        if i > 0: function(name,-i,j)
+                        if j > 0: function(name,i,-j)
+                        if i > 0 and j > 0: function(name,-i,-j)
+                        y += RESOLUTION
+                        j+=1
+                    x +=  RESOLUTION
+                    i+=1
+
+
+
 ##########################
 ## Scene State Function ##
 ##########################
-
-def scene_state_linear(scene, configuration):
+## TODO: Does not work after an UNSTACK operatorion
+## Problem is with the "Clear" predicate
+def make_state(scene, configuration, is_goal):
     '''Map the scene graph `scene' to a task state expression'''
+    print "MAKE_STATE"
 
     ## terms in the expression
     conjunction = []
+    occupied = {}
+    moveable_frames = tm.collect_frame_type(scene,"moveable")
+
+    ## Add object locations
+    handempty = [True]
+
+    def add_on(child,parent):
+        if parent == FRAME:
+            conjunction.append(["HOLDING", child])
+            conjunction.append(["NOT", ["HANDEMPTY"]])
+            handempty[0] = False
+            occupied[child] = True
+        else:
+            conjunction.append(["ON", child, parent])
+            occupied[parent] = True
 
     def handle_moveable(frame):
         name = frame['name']
@@ -54,27 +101,45 @@ def scene_state_linear(scene, configuration):
                 j = int(round( trans[1] / RESOLUTION))
                 position = tm.mangle(parent_name,i,j)
                 conjunction.append(["ONTABLE", name, position])
+                occupied[(parent_name,i,j)] = True
             else:
-                conjunction.append(["ON", name, parent_name])
+                add_on(name,parent_name)
         except NameError:
-                conjunction.append(["ON", name, parent_name])
+                add_on(name,parent_name)
 
-
-    moveable_frames = tm.collect_frame_type(scene,"moveable")
     map(handle_moveable, moveable_frames)
 
-    conjunction.append(["HANDEMPTY"])
+    if handempty[0]:
+        conjunction.append(["HANDEMPTY"])
 
-    # TODO: clear locations
+    ## Clear things
+    def clear_block(frame):
+        name = frame['name']
+        if not name in occupied:
+            conjunction.append(["CLEAR", name])
+
+    def clear_location(name,i,j):
+        if not (name,i,j) in occupied:
+            conjunction.append(["CLEAR", tm.mangle(name,i,j)])
+
+    if not is_goal:
+        map(clear_block, moveable_frames)
+        map_locations(clear_location,scene)
 
     return conjunction
 
+def scene_state(scene,configuration):
+    print "SCENE_STATE"
+    return make_state(scene, configuration, False)
+
+def goal_state(scene,configuration):
+    return make_state(scene, configuration, True)
 
 ############################
 ## Scene Objects Function ##
 ############################
 
-def scene_objects_linear(scene):
+def scene_objects(scene):
     '''Return the PDDL objects for `scene'.'''
     obj = []
 
@@ -92,28 +157,8 @@ def scene_objects_linear(scene):
     def add_loc(name,i,j):
         locations.append(tm.mangle(name,i,j))
 
-    for frame in tm.collect_frame_type(scene,"surface"):
-        name = frame['name']
-        for geom in frame['geometry']:
-            shape = geom['shape']
-            if aa.shape_is_box(shape):
-                d = shape['dimension']
-                x_max = d[0] / 2
-                y_max = d[1] / 2
-                x = 0
-                i = 0
-                while x <= x_max:
-                    y = 0
-                    j = 0
-                    while y <= y_max:
-                        add_loc(name,i,j)
-                        if i > 0: add_loc(name,-i,j)
-                        if j > 0: add_loc(name,i,-j)
-                        if i > 0 and j > 0: add_loc(name,-i,-j)
-                        y += RESOLUTION
-                        j+=1
-                    x +=  RESOLUTION
-                    i+=1
+    map_locations(add_loc,scene)
+
     return [moveable, locations]
 
 ############################
@@ -163,13 +208,14 @@ def place_height(scene,name):
 
 
 def op_pick_up(scene, config, op):
-    (a, obj, loc) = op
+    #(a, obj, src, i, j) = op
+    obj = op[1]
     nop = tm.op_nop(scene,config)
     mp = motion_plan(nop, FRAME, tm.op_tf_abs(nop,obj))
     return tm.op_reparent(mp, FRAME, obj)
 
 def op_put_down(scene, config, op):
-    (a, obj, loc) = op
+    (a, obj, dst, i, j) = op
     nop = tm.op_nop(scene,config)
     x = i*RESOLUTION
     y = j*RESOLUTION
@@ -195,8 +241,9 @@ def op_unstack(scene, config, op):
 ### Register functions ###
 ##########################
 
-tm.bind_scene_state(scene_state_linear)
-tm.bind_scene_objects(scene_objects_linear)
+tm.bind_scene_state(scene_state)
+tm.bind_goal_state(goal_state)
+tm.bind_scene_objects(scene_objects)
 tm.bind_refine_operator(op_pick_up, "PICK-UP")
 tm.bind_refine_operator(op_put_down, "PUT-DOWN")
 tm.bind_refine_operator(op_stack, "STACK")

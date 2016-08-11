@@ -4,5 +4,5 @@
 
 PATH=..:$PATH
 
-tmsmt -d domains/blocksworld/blocks-domain.pddl \
-      -f domains/blocksworld/sussman-anomaly.pddl
+tmsmt -d domains/blocksworld/tm-blocks.pddl\
+      -f domains/blocksworld/tm-sussman.pddl

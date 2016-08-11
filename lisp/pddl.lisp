@@ -1,6 +1,6 @@
 (in-package :tmsmt)
 
-(defparameter *pddl-package* (find-package :tmsmt))
+(defparameter *pddl-package* (find-package :tmsmt/pddl))
 
 ;; TODO: handle keywords better
 (defparameter *pddl-canonical-map*
@@ -12,7 +12,7 @@
                       (string-upcase (string symbol))
                       (string-downcase (string symbol)))))
         (make-tree-map #'gsymbol-compare)
-        '(= and or object define :domain -)))
+        '(= not and or object define :domain -)))
 
 (defstruct pddl-action
   "A PDDL action"
@@ -29,12 +29,6 @@
   type
   )
 
-;; (defstruct pddl-predicate
-;;   "A PDDL predicate"
-;;   name
-;;   arity
-;;   arguments)
-
 (defstruct pddl-operators
   "A PDDL set of operators"
   name
@@ -46,6 +40,22 @@
   derived
   actions)
 
+(defun pddl-operators-intern (operators type thing)
+  ;; Maybe TODO: separate namespaces
+  (declare (ignore type))
+  (symbol-macrolet ((canon (pddl-operators-canon operators)))
+    (if-let ((result (tree-map-find canon thing)))
+      ;; Already interned
+      result
+      ;; Add to canon
+      (progn
+        (tree-map-insertf canon thing thing)
+        (etypecase thing
+          (string nil)
+          (keyword nil)
+          (symbol
+           (tree-map-insertf canon (string thing) thing)))
+        thing))))
 
 (defstruct (pddl-function (:include pddl-typed))
   arguments)
@@ -143,20 +153,22 @@
                       type-map types))
               type-map #'eq)))
 
-(defun parse-predicate (sexp)
+(defun parse-predicate (ops sexp)
   (destructuring-bind (name &rest arg-list) sexp
-    (let ((type-list (parse-typed-list arg-list)))
+    (let* ((name (pddl-operators-intern ops :predicate name))
+           (type-list (parse-typed-list arg-list)))
       (make-pddl-function :name name
                           :type 'bool
                           :arguments type-list))))
 
-(defun parse-pddl-functions (sexp)
+(defun parse-pddl-functions (ops sexp)
   (let ((typed (parse-typed-list sexp)))
     (loop for x in typed
        for function = (pddl-typed-name x)
-       collect (make-pddl-function :name (car function)
-                                   :arguments (parse-typed-list (cdr function))
-                                   :type (pddl-typed-type x)))))
+       collect
+         (make-pddl-function :name (pddl-operators-intern ops :function (car function))
+                             :arguments (parse-typed-list (cdr function))
+                             :type (pddl-operators-intern ops :type (pddl-typed-type x))))))
 
 (defstruct (pddl-derived (:include pddl-function))
   body)
@@ -197,7 +209,7 @@
            (declare (ignore ignore)))
           ((:predicates &rest predicates)
            (loop for p in predicates do
-                (push (parse-predicate p)
+                (push (parse-predicate ops p)
                       (pddl-operators-functions ops))))
           ((:action name &key parameters uncontrollable precondition effect)
            (push (make-pddl-action :name name
@@ -209,9 +221,9 @@
           ((:functions &rest sexp)
            (setf (pddl-operators-functions ops)
                  (append (pddl-operators-functions ops)
-                         (parse-pddl-functions sexp))))
+                         (parse-pddl-functions ops sexp))))
           ((:derived predicate body)
-           (let ((fun (parse-predicate predicate)))
+           (let ((fun (parse-predicate ops predicate)))
              (push (make-pddl-derived :name (pddl-function-name fun)
                                       :type (pddl-function-type fun)
                                       :arguments (pddl-function-arguments fun)
@@ -227,15 +239,12 @@
                    (pddl-operators-supertypes ops) hash)
              ;; add types
              (dolist (x typed-list)
-               (let ((type (pddl-typed-name x))
-                     (supertype (pddl-typed-type x)))
+               (let ((type (pddl-operators-intern ops :type (pddl-typed-name x)))
+                     (supertype (pddl-operators-intern ops :type (pddl-typed-type x))))
                  (when (hash-table-contains type hash)
                    (error "Duplicate type ~A" type))
                  ;; set supertype
-                 (setf (gethash type  hash) supertype)
-                 ;; note canonicalize type symbol
-                 (tree-map-insertf (pddl-operators-canon ops) type type)
-                 (tree-map-insertf (pddl-operators-canon ops) (string type) type)))
+                 (setf (gethash type  hash) supertype)))
              ;; check super-types
              ;; if not explicitly given, create as subtype of t
              (dolist (x typed-list)
@@ -270,24 +279,26 @@
                  goal))))
       facts)))
 
-
-(defun pddl-print (exp &optional (stream *standard-output*))
+(defun pddl-exp-rope (exp)
   ;; Use the lisp printer to pretty print the expressions, then fixup
   ;; the output with some regular expressions
-  (let* ((cl-string (with-output-to-string (s)
-                      (print exp s)))
+  (let* ((cl-string
+            (with-output-to-string (s)
+              (let ((*package* *pddl-package*))
+                (print (canonize-exp exp) s))))
          ;; eat CL case quotes
          (string-0 (ppcre:regex-replace-all "\\|([\\w\\-]+)\\|"
-                                                cl-string
-                                                "\\1"))
+                                            cl-string
+                                            "\\1"))
          ;; eat string quotes
          (string-1 (ppcre:regex-replace-all "\"([\\w\\-]+)\""
-                                                string-0
-                                                "\\1"))
+                                            string-0
+                                            "\\1"))
          ;; replace NILs with ()
          (string-2 (ppcre:regex-replace-all "([\\s\\(\\)])NIL([\\s\\(\\)])"
                                             string-1
                                             "\\1()\\2")))
-    (princ (string-downcase (substitute #\- #\_ string-2))
-           stream))
-  nil)
+    (string-downcase (substitute #\- #\_ string-2))))
+
+(defun pddl-print (exp &optional (stream *standard-output*))
+  (princ (pddl-exp-rope exp) stream))

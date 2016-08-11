@@ -13,6 +13,7 @@ tmsmt -s 'package://baxter_description/urdf/baxter.urdf' \
       -g baxter-sussman/sussman-1.robray  \
       -d domains/blocksworld/tm-blocks.pddl \
       -l domains/blocksworld/tm-blocks.py \
-      -o baxter-sussman-linear.tmp \
+      -o baxter-sussman.tmp \
       --gui \
+      --write-facts=baxter-sussman.pddl \
       --verbose

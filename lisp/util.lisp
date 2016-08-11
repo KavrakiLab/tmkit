@@ -3,6 +3,7 @@
 (defvar *resolution* .1)
 
 (defvar *scene-state-function*)
+(defvar *goal-state-function*)
 (defvar *scene-objects-function*)
 (defvar *refine-operator-function*)
 
@@ -215,10 +216,3 @@
     (make-pathname :directory (append (pathname-directory pathname)
                                       (ensure-list subdirectory))
                    :defaults pathname)))
-
-
-(defun listify (thing)
-  (typecase thing
-    (string thing)
-    (vector (map 'list #'listify thing))
-    (t thing)))
