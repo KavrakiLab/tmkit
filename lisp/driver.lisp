@@ -38,12 +38,17 @@
     (format t "~&Goal scene files:  ~{~A~^, ~}~%" (ensure-list goal-scene)))
 
   ;; Load Scripts
-  (map nil #'tmp-script scripts)
+
 
   ;; Load scenes
-  (let ((start-scene-graph (robray::load-scene-files start-scene))
-        (goal-scene-graph (robray::load-scene-files goal-scene))
-        (output (or output *standard-output*)))
+  (let* ((scripts (let ((s (ensure-list scripts)))
+                    (map nil #'tmp-script s)
+                    s))
+         (start-scene (ensure-list start-scene))
+         (goal-scene (ensure-list goal-scene))
+         (start-scene-graph (robray::load-scene-files start-scene))
+         (goal-scene-graph (robray::load-scene-files goal-scene))
+         (output (or output *standard-output*)))
     (finish-output *standard-output*)
 
     ;; Maybe write facts
@@ -73,7 +78,9 @@
            (when gui
              (robray::win-display-motion-plan-sequence (tm-plan-motion-plans plan)))
            ;; output plan
-           (output-rope (rope (loop for scene in start-scene
+           (output-rope (rope (loop for script in scripts
+                                 collect (rope "# Script " script #\Newline))
+                              (loop for scene in start-scene
                                  collect (rope "# Start Scene: " scene #\Newline))
                               (rope "# Task Domain: " task-domain #\Newline)
                               (loop for scene in goal-scene

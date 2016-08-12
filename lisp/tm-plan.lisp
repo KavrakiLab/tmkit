@@ -18,10 +18,10 @@
 (defstruct (tm-op-nop (:include tm-op)))
 
 (defun tm-op-nop (scene config)
-  (make-tm-op :initial-scene-graph scene
-              :initial-config config
-              :final-scene-graph scene
-              :final-config config))
+  (make-tm-op-nop :initial-scene-graph scene
+                  :initial-config config
+                  :final-scene-graph scene
+                  :final-config config))
 
 (defstruct (tm-op-action (:include tm-op))
   action)

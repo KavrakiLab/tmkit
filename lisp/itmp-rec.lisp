@@ -15,20 +15,23 @@
       (when (robray::scene-frame-geometry-isa frame type)
         (setf (tree-set-find frames) frame)))))
 
+(defun scene-state (function scene configuration &optional operators)
+  (canonize-exp (funcall function scene configuration)
+                (when operators (pddl-operators-canon operators))))
+
 (defun scene-facts (init-scene goal-scene
                     &key
+                      operators
                       (problem 'itmp)
                       (domain 'itmp)
                       (configuration (robray::make-configuration-map))
                       (state-function *scene-state-function*)
                       (goal-function *goal-state-function*)
                       (objects-function *scene-objects-function*))
-  (let ((start-state (funcall state-function init-scene configuration))
-        (goal-state (funcall goal-function
-                             goal-scene
-                             configuration))
-        (objects (canonize-exp (funcall objects-function init-scene))))
-
+  (let ((start-state (scene-state state-function init-scene configuration operators))
+        (goal-state (scene-state goal-function goal-scene configuration operators))
+        (objects (canonize-exp (funcall objects-function init-scene)
+                               (when operators (pddl-operators-canon operators)))))
     `(define (problem ,problem)
          (:domain ,domain)
        (:objects ,@(loop for o in objects
@@ -158,15 +161,8 @@
            (operators (load-operators operators))
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
-           ;; (task-facts (scene-facts init-graph goal-graph :encoding encoding :resolution resolution
-           ;;                          :object-alist object-alist
-           ;;                          :moveable-types moveable-types
-           ;;                          :max-locations max-locations))
-
-           (task-facts (scene-facts init-graph goal-graph))
-           ;; (locations (scene-locations init-graph resolution :max-count max-locations
-           ;;                             :encode nil
-           ;;                             :round t))
+           (task-facts (scene-facts init-graph goal-graph
+                                    :operators operators))
            (smt-cx (smt-plan-context :operators operators
                                      :facts task-facts
                                      :action-encoding action-encoding
@@ -194,10 +190,9 @@
                  (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*)
                  plan-steps)
                (invalidate-informed (failed-graph failed-op what-failed object)
-                 (let ((state (canonize-exp (funcall *scene-state-function*
-                                                     failed-graph
-                                                     (robray::make-configuration-map))
-                                            (pddl-operators-canon operators))))
+                 (let ((state (scene-state *scene-state-function* failed-graph
+                                           (robray::make-configuration-map)
+                                           operators)))
                    ;; TODO: failed transfer picks should apply to all possible object locations
                    ;;       Will have to handle in a domain script function
                       (smt-plan-invalidate-op smt-cx state failed-op))
