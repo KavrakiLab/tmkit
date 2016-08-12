@@ -38,6 +38,15 @@
 # TMSMT_PAUSE=nil
 # TMSMT_VERBOSE=nil
 
+tmsmt_arg_error() {
+    >&2 echo "tmsmt: $1"
+    >&2 echo "Try 'tmsmt --help' for more information."
+    exit 1
+}
+
+parse_filetype () {
+    echo "$1" | sed -e 's/^.*\.\([^/.]*\)$/\1/'
+}
 
 parse_long() {
     echo "$1" | cut -d = -f 2
@@ -48,7 +57,7 @@ while test "$1" != x-- -a "x$#" != x0; do
         -h|-\?|--help)
             # HELP TEXT
             cat <<EOF
-Usage: tmsmt [OPTIONS] FILES...
+Usage: tmsmt [OPTIONS] INPUT...
 Compute a task-motion plan
 
 Options:
@@ -65,11 +74,14 @@ Options:
   --write-facts=FILE          Write inititial task facts to FILE
   --python-shell              Start an interactive (CL)Python shell
   -v,--verbose                Be verbose
+
+Examples:
+   tmsmt start.robray ops.pddl script.py -g goal.robray -o out.tmp    Plan and write to out.tmp
+
+
+   tmsmt start.robray ops.pddl script.py -g goal.robray -o out.tmp    Plan and write to out.tmp
+
 EOF
-            # Examples:
-            # export ROS_PACKAGE_PATH=/opt/ros/indigo/share
-            # tmsmt -s 'package://baxter_description/urdf/baxter.urdf' \\
-            #       -s file.robray
             exit 0
             ;;
         -s)
@@ -125,10 +137,28 @@ EOF
         -v|--verbose)
             export TMSMT_VERBOSE=1
             ;;
+        *.*)
+            # Dispatch on file type
+            case `parse_filetype "$1"` in
+                robray|urdf)
+                    export TMSMT_SCENE_FILES="${TMSMT_SCENE_FILES} \"$1\""
+                    ;;
+                pddl)
+                    export TMSMT_TASK_DOMAIN="$1"
+                    ;;
+                py|lisp)
+                    export TMSMT_SCRIPT_FILES="${TMSMT_SCRIPT_FILES} \"$1\""
+                    ;;
+                tmp)
+                    export TMSMT_INPUT="$1"
+                    ;;
+                *)
+                    tmsmt_arg_error "Unknown input type '$1'"
+                    ;;
+            esac
+            ;;
         *)
-            >&2 echo "tmsmt: unrecognized option '$1'"
-            >&2 echo "Try 'tmsmt --help' for more information."
-            exit 1
+            tmsmt_arg_error "Unrecognized option '$1'"
             ;;
     esac
     shift
