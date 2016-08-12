@@ -67,7 +67,6 @@ def map_locations(function, scene):
 ## Problem is with the "Clear" predicate
 def make_state(scene, configuration, is_goal):
     '''Map the scene graph `scene' to a task state expression'''
-    print "MAKE_STATE"
 
     ## terms in the expression
     conjunction = []
@@ -129,7 +128,6 @@ def make_state(scene, configuration, is_goal):
     return conjunction
 
 def scene_state(scene,configuration):
-    print "SCENE_STATE"
     return make_state(scene, configuration, False)
 
 def goal_state(scene,configuration):

@@ -251,8 +251,6 @@
                        when (eq 'bool (tree-map-find variable-type g))
                        collect g))
          (initial-false (set-difference  bool-vars initial-true :test #'equal)))
-    (print operators)
-    (print facts)
     (ecase action-encoding
       (:boolean)
       (:enum (push (make-ground-action :name 'no-op
