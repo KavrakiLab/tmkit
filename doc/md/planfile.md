@@ -1,7 +1,8 @@
 Plan Files {#planfile}
 ==========
 
-Task and motion plans are output in a plan-text, line-based format.
+Task and motion plans are output in a plan-text, line-based format.  A
+[parser] (@ref planfile_stmt_gen_parse) for the format is included.
 
 [TOC]
 

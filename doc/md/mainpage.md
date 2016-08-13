@@ -11,6 +11,7 @@ TMSMT is a framework for Task and Motion Planning.
 Usage
 =====
 
+* [Tutorial] (@ref tutorial)
 * [Planner Command] (@ref planner_command)
 * See also: `./demos` in the source distribution
 

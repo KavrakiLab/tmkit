@@ -7,10 +7,37 @@ Dependencies
 ============
 
 * [Amino] (https://github.com/golems/amino) provides robot kinematics
-  and a motion planner interface.
+  and an interface to motion planning.  TMSMT requires the following
+  optional dependencies of Amino, most of which may be installed via
+  the OS package manager; please see the Amino INSTALL file for
+  details.
+
+  - [SBCL] (http://www.sbcl.org/)
+
+  - [Quicklisp] (http://www.quicklisp.org/)
+
+  - [Blender] (http://www.blender.org)
+              converts meshes.
+
+  - [OMPL] (http://ompl.kavrakilab.org/)
+            handles the motion-planning subproblem.
+
+  - [FCL] (https://github.com/flexible-collision-library/fcl)
+          provides collision checking to validate states for OMPL.
+
+  - [OpenGL] (https://www.opengl.org/)
+             for online visualization.
+
+  - [SDL2] (https://www.libsdl.org/)
+            provides the GUI.
+
+  - [Flex] (http://flex.sourceforge.net/),
+           The Fast Lexical Analyzer, generates the planfile parser.
+
 
 * [Z3] (https://z3.codeplex.com/) provides a solver for the
   constraint-based task planner.
+
 
 Build Overview
 ==============
