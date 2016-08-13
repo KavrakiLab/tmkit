@@ -37,6 +37,7 @@ tmsmt_core_SOURCES = \
 	lisp/m-actions.lisp \
 	lisp/itmp-rec.lisp \
 	lisp/driver.lisp \
+	lisp/python/tmsmtpy.lisp \
 	lisp/tmsmt.asd
 
 
@@ -54,7 +55,12 @@ planfile_test_LDADD = libtmsmt.la
 
 
 if HAVE_DOXYGEN
-doxygen:
+scriptapi.md: $(tmsmt_core_SOURCES)
+	sbcl --eval '(require :tmsmt)' --eval '(require :ntdoc)' \
+	     --eval '(ntdoc::markdown "tmsmtpy" :system :tmsmt :target "scriptapi.md" :title "Domain Script API (Python)")' \
+	     --eval '(sb-ext:quit)'
+
+doxygen: scriptapi.md
 	$(DOXYGEN)
 endif
 

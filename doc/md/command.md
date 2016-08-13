@@ -40,10 +40,14 @@ Domain Scripts
   (http://www.gigamonkeys.com/book/).  Note, however, that Python
   scripts cannot use extension modules.
 
+@sa @ref tmsmtpy
+
 Plan Files
 ----------
 
-* Plans are recorded in as TMSMT [Plan Files](@ref planfile).
+* Plans are recorded in as TMSMT in a plain-text, line-based format.
+
+@sa @ref planfile
 
 Option Summary {#planner_command_options}
 ==============

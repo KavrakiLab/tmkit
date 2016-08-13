@@ -753,7 +753,15 @@ WARN_LOGFILE           =
 # spaces.
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = include doc/md
+INPUT                  = include \
+                         doc/md/mainpage.md \
+                         doc/md/tutorial.md \
+                         doc/md/install.md \
+                         doc/md/command.md \
+                         doc/md/planfile.md \
+                         scriptapi.md \
+                         doc/md/ReadMe.md \
+                         doc/md/copying.md
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses

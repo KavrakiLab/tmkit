@@ -1,7 +1,7 @@
 Tutorial {#tutorial}
 ========
 
-<img src="baxter-sussman.png" style="float:left; margin:0em; margin-right: 3em;"></img>
+<img src="baxter-sussman.png" style="float:left; margin:0em; margin-right: 3em;"/>
 
 This tutorial will show you how to use TMSMT for task-motion planning,
 demonstrating with the Baxter robot.  You will begin with an example
@@ -88,6 +88,8 @@ Changing the goal {#tutorial_run_change_goal}
 -----------------
 
 Next, we will change the goal for the task-motion planning problem.
+The goal is specified as an Amino
+[Scene File](http://code.golems.org/pkg/amino/scenefile.html).
 
 1. Copy and edit the goal scene:
 
@@ -127,7 +129,9 @@ Next, we will change the goal for the task-motion planning problem.
 Changing the scene {#tutorial_run_change_scene}
 ------------------
 
-Next, we will change the start scene.
+Next, we will change both the start and goal scenes, also specified
+with as Amino
+[Scene Files](http://code.golems.org/pkg/amino/scenefile.html).
 
 1. Copy and edit the start scene:
 
@@ -154,7 +158,7 @@ Next, we will change the start scene.
 4. Copy and edit the goal scene:
 
         cp sussman-1.tmp 4-blocks-goal.robray
-        vi 4-blocks-start.robray
+        vi 4-blocks-goal.robray
 
 5. Add the additional block:
 
@@ -166,7 +170,7 @@ Next, we will change the start scene.
             }
         }
 
-5. Execute the planner
+6. Execute the planner
 
         tmsmt package://baxter_description/urdf/baxter.urdf \
               4-blocks-start.robray \

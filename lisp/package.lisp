@@ -12,7 +12,8 @@
 
 
 (defpackage tmsmtpy
-  (:use :cl :alexandria :sycamore :amino :sycamore :robray :sycamore-util :sycamore-cgen :tmsmt)
+  (:use :cl :alexandria :sycamore :amino :sycamore :robray :sycamore-util :sycamore-cgen :tmsmt
+        :aminopy)
   (:nicknames |tmsmtpy|)
   (:export
 
@@ -34,6 +35,11 @@
 
    ;; helpers
    |collect_frame_type|
-   |mangle|
-   |hello|)
+   |mangle|)
+
 )
+
+(in-package :tmsmtpy)
+
+(do-external-symbols (s :aminopy)
+  (export s))
