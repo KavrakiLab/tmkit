@@ -23,13 +23,3 @@ frame block_b {
         isa blue;
     }
 }
-
-
-/* frame block_f { */
-/*     parent front_table; */
-/*     translation [-.2, -.2, 0.0551]; */
-/*     geometry { */
-/*         isa fixedblock; */
-/*         dimension [.1, .1, .5]; */
-/*     } */
-/* } */

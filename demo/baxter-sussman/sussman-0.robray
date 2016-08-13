@@ -26,18 +26,9 @@ frame block_b {
 
 frame block_c {
     parent block_a;
-    translation [0, -.25, block_stack];
+    translation [0, 0, block_stack];
     geometry {
         isa block;
         isa green;
     }
 }
-
-/* frame block_f { */
-/*     parent front_table; */
-/*     translation [-.2, -.2, 0.0551]; */
-/*     geometry { */
-/*         isa fixedblock; */
-/*         dimension [.1, .1, .5]; */
-/*     } */
-/* } */
