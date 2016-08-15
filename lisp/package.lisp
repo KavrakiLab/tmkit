@@ -2,7 +2,9 @@
   (:use :cl)
   (:export
    :exists
-   :forall))
+   :forall
+   :define
+   :problem))
 
 (defpackage :tmsmt
   (:use :cl :alexandria :sycamore :amino :sycamore :robray :sycamore-util :sycamore-cgen

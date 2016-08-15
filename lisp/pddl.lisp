@@ -95,6 +95,18 @@
     (cons (parse-facts facts domain))
     ((or rope pathname) (parse-facts (load-sexp facts *pddl-package*) domain))))
 
+(defun load-facts-list (facts-list &optional domain)
+  (flet ((get-exp (thing)
+           (etypecase thing
+             ((or string pathname)
+              (load-sexp thing *pddl-package*))
+             (cons thing))))
+    (load-facts (reduce (lambda (a b)
+                          (merge-facts (get-exp a)
+                                       (get-exp b)))
+                        facts-list)
+                domain)))
+
 (defun parse-typed-list (type-list)
   (labels ((collect-names (type-list)
              "(values names type rest-of-list)"
@@ -252,6 +264,48 @@
                  (unless (hash-table-contains supertype hash)
                    (setf (gethash supertype hash) t))))))))
       ops)))
+
+(defun merge-facts (exp1 exp2
+                    &key
+                      name)
+  (let ((merged-name name)
+        merged-domain
+        merged-objects
+        merged-init
+        merged-goal)
+    ;; EXP1
+    (labels ((helper (exp)
+               (destructuring-bind (-define (-problem name) &rest clauses)
+                   exp
+                 (check-symbol -define :define)
+                 (check-symbol -problem :problem)
+                 (unless merged-name
+                   (setq merged-name name))
+                 (dolist (clause clauses)
+                   (destructuring-ecase clause
+                     ((:domain domain)
+                      (if merged-domain
+                          (check-symbol domain merged-domain)
+                          (setq merged-domain domain)))
+                     ((:objects &rest objs)
+                      (setq merged-objects (append merged-objects objs)))
+                     ((:init &rest things)
+                      (setq merged-init (append merged-init things)))
+                     ((:goal goal)
+                      (setq merged-goal
+                            (if merged-goal
+                                `(and ,merged-goal ,goal)
+                                goal)))))))
+             (maybe (exp)
+               (when exp (helper exp))))
+      (maybe exp1)
+      (maybe exp2)
+      `(define (problem ,merged-name)
+           (:domain ,merged-name)
+         (:objects ,@merged-objects)
+         (:init ,@merged-init)
+         (:goal ,merged-goal)))))
+
 
 (defun parse-facts (sexp &optional domain)
   (destructuring-bind (-define (-problem name) &rest clauses)

@@ -23,7 +23,7 @@
                     &key
                       operators
                       (problem 'itmp)
-                      (domain 'itmp)
+                      domain
                       (configuration (robray::make-configuration-map))
                       (state-function *scene-state-function*)
                       (goal-function *goal-state-function*)
@@ -31,7 +31,10 @@
   (let ((start-state (scene-state state-function init-scene configuration operators))
         (goal-state (scene-state goal-function goal-scene configuration operators))
         (objects (canonize-exp (funcall objects-function init-scene)
-                               (when operators (pddl-operators-canon operators)))))
+                               (when operators (pddl-operators-canon operators))))
+        (domain (or domain
+                    (when operators (pddl-operators-name operators))
+                    'itmp)))
     `(define (problem ,problem)
          (:domain ,domain)
        (:objects ,@(loop for o in objects
@@ -147,6 +150,7 @@
 
 (defun itmp-rec (init-graph goal-graph operators
                  &key
+                   facts
                    q-all-start
                    (action-encoding :boolean)
                    (naive nil)
@@ -161,8 +165,9 @@
            (operators (load-operators operators))
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
-           (task-facts (scene-facts init-graph goal-graph
-                                    :operators operators))
+           (task-facts (merge-facts facts
+                                    (scene-facts init-graph goal-graph
+                                                 :operators operators)))
            (smt-cx (smt-plan-context :operators operators
                                      :facts task-facts
                                      :action-encoding action-encoding
