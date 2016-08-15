@@ -87,8 +87,8 @@ def make_state(scene, configuration, is_goal):
             occupied[parent] = True
 
     def handle_moveable(frame):
-        name = frame['name']
-        parent_name = frame['parent']
+        name = frame.name
+        parent_name = frame.parent
 
         try:
             # If parent frame is a placement surface, position is the
@@ -113,7 +113,7 @@ def make_state(scene, configuration, is_goal):
 
     ## Clear things
     def clear_block(frame):
-        name = frame['name']
+        name = frame.name
         if not name in occupied:
             conjunction.append(["CLEAR", name])
 
@@ -142,7 +142,7 @@ def scene_objects(scene):
     obj = []
 
     def type_names(thing):
-        return [ f['name']
+        return [ f.name
                  for f in
                  tm.collect_frame_type(scene,thing) ]
 
@@ -165,7 +165,7 @@ def scene_objects(scene):
 
 
 def motion_plan(op, frame, goal):
-    scene = op['final_scene']
+    scene = op.final_scene
     sub_scenegraph = aa.scene_chain(scene, "", frame)
     mp = tm.op_motion( op, sub_scenegraph, goal )
     if False == mp: raise tm.PlanningFailure()
@@ -180,10 +180,10 @@ def place_tf(op, obj, dst_frame, g_tf_o ):
     return tm.op_reparent(mp, dst_frame, obj)
 
 def place_height(scene,name):
-    g = scene[name]['collision']
-    s = g[0]['shape']
+    g = scene[name].collision
+    s = g[0].shape
     if aa.shape_is_box(s):
-        return s['dimension'][2] / 2
+        return s.dimension[2] / 2
 
 # def place(op, obj, dst, i, j):
 #     scene = op['final_scene']
