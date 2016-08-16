@@ -47,11 +47,15 @@
                              &key
                                start)
   (handler-case
-      (let* ((function (gethash (car sexp) *refine-functions*))
-             (plan (funcall function
-                           scene-graph start
-                           sexp)))
-        (tm-plan-list (canonize-exp plan)))
+      (let ((action-op (tm-op-action sexp scene-graph start)))
+        (if-let (function (gethash (car sexp) *refine-functions*))
+          ;; Have a refinement function
+          (tm-plan action-op
+                   (funcall function
+                            scene-graph start
+                            sexp))
+          ;; No refinement function (pure task action)
+          action-op))
     (planning-failure nil)))
 
 
@@ -131,7 +135,7 @@
                                             :start start)))
                           (incf motion-time run-time)
                           (apply #'values result))
-                      (declare (type (or null tm-plan) new-tm-plan))
+                      (declare (type (or null tm-plan tm-op) new-tm-plan))
                       (if new-tm-plan
                           (let ((tm-plan (tm-plan tm-plan new-tm-plan)))
                             (assert (null what-failed))

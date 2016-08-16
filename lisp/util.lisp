@@ -15,10 +15,13 @@
 
 
 (defun load-sexp (filename &optional (package *package*))
-  "Read a single s-expression from a file"
-  (with-open-file (s (rope-string (rope filename)) :direction :input)
-    (let ((*package* package))
-      (read s))))
+  "Read a single s-expression from a file."
+  (etypecase filename
+      ((or string pathname rope)
+       (with-open-file (s (rope-string (rope filename)) :direction :input)
+         (let ((*package* package))
+           (read s))))
+    (list filename)))
 
 (defun load-all-sexp (filename)
   "Read all s-expressions from a file"

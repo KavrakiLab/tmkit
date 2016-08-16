@@ -61,28 +61,35 @@ Usage: tmsmt [OPTIONS] INPUT...
 Compute a task-motion plan
 
 Options:
+  -t TASK_FILE                Task Domain or Facts (PDDL) file
+  -l SCRIPT_FILE              Load script file
   -s SCENE_FILE               Start scene file
   -g SCENE_FILE               Goal scene file
-  -d TASK_DOMAIN_FILE         Task Domain (PDDL) file
   -o OUTPUT_PLAN_FILE         Output plan file
-  -r RESOLUTION               Discretization resolution
-  -l SCRIPT_FILE              Load script file
-  -f TASK_FACTS               Task Facts (PDDL) file
   -m MAX_STEPS                Maximum number of task steps
+  -r RESOLUTION               Discretization resolution
   --gui                       Enable graphical interface
   --load-plan=PLAN_FILE       Load plan from file
   --write-facts=FILE          Write inititial task facts to FILE
   --python-shell              Start an interactive (CL)Python shell
   -v,--verbose                Be verbose
 
+Environment:
+
+  TMSMT_LISP                  Lisp command to use (default: sbcl)
+  TMSMT_NO_CORE               Do not use saved core, instead reload all code
+
 Examples:
-   tmsmt start.robray ops.pddl script.py -g goal.robray -o out.tmp    Plan and write to out.tmp
+   tmsmt start.robray ops.pddl script.py -g goal.robray -o plan.tmp    Plan and write to plan.tmp
 
-
-   tmsmt start.robray ops.pddl script.py -g goal.robray -o out.tmp    Plan and write to out.tmp
 
 EOF
             exit 0
+            ;;
+        -t)
+            shift;
+            # TODO: escape special characters
+            export TMSMT_PDDL_FILES="${TMSMT_PDDL_FILES} \"$1\""
             ;;
         -s)
             shift;
@@ -98,16 +105,6 @@ EOF
             shift;
             # TODO: escape special characters
             export TMSMT_GOAL_FILES="${TMSMT_GOAL_FILES} \"$1\""
-            ;;
-        -d)
-            shift;
-            # TODO: escape special characters
-            export TMSMT_TASK_DOMAIN="$1"
-            ;;
-        -f)
-            shift;
-            # TODO: escape special characters
-            export TMSMT_TASK_FACTS="$1"
             ;;
         -o)
             shift;
@@ -144,7 +141,7 @@ EOF
                     export TMSMT_SCENE_FILES="${TMSMT_SCENE_FILES} \"$1\""
                     ;;
                 pddl)
-                    export TMSMT_TASK_DOMAIN="$1"
+                    export TMSMT_PDDL_FILES="${TMSMT_PDDL_FILES} \"$1\""
                     ;;
                 py|lisp)
                     export TMSMT_SCRIPT_FILES="${TMSMT_SCRIPT_FILES} \"$1\""
@@ -164,24 +161,43 @@ EOF
     shift
 done
 
+## Construct call to Lisp core
+
+test_bool() {
+    if [ -z "$1" \
+         -o "$1" = 0 \
+         -o "$1" = false \
+         -o "$1" = no ]
+    then
+        false
+    else
+        true
+    fi
+}
+
+if [ -z "$TMSMT_LISP" ]; then
+    export TMSMT_LISP=sbcl
+fi
+
+if [ -z "$TMSMT_CORE" ]; then
+    export TMSMT_CORE="tmsmt.core"
+fi
 
 
 if [ -z "$TMSMT_PYTHON_SHELL" ]; then
-    TMSMT_LISP="sbcl --non-interactive"
-else
-    TMSMT_LISP="sbcl"
+    export TMSMT_LISP_ARGS="${TMSMT_LISP_ARGS} --non-interactive"
 fi
 
+
+if test_bool "$TMSMT_NO_CORE"; then
+    export TMSMT_LISP_ARGS="${TMSMT_LISP} ${TMSMT_LISP_ARGS} --eval '(require :tmsmt)'"
+else
+    export TMSMT_LISP_ARGS="${TMSMT_CORE} ${TMSMT_LISP_ARGS} --eval '(require :tmsmt)'"
+fi
 
 
 if [ -n "$TMSMT_VERBOSE" ]; then
    env | grep "^TMSMT_"
 fi
 
-
-
-$TMSMT_LISP  --eval '(require :tmsmt)' --eval '(tmsmt::tmp-command)'
-
-
-
-# exec tmsmt.core --non-interactive --eval '(tmsmt::tmp-command)'
+exec sh -c "exec ${TMSMT_LISP_ARGS} --eval '(tmsmt::tmp-command)'"

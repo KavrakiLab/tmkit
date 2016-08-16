@@ -19,10 +19,9 @@
 
 
 (defun tmp-driver (&key
-                     task-domain
                      start-scene
                      goal-scene
-                     task-facts
+                     pddl
                      gui
                      scripts
                      verbose
@@ -39,70 +38,87 @@
 
   ;; Load Scripts
 
-
   ;; Load scenes
   (let* ((scripts (let ((s (ensure-list scripts)))
                     (map nil #'tmp-script s)
                     s))
+         domain-exp
+         facts-exp
          (start-scene (ensure-list start-scene))
+         (gui (and gui start-scene))
          (goal-scene (ensure-list goal-scene))
          (start-scene-graph (robray::load-scene-files start-scene))
          (goal-scene-graph (robray::load-scene-files goal-scene))
          (output (or output *standard-output*)))
     (finish-output *standard-output*)
 
-    ;; Maybe write facts
-    (when write-facts
-      (format t "~&Write Facts: ~A~%" write-facts)
-      (output-rope (pddl-exp-rope (scene-facts start-scene-graph goal-scene-graph
-                                               :configuration start))
-                   write-facts
-                   :if-exists :supersede))
+    (labels ((header-line (text list)
+               (loop for elt in list
+                  collect (rope text elt #\Newline)))
+             (plan-header ()
+               (rope (header-line "# Script" scripts)
+                     (loop for p in pddl
+                        collect
+                          (rope "# Task Domain: "
+                                (etypecase p
+                                  ((or pathname rope) p)
+                                  (t nil))
+                                #\Newline))
+                     (header-line "# Start Scene" start-scene)
+                     (header-line "# Goal Scene" goal-scene))))
 
-    ;; Maybe display scene
-    (when (and gui start-scene)
-      (robray::win-set-scene-graph start-scene-graph)
-      (robray::win-set-config start))
+      ;; Load PDDL
+      (dolist (x (ensure-list pddl))
+        (multiple-value-bind (sexp type) (load-pddl-sexp x)
+          (ecase type
+            (:domain
+             (unless (null domain-exp)
+               (error "Multiple PDDL domains."))
+             (setq domain-exp sexp))
+            (:problem
+             (setq facts-exp (merge-facts facts-exp sexp))))))
 
-    ;; Now plan!
-    (cond
+      (print domain-exp)
 
-      ;; Task-Motion Planning
-      ((and start-scene task-domain)
-       (if-let ((plan (itmp-rec start-scene-graph goal-scene-graph
-                                task-domain
-                                :q-all-start start
-                                :max-steps max-steps)))
-         (progn
-           ;; Maybe display scene
-           (when gui
-             (robray::win-display-motion-plan-sequence (tm-plan-motion-plans plan)))
-           ;; output plan
-           (output-rope (rope (loop for script in scripts
-                                 collect (rope "# Script " script #\Newline))
-                              (loop for scene in start-scene
-                                 collect (rope "# Start Scene: " scene #\Newline))
-                              (rope "# Task Domain: " task-domain #\Newline)
-                              (loop for scene in goal-scene
-                                 collect (rope "# Goal Scene: " scene #\Newline))
-                              (object-rope plan))
-                        output :if-exists :supersede)
-           plan)
-         ;; no plan
-         (format *error-output* "~&ERROR: no plan found.~&")))
+      ;; Maybe write facts
+      (when write-facts
+        (format t "~&Write Facts: ~A~%" write-facts)
+        (let* ((scene-facts (scene-facts start-scene-graph goal-scene-graph :configuration start))
+               (all-facts (merge-facts facts-exp scene-facts))
+               (rope (pddl-exp-rope all-facts)))
+          (output-rope rope write-facts :if-exists :supersede)))
 
-      ;; Task plan only
-      ((and task-domain task-facts)
-       (if-let ((plan (smt-plan task-domain task-facts :max-steps max-steps)))
-         (output-rope (rope (rope "# Task Domain: " task-domain #\Newline)
-                            (rope "# Task Facts: "  task-facts #\Newline)
-                            (loop for op in plan collect (tm-op-action op nil nil)))
-                      output :if-exists :supersede)
-         (format *error-output* "~&ERROR: no plan found.~&")))
+      ;; Maybe display scene
+      (when gui
+        (robray::win-set-scene-graph start-scene-graph)
+        (robray::win-set-config start))
 
-      ;; Unknowm mode
-      (t
-       (format *error-output* "~&ERROR: invalid parameters.~&")))))
+      ;; Now plan!
+      (let ((plan (cond
+                    ;; Task-Motion Planning
+                    ((and start-scene domain-exp)
+                     (itmp-rec start-scene-graph goal-scene-graph
+                               domain-exp
+                               :facts facts-exp
+                               :q-all-start start
+                               :max-steps max-steps))
+                    ;; Task plan only
+                    ((and domain-exp facts-exp)
+                     (smt-plan domain-exp facts-exp :max-steps max-steps))
+                    ;; Unknown mode
+                    (t
+                     (format *error-output* "~&ERROR: invalid parameters.~&")))))
+
+        ;; Maybe display plan
+        (when (and gui plan)
+          (robray::win-display-motion-plan-sequence (tm-plan-motion-plans plan)))
+
+        ;; Output Plan
+        (if plan
+            (output-rope (rope (plan-header) plan)
+                         output :if-exists :supersede)
+            (format *error-output* "~&ERROR: no plan found.~&"))))))
+
 
 ;; TODO: start configuration
 
@@ -114,6 +130,7 @@
 (defun tmp-command ()
   (let* ((scene-files (env-list "TMSMT_SCENE_FILES"))
          (goal-files (env-list "TMSMT_GOAL_FILES"))
+         (pddl-files (env-list "TMSMT_PDDL_FILES"))
          (script-files (env-list "TMSMT_SCRIPT_FILES"))
          (max-steps (if-let ((s (uiop/os:getenv "TMSMT_MAX_STEPS")))
                       (parse-integer s)
@@ -135,8 +152,7 @@
        (tmp-driver :start-scene scene-files
                    :goal-scene goal-files
                    :scripts script-files
-                   :task-domain (uiop/os:getenv "TMSMT_TASK_DOMAIN")
-                   :task-facts (uiop/os:getenv "TMSMT_TASK_FACTS")
+                   :pddl pddl-files
                    :max-steps max-steps
                    :gui gui
                    :write-facts (uiop/os:getenv "TMSMT_WRITE_FACTS")

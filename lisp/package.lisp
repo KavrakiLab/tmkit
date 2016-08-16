@@ -1,6 +1,8 @@
 (defpackage tmsmt/pddl
   (:use :cl)
   (:export
+   :domain
+   :define
    :exists
    :forall
    :define

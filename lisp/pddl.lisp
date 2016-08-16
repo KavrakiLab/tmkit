@@ -81,6 +81,20 @@
 ;; Given: argument type, objects and type
 ;; Find:  set of objects that match the argument
 
+(defun load-pddl-sexp (filename)
+  "Load the PDDL as an SEXP and return whether it a operators or facts.
+
+RETURNS: (VALUES pddl-sexp (or :domain :problem))"
+  (let ((sexp (load-sexp filename *pddl-package*)))
+    (destructuring-bind (-define (or-domain-facts name) &rest rest)
+        sexp
+      (declare (ignore name rest))
+      (check-symbol -define 'tmsmt/pddl:define)
+      (values sexp
+              (ecase or-domain-facts
+                (tmsmt/pddl:domain :domain)
+                (tmsmt/pddl:problem :problem))))))
+
 (defun load-operators (operators)
   "Load operators from `operators'."
   (etypecase operators
@@ -297,15 +311,18 @@
                                 `(and ,merged-goal ,goal)
                                 goal)))))))
              (maybe (exp)
-               (when exp (helper exp))))
-      (maybe exp1)
-      (maybe exp2)
-      `(define (problem ,merged-name)
-           (:domain ,merged-name)
-         (:objects ,@merged-objects)
-         (:init ,@merged-init)
-         (:goal ,merged-goal)))))
-
+               (etypecase exp
+                 (null nil)
+                 (pathname (maybe (load-sexp exp *pddl-package*)))
+                 (cons (helper exp)))))
+      (when (or exp1 exp2)
+        (maybe exp1)
+        (maybe exp2)
+        `(define (problem ,merged-name)
+             (:domain ,merged-name)
+           (:objects ,@merged-objects)
+           (:init ,@merged-init)
+           (:goal ,merged-goal))))))
 
 (defun parse-facts (sexp &optional domain)
   (destructuring-bind (-define (-problem name) &rest clauses)
