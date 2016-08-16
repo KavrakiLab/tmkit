@@ -1,0 +1,5 @@
+SIPH_PKG_NAME="tmsmt"
+SIPH_PKG_REPO="https://github.com/kavrakilab/tmsmt.git"
+SIPH_PKG_BRANCH="master"
+
+SIPH_PKG_DEPS_SIPH="https://github.com/golems/amino.git"
