@@ -1,0 +1,6 @@
+#!/bin/sh
+
+export LD_LIBRARY_PATH="@abs_top_builddir@/.libs:$LD_LIBRARY_PATH"
+export PATH="@abs_top_builddir@:$PATH"
+
+exec @abs_top_srcdir@/src/tmsmt $@

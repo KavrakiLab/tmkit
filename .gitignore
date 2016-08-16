@@ -40,9 +40,17 @@ catkin_generated
 /Doxyfile
 /doc/doxygen_sqlite3.db
 /doc/tmsmt.1
+/doc/md/copying.md
 /demo/*.tmp
 /demo/baxter-sussman.pddl
 /scriptapi.md
 /tmsmt-*.tar.*
 /tmsmt-*
 /demo/baxter-sussman-safety.tmp
+/lisp/config.lisp
+/demo-path.sh
+/demo/run/run-baxter-sussman-linear.sh
+/demo/run/run-baxter-sussman-safety.sh
+/demo/run/run-baxter-sussman.sh
+/demo/run/run-sussman.sh
+/tmsmt

@@ -76,8 +76,8 @@ When given only the task domain and facts, the planner command will
 compute a pure task plan.  Using the blocksworld domain included in
 the source distribution, call the planner as:
 
-    tmsmt -d demo/domains/blocksworld/blocks-domain.pddl \
-          -f demo/domains/blocksworld/sussman-anomaly.pddl
+    tmsmt demo/domains/blocksworld/blocks-domain.pddl \
+          demo/domains/blocksworld/sussman-anomaly.pddl
 
 Task-Motion Planning
 --------------------
@@ -92,9 +92,9 @@ such as meshes via ROS packages.
 The following command will compute a task-motion plan for the Baxter
 robot and output the plan to `baxter-sussman.tmp`.
 
-    tmsmt -s 'package://baxter_description/urdf/baxter.urdf' \
-          -s sussman-0.robray \
-          -s allowed-collision.robray \
+    tmsmt package://baxter_description/urdf/baxter.urdf \
+          sussman-0.robray \
+          allowed-collision.robray \
           -g sussman-1.robray  \
           -d domain.pddl \
           -o baxter-sussman.tmp
@@ -103,9 +103,9 @@ robot and output the plan to `baxter-sussman.tmp`.
 The following command will load and visualize the previously computed
 task-motion plan from the file `baxter-sussman.tmp`.
 
-    tmsmt -s 'package://baxter_description/urdf/baxter.urdf' \
-          -s sussman-0.robray \
-          -s allowed-collision.robray \
+    tmsmt package://baxter_description/urdf/baxter.urdf \
+          sussman-0.robray \
+          allowed-collision.robray \
           -i baxter-sussman.tmp
 
 

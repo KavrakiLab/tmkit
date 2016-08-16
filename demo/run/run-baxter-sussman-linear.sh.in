@@ -1,0 +1,16 @@
+#!/bin/sh
+
+## Compute a task-motion plan to solve the sussman anomaly with a
+## Rethink Baxter robot.
+
+. @abs_top_builddir@/run-path.sh
+
+tmsmt 'package://baxter_description/urdf/baxter.urdf' \
+      $demo/baxter-sussman/sussman-0.robray \
+      $demo/baxter-sussman/allowed-collision.robray \
+      $demo/domains/linear-blocksworld/linear-blocksworld.pddl \
+      $demo/domains/linear-blocksworld/linear-blocksworld.py \
+      -g $demo/baxter-sussman/sussman-1.robray  \
+      -o baxter-sussman-linear.tmp \
+      --gui \
+      --verbose

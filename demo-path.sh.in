@@ -5,5 +5,5 @@ if [ -z "$ROS_PACKAGE_PATH" ]; then
    export ROS_PACKAGE_PATH=/opt/ros/indigo/share
 fi
 
-export PATH="..:$PATH"
-export LD_LIBRARY_PATH="../.libs:$LD_LIBRARY_PATH"
+export PATH="@abs_top_srcdir@:$PATH"
+demo="@abs_top_srcdir@/demo"

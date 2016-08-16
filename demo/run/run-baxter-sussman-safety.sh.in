@@ -1,0 +1,18 @@
+#!/bin/sh
+
+## Compute a task-motion plan to solve the sussman anomaly with a
+## Rethink Baxter robot.
+
+. @abs_top_builddir@/demo-path.sh
+
+tmsmt package://baxter_description/urdf/baxter.urdf \
+      $demo/baxter-sussman/sussman-0.robray \
+      $demo/baxter-sussman/allowed-collision.robray \
+      $demo/domains/blocksworld/tm-blocks-safety.pddl \
+      $demo/domains/blocksworld/blocks-safety-goal.pddl \
+      $demo/domains/blocksworld/tm-blocks.py \
+      -g $demo/baxter-sussman/sussman-1.robray  \
+      -o baxter-sussman-safety.tmp \
+      --gui \
+      --write-facts=baxter-sussman.pddl \
+      --verbose

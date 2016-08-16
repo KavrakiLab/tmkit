@@ -73,18 +73,35 @@ Options:
   --write-facts=FILE          Write inititial task facts to FILE
   --python-shell              Start an interactive (CL)Python shell
   -v,--verbose                Be verbose
+  -h,-?,--help                Display this help and exit
+  --version                   Output version information and exit
+
 
 Environment:
 
-  TMSMT_LISP                  Lisp command to use (default: sbcl)
-  TMSMT_NO_CORE               Do not use saved core, instead reload all code
+  ROS_PACKAGE_PATH            Location of ROS packages, necessary to load URDF
+  TMSMT_LISP                  Debugging option: Lisp command (default: sbcl)
+  TMSMT_NO_CORE               Debugging option: Reload all code instead of saved core
 
 Examples:
-   tmsmt start.robray ops.pddl script.py -g goal.robray -o plan.tmp    Plan and write to plan.tmp
+
+  tmsmt start.robray ops.pddl script.py -g goal.robray -o plan.tmp  Plan and write to plan.tmp
+
+  tmsmt package://baxter_description/urdf/baxter.urdf...            Use a URDF scene
+
+  tmsmt scene.robray plan.tmp --gui                                 Visualize plan
+
+  tmsmt ops.pddl facts.pddl -o plan.tmp                             Compute a pure task plan
 
 
 EOF
             exit 0
+            ;;
+        --version)
+            export TMSMT_VERSION="1"
+            ;;
+        --version-man)
+            export TMSMT_VERSION_MAN="1"
             ;;
         -t)
             shift;

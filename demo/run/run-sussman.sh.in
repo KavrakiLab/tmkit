@@ -1,0 +1,8 @@
+#!/bin/sh
+
+## Compute the task plan for the sussman anomaly
+
+. @abs_top_builddir@/demo-path.sh
+
+tmsmt $demo/domains/blocksworld/tm-blocks.pddl \
+      $demo/domains/blocksworld/tm-sussman.pddl

@@ -60,7 +60,20 @@ AM_CONDITIONAL([HAVE_HELP2MAN], [test x$HELP2MAN != x])
 AM_CONDITIONAL([HAVE_GROFF], [test x$GROFF != x])
 
 
-AC_CONFIG_FILES([Makefile Doxyfile])
+AC_CONFIG_FILES([Makefile Doxyfile lisp/config.lisp])
+
+AC_DEFUN([CONFIG_SCRIPT],
+         [AC_CONFIG_FILES([$1],
+                          [chmod +x $1])])
+
+CONFIG_SCRIPT([tmsmt])
+
+AC_CONFIG_FILES([demo-path.sh])
+CONFIG_SCRIPT([demo/run/run-sussman.sh])
+CONFIG_SCRIPT([demo/run/run-baxter-sussman.sh])
+CONFIG_SCRIPT([demo/run/run-baxter-sussman-safety.sh])
+CONFIG_SCRIPT([demo/run/run-baxter-sussman-linear.sh])
+
 AC_OUTPUT
 
 AS_BOX([TMSMT CONFIGURATION SUMMARY])

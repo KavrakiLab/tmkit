@@ -1,0 +1,4 @@
+(in-package :tmsmt)
+
+(defparameter +version+ "@PACKAGE_VERSION@")
+(defparameter +bug-report+ "@BUG_REPORT@")

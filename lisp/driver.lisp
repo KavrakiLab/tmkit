@@ -122,6 +122,26 @@
             (format *error-output* "~&ERROR: no plan found.~&"))))))
 
 
+(defparameter +copying+
+  (read-file-into-string (merge-pathnames "COPYING" *tmsmt-root*)))
+
+(defun tmp-version (&optional (stream *standard-output*))
+  (format stream
+          "tmsmt ~A
+
+~A
+
+Written by Neil T. Dantam
+"
+          +version+
+          +copying+
+          ))
+
+(defun tmp-version-man (&optional (stream *standard-output*))
+  (format stream "~A"
+          (ppcre:regex-replace-all (ppcre:create-scanner  "^[ \\*]*" :multi-line-mode t)
+                                   (tmp-version nil) "")))
+
 ;; TODO: start configuration
 
 (defun env-list (varname)
@@ -144,6 +164,10 @@
       (robray::win-create :title "TMSMT"
                           :stop-on-quit t))
     (cond
+      ((uiop/os:getenv "TMSMT_VERSION")
+       (tmp-version))
+      ((uiop/os:getenv "TMSMT_VERSION_MAN")
+       (tmp-version-man))
       ((uiop/os:getenv "TMSMT_PYTHON_SHELL")
        (clpython:repl))
       (plan-file

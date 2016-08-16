@@ -61,7 +61,7 @@ tmsmt.core$(EXEEXT): $(tmsmt_core_SOURCES) libtmsmt.la
 	LD_LIBRARY_PATH=.libs:$(LD_LIBRARY_PATH) \
 		$(AARX_CORE) --script $(top_srcdir)/build.lisp
 
-dist_bin_SCRIPTS += tmsmt
+dist_bin_SCRIPTS += src/tmsmt
 
 
 noinst_PROGRAMS += planfile_test
@@ -84,8 +84,14 @@ scriptapi.md: $(tmsmt_core_SOURCES)
 	     --eval '(load "doc.lisp")' \
 	     --eval '(sb-ext:quit)'
 
-doxygen: scriptapi.md
+doxygen: scriptapi.md doc/md/copying.md
 	$(DOXYGEN)
+
+doc/md/copying.md: $(top_srcdir)/COPYING
+	$(MKDIR_P) doc/md/
+	cat $(top_srcdir)/doc/md/copying.md.header  \
+	    $(top_srcdir)/COPYING \
+	    > doc/md/copying.md
 
 doc/manual: doxygen
 
@@ -99,8 +105,8 @@ endif
 
 if HAVE_HELP2MAN
 EXTRA_DIST += doc/tmsmt.1
-doc/tmsmt.1: $(top_srcdir)/tmsmt $(top_srcdir)/configure.ac
-	$(HELP2MAN) -h -h --version-string="0.0" --no-info -n "Task-Motion Planner" $(top_srcdir)/tmsmt -o $@
+doc/tmsmt.1: tmsmt src/tmsmt configure.ac tmsmt.core$(EXEEXT)
+	$(HELP2MAN) --version-option=--version-man --no-info -n "Task-Motion Planner" $(top_srcdir)/tmsmt -o $@
 
 
 if HAVE_GROFF
@@ -108,6 +114,9 @@ EXTRA_DIST += doc/manual/man_tmsmt.html
 doc/manual/man_tmsmt.html: doc/tmsmt.1
 	$(MKDIR_P) doc/manual
 	$(GROFF) -mandoc -Thtml < doc/tmsmt.1 > doc/manual/man_tmsmt.html
+
+doxygen: doc/manual/man_tmsmt.html
+
 endif
 
 endif
@@ -146,9 +155,4 @@ EXTRA_DIST += demo/baxter-sussman/allowed-collision.robray \
               demo/domains/blocksworld/blocks-safety-goal.pddl \
               demo/domains/linear-blocksworld/linear-blocksworld.pddl \
               demo/domains/linear-blocksworld/linear-blocksworld.py \
-              demo/baxter-sussman.pddl \
-              demo/run-sussman.sh \
-              demo/run-baxter-sussman.sh \
-              demo/run-baxter-sussman-safety.sh \
-              demo/run-baxter-sussman-linear.sh \
-              demo/demo-path.sh
+              demo/baxter-sussman.pddl

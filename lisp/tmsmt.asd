@@ -9,6 +9,7 @@
                (cffi-grovel:grovel-file "grovel" :depends-on ("package"))
 
                (:file "util" :depends-on ("package"))
+               (:file "config" :depends-on ("package"))
                (:file "smtlib" :depends-on ("util"))
                (:file "smtrun" :depends-on ("smtlib"))
                (:file "expression" :depends-on ("util"))
@@ -28,7 +29,7 @@
                ;(:file "moveit" :depends-on ("ros/ros-scene" "ros/ros-container" "motion-plan"))
                ;(:file "m-actions" :depends-on ("util" "motion-plan"))
                (:file "itmp-rec" :depends-on ("util"))
-               (:file "driver" :depends-on ("itmp-rec"))
+               (:file "driver" :depends-on ("itmp-rec" "util" "config"))
 
                (:file "foreign-tmplan" :depends-on ("tm-plan"))
                ;(:file "planvis" :depends-on ("util"))
