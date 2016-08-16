@@ -9,6 +9,7 @@ tmsmt package://baxter_description/urdf/baxter.urdf \
       baxter-sussman/sussman-0.robray \
       baxter-sussman/allowed-collision.robray \
       domains/blocksworld/tm-blocks-safety.pddl \
+      domains/blocksworld/blocks-safety-goal.pddl \
       domains/blocksworld/tm-blocks.py \
       -g baxter-sussman/sussman-1.robray  \
       -o baxter-sussman-safety.tmp \

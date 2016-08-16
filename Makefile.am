@@ -141,6 +141,7 @@ EXTRA_DIST += demo/baxter-sussman/allowed-collision.robray \
               demo/domains/blocksworld/sussman-anomaly.pddl \
               demo/domains/blocksworld/tm-blocks.py \
               demo/domains/blocksworld/tm-blocks-safety.pddl \
+              demo/domains/blocksworld/blocks-safety-goal.pddl \
               demo/domains/linear-blocksworld/linear-blocksworld.pddl \
               demo/domains/linear-blocksworld/linear-blocksworld.py \
               demo/baxter-sussman.pddl \

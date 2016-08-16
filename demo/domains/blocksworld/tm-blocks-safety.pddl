@@ -21,7 +21,7 @@
            :effect (and (safety-light)))
   (:action disable-motion
            :parameters ()
-           :effect (and (safety-light)))
+           :effect (and (not (safety-light))))
   (:action pick-up
            :parameters (?x - block ?loc - location)
            :precondition (and (clear ?x)

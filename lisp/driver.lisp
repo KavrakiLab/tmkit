@@ -78,12 +78,12 @@
             (:problem
              (setq facts-exp (merge-facts facts-exp sexp))))))
 
-      (print domain-exp)
-
       ;; Maybe write facts
       (when write-facts
         (format t "~&Write Facts: ~A~%" write-facts)
-        (let* ((scene-facts (scene-facts start-scene-graph goal-scene-graph :configuration start))
+        (let* ((scene-facts (scene-facts start-scene-graph goal-scene-graph
+                                         :configuration start
+                                         :operators (parse-operators domain-exp)))
                (all-facts (merge-facts facts-exp scene-facts))
                (rope (pddl-exp-rope all-facts)))
           (output-rope rope write-facts :if-exists :supersede)))

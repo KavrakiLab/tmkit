@@ -319,7 +319,7 @@ RETURNS: (VALUES pddl-sexp (or :domain :problem))"
         (maybe exp1)
         (maybe exp2)
         `(define (problem ,merged-name)
-             (:domain ,merged-name)
+             (:domain ,merged-domain)
            (:objects ,@merged-objects)
            (:init ,@merged-init)
            (:goal ,merged-goal))))))
