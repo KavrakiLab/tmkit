@@ -39,9 +39,10 @@ catkin_generated
 /config.guess
 /Doxyfile
 /doc/doxygen_sqlite3.db
-/demo/baxter-sussman/baxter-sussman.tmp
 /doc/tmsmt.1
-/demo/baxter-sussman-linear.tmp
-/demo/baxter-sussman.tmp
+/demo/*.tmp
 /demo/baxter-sussman.pddl
 /scriptapi.md
+/tmsmt-*.tar.*
+/tmsmt-*
+/demo/baxter-sussman-safety.tmp
