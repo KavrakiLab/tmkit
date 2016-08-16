@@ -3,9 +3,7 @@
 ## Compute a task-motion plan to solve the sussman anomaly with a
 ## Rethink Baxter robot.
 
-
-export ROS_PACKAGE_PATH=/opt/ros/indigo/share
-export PATH="..:$PATH"
+. ./demo-path.sh
 
 tmsmt 'package://baxter_description/urdf/baxter.urdf' \
       baxter-sussman/sussman-0.robray \

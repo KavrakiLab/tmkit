@@ -147,4 +147,5 @@ EXTRA_DIST += demo/baxter-sussman/allowed-collision.robray \
               demo/run-sussman.sh \
               demo/run-baxter-sussman.sh \
               demo/run-baxter-sussman-safety.sh \
-              demo/run-baxter-sussman-linear.sh
+              demo/run-baxter-sussman-linear.sh \
+              demo/demo-path.sh
