@@ -1,17 +1,8 @@
-#-sbcl
-(progn
-  (format *error-output* "~&Only SBCL is supported; aborting build.~&")
-  (abort)
-  (error nil))
+(let ((top-srcdir (concatenate 'string
+                               (uiop/os:getenv "top_srcdir")
+                               "/")))
+  (load (merge-pathnames "load.lisp" top-srcdir)))
 
-(require :asdf)
-
-;; Add source directory to ASDF registry
-(pushnew (pathname "./lisp/")
-         asdf:*central-registry*
-         :test #'equal)
-
-(require :tmsmt)
 
 (let ((compression nil))
   #+sb-core-compression

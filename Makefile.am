@@ -52,8 +52,10 @@ tmsmt_core_SOURCES = \
 	lisp/python/tmsmtpy.lisp \
 	lisp/tmsmt.asd
 
-EXTRA_DIST += build.lisp
+EXTRA_DIST += load.lisp build.lisp
 tmsmt.core$(EXEEXT): $(tmsmt_core_SOURCES) libtmsmt.la
+	top_srcdir=$(top_srcdir) \
+	top_builddir=$(top_builddir) \
 	LD_LIBRARY_PATH=.libs:$(LD_LIBRARY_PATH) \
 		$(AARX_CORE) --script $(top_srcdir)/build.lisp
 
@@ -68,24 +70,52 @@ planfile_test_LDADD = libtmsmt.la
 ## Documentation ##
 ###################
 
+EXTRA_DIST += doc.lisp
+
 if HAVE_DOXYGEN
+EXTRA_DIST += scriptapi.md
 scriptapi.md: $(tmsmt_core_SOURCES)
-	sbcl --eval '(require :tmsmt)' --eval '(require :ntdoc)' \
-	     --eval '(ntdoc::markdown "tmsmtpy" :system :tmsmt :target "scriptapi.md" :title "Domain Script API (Python)")' \
+	LD_LIBRARY_PATH=.libs:$(LD_LIBRARY_PATH) \
+	top_srcdir=$(top_srcdir) \
+	top_builddir=$(top_builddir) \
+	sbcl --non-interactive \
+	     --eval '(load "doc.lisp")' \
 	     --eval '(sb-ext:quit)'
 
 doxygen: scriptapi.md
 	$(DOXYGEN)
+
+doc/manual: doxygen
+
+else
+
+doc/manual:
+	mkdir doc/manual
+
 endif
 
 
 if HAVE_HELP2MAN
+EXTRA_DIST += doc/tmsmt.1
 doc/tmsmt.1: $(top_srcdir)/tmsmt $(top_srcdir)/configure.ac
 	$(HELP2MAN) -h -h --version-string="0.0" --no-info -n "Task-Motion Planner" $(top_srcdir)/tmsmt -o $@
+
 endif
 
+EXTRA_DIST += doc/md/command.md \
+              doc/md/copying.md \
+              doc/md/domain_script.md \
+              doc/md/foot.html \
+              doc/md/head.html \
+              doc/md/install.md \
+              doc/md/mainpage.md \
+              doc/md/planfile.md \
+              doc/md/ReadMe.md \
+              doc/md/tutorial.md \
+              doc/manual
+
 clean-local:
-	-rm -rf doc/manual/
+	-rm -rf doc/manual/ doc/doxygen_sqlite3.db
 
 ###########
 ## Demos ##
