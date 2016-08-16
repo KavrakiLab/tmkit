@@ -4,5 +4,5 @@
 
 . ./demo-path.sh
 
-tmsmt -d domains/blocksworld/tm-blocks.pddl\
-      -f domains/blocksworld/tm-sussman.pddl
+tmsmt domains/blocksworld/tm-blocks.pddl \
+      domains/blocksworld/tm-sussman.pddl

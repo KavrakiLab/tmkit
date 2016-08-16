@@ -104,7 +104,9 @@
                                :max-steps max-steps))
                     ;; Task plan only
                     ((and domain-exp facts-exp)
-                     (smt-plan domain-exp facts-exp :max-steps max-steps))
+                     (map 'list (lambda (a)
+                                  (tm-op-action a nil nil))
+                          (smt-plan domain-exp facts-exp :max-steps max-steps)))
                     ;; Unknown mode
                     (t
                      (format *error-output* "~&ERROR: invalid parameters.~&")))))

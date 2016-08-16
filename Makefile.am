@@ -34,7 +34,9 @@ EXTRA_DIST += include/tmsmt/tmplan.h \
 bin_PROGRAMS += tmsmt.core
 tmsmt_core_SOURCES = \
 	build.lisp \
+	load.lisp \
 	lisp/package.lisp \
+	lisp/grovel.lisp \
 	lisp/util.lisp \
 	lisp/smtlib.lisp \
 	lisp/smtrun.lisp \
@@ -49,10 +51,10 @@ tmsmt_core_SOURCES = \
 	lisp/m-actions.lisp \
 	lisp/itmp-rec.lisp \
 	lisp/driver.lisp \
+	lisp/foreign-tmplan.lisp \
 	lisp/python/tmsmtpy.lisp \
 	lisp/tmsmt.asd
 
-EXTRA_DIST += load.lisp build.lisp
 tmsmt.core$(EXEEXT): $(tmsmt_core_SOURCES) libtmsmt.la
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
