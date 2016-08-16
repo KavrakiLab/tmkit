@@ -9,7 +9,7 @@ planner.
 Input and Output {#planner_command_io}
 ================
 
-Start and Goal Scenes
+Start and Goal Scenes {#planner_command_io_scenes}
 ---------------------
 
 * Start and goal scenes may be specified as Amino
@@ -20,7 +20,7 @@ Start and Goal Scenes
 * The goal scene defines target locations for (usually a subset of)
   environment objects.
 
-Task Domain
+Task Domain {#planner_command_io_task}
 -----------
 
 * The task domain is specified in the
@@ -28,7 +28,7 @@ Task Domain
 * Task facts -- PDDL Objects, start state, goal state, etc. -- are
   inferred from the start and goal scenes.
 
-Domain Scripts
+Domain Scripts {#planner_command_io_scripts}
 --------------
 
 * The domain-specific mapping from scenes to task state and task
@@ -42,55 +42,12 @@ Domain Scripts
 
 @sa @ref tmsmtpy
 
-Plan Files
+Plan Files {#planner_command_io_planfile}
 ----------
 
 * Plans are recorded in as TMSMT in a plain-text, line-based format.
 
 @sa @ref planfile
-
-Option Summary {#planner_command_options}
-==============
-
-    Usage: tmsmt [OPTIONS]
-
-    Options:
-
-    -s SCENE_FILE
-        Start scene file
-
-    -g SCENE_FILE
-        Goal scene file
-
-    -d TASK_DOMAIN_FILE
-        Task Domain (PDDL) file
-
-    -f TASK_FACTS_FILE
-        Task Facts (PDDL) file
-
-    -l SCRIPT_FILE
-        Load Script File
-
-    -o OUTPUT_PLAN_FILE
-        Output plan file
-
-    --load-plan=PLAN_FILE
-        Load plan from file
-
-    -r RESOLUTION
-        Discretization resolution
-
-    -m MAX_STEPS
-        Maximum number of task steps
-
-    --gui
-        Enable graphical interface
-
-    --python-shell
-        Start an interactive (CL)Python shell
-
-    -v
-        Verbose output
 
 
 Examples {#planner_command_examples}
@@ -138,3 +95,18 @@ task-motion plan from the file `baxter-sussman.tmp`.
           -s sussman-0.robray \
           -s allowed-collision.robray \
           -i baxter-sussman.tmp
+
+
+Options Summary {#planner_command_man}
+===============
+
+@sa [Man Page] (man_tmsmt.html)
+
+@htmlonly
+<iframe src="man_tmsmt.html"
+        height="800"
+        width="100%"
+        >
+
+</iframe>
+@endhtmlonly

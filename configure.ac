@@ -53,8 +53,11 @@ AC_ARG_ENABLE([man],
               [enable_man="yes"])
 
 AS_IF([test "x$enable_man" = xyes -a "x$build" = "x$host"],
-      [AC_CHECK_PROGS([HELP2MAN], [help2man])])
+      [AC_CHECK_PROGS([HELP2MAN], [help2man])
+       AC_CHECK_PROGS([GROFF], [groff])])
+
 AM_CONDITIONAL([HAVE_HELP2MAN], [test x$HELP2MAN != x])
+AM_CONDITIONAL([HAVE_GROFF], [test x$GROFF != x])
 
 
 AC_CONFIG_FILES([Makefile Doxyfile])

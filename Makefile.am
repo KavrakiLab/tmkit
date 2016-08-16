@@ -100,6 +100,14 @@ EXTRA_DIST += doc/tmsmt.1
 doc/tmsmt.1: $(top_srcdir)/tmsmt $(top_srcdir)/configure.ac
 	$(HELP2MAN) -h -h --version-string="0.0" --no-info -n "Task-Motion Planner" $(top_srcdir)/tmsmt -o $@
 
+
+if HAVE_GROFF
+EXTRA_DIST += doc/manual/man_tmsmt.html
+doc/manual/man_tmsmt.html: doc/tmsmt.1
+	$(MKDIR_P) doc/manual
+	$(GROFF) -mandoc -Thtml < doc/tmsmt.1 > doc/manual/man_tmsmt.html
+endif
+
 endif
 
 EXTRA_DIST += doc/md/command.md \
