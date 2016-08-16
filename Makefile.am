@@ -41,8 +41,9 @@ tmsmt_core_SOURCES = \
 	lisp/tmsmt.asd
 
 
-tmsmt.core$(EXEEXT): $(tmsmt_core_SOURCES)
-	$(AARX_CORE) --script build.lisp
+tmsmt.core$(EXEEXT): $(tmsmt_core_SOURCES) libtmsmt.la
+	LD_LIBRARY_PATH=.libs:$(LD_LIBRARY_PATH) \
+		$(AARX_CORE) --script build.lisp
 
 bin_SCRIPTS += tmsmt
 
