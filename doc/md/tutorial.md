@@ -13,8 +13,8 @@ domain and scene from TMSMT and modify the scene and goal.
 
 <div style="clear: both"></div>
 
-Creating a Planning Scene {#tutorial_run}
-=========================
+Basic Planner Use {#tutorial_run}
+=================
 
 In this tutorial, you will first see how to run the planner on the
 demo scene, then modify the scene with different goals and objects.
@@ -25,7 +25,7 @@ Prerequisites
 * You are comfortable with a unix shell and text editor.
 * You have [installed] (@ref installation) TMSMT.
 
-Setup and Invocation {#tutorial_run_example}
+Setup and Invocation {#tutorial_run_setup}
 --------------------
 
 1. Obtain the baxter URDF:
@@ -180,3 +180,110 @@ with as Amino
               -g 4-blocks-goal.robray  \
               -o 4-blocks.tmp \
               --gui
+
+Extending the Task Domain {#tutorial_task}
+=========================
+
+This tutorial demonstrates adding pure task operators.  You will add
+operators to enable and disable a safety light.  Then, you will modify
+the other preconditions to ensure that the robot only moves with the
+safety light on.
+
+Prerequisites
+-------------
+
+* You have completed the [setup] (@ref tutorial_run_setup) step from
+  the previous tutorial.
+* You are familiar with the
+  [Planning Domain Definition Language (PDDL)]
+  (https://en.wikipedia.org/wiki/Planning_Domain_Definition_Language)
+
+Extend the Operators File {#tutorial_task_ops}
+-------------------------
+
+1. Copy the original operators file and edit:
+
+        cp tm-blocks.pddl tm-blocks-light.pddl
+        vi tm-blocks-light.pddl
+
+2. Add the following predicate for the safety light:
+
+        (safety-light)
+
+3. Add an operator to turn on the safety light:
+
+        (:action enable-motion
+                 :parameters ()
+                 :effect (and (safety-light)))
+
+3. Add an operator to turn off the safety light:
+
+        (:action disable-motion
+                 :parameters ()
+                 :effect (and (not (safety-light))))
+
+4. Require the safety light to be on during motion by adding the
+   `(safety-light)` predicate to the precondition of each motion
+   action (`pick-up`, `stack`, etc.).
+
+
+
+Extend the Goal Condition {#tutorial_task_facts}
+-------------------------
+
+1. Create a new facts file with the additional goal condition:
+
+        vi light-goal.pddl
+
+2. Add the following PDDL declarations:
+
+        (define (problem sussman-anomaly)
+          (:domain blocks)
+          (:goal (not (safety-light))))
+
+Run the planner {#tutorial_task_run}
+---------------
+
+    tmsmt package://baxter_description/urdf/baxter.urdf \
+          sussman-0.robray \
+          allowed-collision.robray \
+          tm-blocks-light.pddl \
+          light-goal.pddl \
+          tm-blocks.py \
+          -g baxter-sussman/sussman-1.robray  \
+          -o baxter-sussman-light.tmp \
+          --gui \
+
+
+Extending the Task-Motion Domain {#tutorial_task_motion}
+================================
+
+**TODO**
+
+This tutorial demonstrates adding new task-motion operators.  You will
+add an operator to push a button when the robot finishes its task.
+
+
+Prerequisites
+-------------
+
+* You have completed the [setup] (@ref tutorial_run_setup) step from
+  the previous tutorial.
+* You are familiar with the
+  [Planning Domain Definition Language (PDDL)]
+  (https://en.wikipedia.org/wiki/Planning_Domain_Definition_Language)
+* You are familiar with the [Python] (@ref https://www.python.org/)
+  programming language
+
+
+Add button geometry
+-------------------
+
+Extend the Operators File
+-------------------------
+
+Extend the Facts File
+---------------------
+
+Extend the Domain Script
+----------------------

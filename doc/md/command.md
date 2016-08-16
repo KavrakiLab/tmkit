@@ -6,10 +6,10 @@ planner.
 
 [TOC]
 
-Input and Output {#planner_command_io}
-================
+Input {#planner_command_input}
+=====
 
-Start and Goal Scenes {#planner_command_io_scenes}
+Start and Goal Scenes {#planner_command_input_scenes}
 ---------------------
 
 * Start and goal scenes may be specified as Amino
@@ -20,7 +20,7 @@ Start and Goal Scenes {#planner_command_io_scenes}
 * The goal scene defines target locations for (usually a subset of)
   environment objects.
 
-Task Domain {#planner_command_io_task}
+Task Domain {#planner_command_input_task}
 -----------
 
 * The task domain is specified in the
@@ -28,7 +28,7 @@ Task Domain {#planner_command_io_task}
 * Task facts -- PDDL Objects, start state, goal state, etc. -- are
   inferred from the start and goal scenes.
 
-Domain Scripts {#planner_command_io_scripts}
+Domain Scripts {#planner_command_input_scripts}
 --------------
 
 * The domain-specific mapping from scenes to task state and task
@@ -40,14 +40,26 @@ Domain Scripts {#planner_command_io_scripts}
   (http://www.gigamonkeys.com/book/).  Note, however, that Python
   scripts cannot use extension modules.
 
-@sa @ref tmsmtpy
+* @sa @ref tmsmtpy
 
-Plan Files {#planner_command_io_planfile}
+Output {#planner_command_output}
+======
+
+Plan Files {#planner_command_output_planfile}
 ----------
 
 * Plans are recorded in as TMSMT in a plain-text, line-based format.
 
-@sa @ref planfile
+* @sa @ref planfile
+
+Visualization {#planner_command_output_viz}
+----------
+
+* When the planner is give the `--gui` flag, it will visualize the
+  planning scene and the computed task-motion plan.
+
+* Previously saved plan files can be later reloaded and visualized
+  with the `--load-plan=PLAN_FILE` parameter.
 
 
 Examples {#planner_command_examples}
