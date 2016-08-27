@@ -43,7 +43,14 @@ PKG_CHECK_MODULES([AMINO], [amino],
 
 
 # Doxygen
-AC_CHECK_PROGS([DOXYGEN],[doxygen])
+AC_ARG_WITH([doxygen],
+            AS_HELP_STRING([--without-doxygen], [Disable doxygen support]),
+            [],
+            [with_doxygen=auto])
+AS_IF([test "x$with_doxygen" != xno],
+      [AC_CHECK_PROGS([DOXYGEN],[doxygen])])
+AS_IF([test "x$with_doxygen" = xyes -x "x$DOXYGEN" = x],
+      [AC_MSG_ERROR([Doxygen not found])])
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "x$DOXYGEN" != x])
 
 # Man Pages
