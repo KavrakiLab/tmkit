@@ -160,30 +160,32 @@ Written by Neil T. Dantam
          (plan-file (uiop/os:getenv "TMSMT_INPUT"))
          (gui (or (uiop/os:getenv "TMSMT_GUI")
                   plan-file)))
-    (when gui
-      (robray::win-create :title "TMSMT"
-                          :stop-on-quit t))
-    (cond
-      ((uiop/os:getenv "TMSMT_VERSION")
-       (tmp-version))
-      ((uiop/os:getenv "TMSMT_VERSION_MAN")
-       (tmp-version-man))
-      ((uiop/os:getenv "TMSMT_PYTHON_SHELL")
-       (clpython:repl))
-      (plan-file
-       ;; Load and display plan
-       (display-tm-plan-file scene-files nil plan-file))
-      (t
-       ;; Find the plan
-       (tmp-driver :start-scene scene-files
-                   :goal-scene goal-files
-                   :scripts script-files
-                   :pddl pddl-files
-                   :max-steps max-steps
-                   :gui gui
-                   :write-facts (uiop/os:getenv "TMSMT_WRITE_FACTS")
-                   :output (uiop/os:getenv "TMSMT_OUTPUT")
-                   :verbose (uiop/os:getenv "TMSMT_VERBOSE"))))
-    ;; Join the window thread
-    (when gui
-      (robray::win-join))))
+    (flet ((helper ()
+             (cond
+               ((uiop/os:getenv "TMSMT_VERSION")
+                (tmp-version))
+               ((uiop/os:getenv "TMSMT_VERSION_MAN")
+                (tmp-version-man))
+               ((uiop/os:getenv "TMSMT_PYTHON_SHELL")
+                (clpython:repl))
+               (plan-file
+                ;; Load and display plan
+                (display-tm-plan-file scene-files nil plan-file))
+               (t
+                ;; Find the plan
+                (tmp-driver :start-scene scene-files
+                            :goal-scene goal-files
+                            :scripts script-files
+                            :pddl pddl-files
+                            :max-steps max-steps
+                            :gui gui
+                            :write-facts (uiop/os:getenv "TMSMT_WRITE_FACTS")
+                            :output (uiop/os:getenv "TMSMT_OUTPUT")
+                            :verbose (uiop/os:getenv "TMSMT_VERBOSE"))))))
+      (if gui
+          (progn
+            (robray::win-create :title "TMSMT"
+                                :stop-on-quit t)
+            (sb-thread:make-thread #'helper)
+            (robray::win-run :synchronous t))
+          (helper)))))
