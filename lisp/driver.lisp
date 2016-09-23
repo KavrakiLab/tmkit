@@ -10,7 +10,9 @@
     (cond
       ;; CLPython Script
       ((string= type "py")
-       (clpython:run pathname))
+       ;; Workaround mixed-case issue in CL-Python
+       ;;(clpython:run pathname)
+       (clpython:run (read-file-into-string  pathname)))
       ;; Lisp Script
       ((find type '("lisp" "l") :test #'string=)
        (load pathname))
