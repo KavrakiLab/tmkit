@@ -219,3 +219,9 @@
     (make-pathname :directory (append (pathname-directory pathname)
                                       (ensure-list subdirectory))
                    :defaults pathname)))
+
+
+(defun quit-system (&optional (result 0))
+  #+sbcl
+  (sb-ext:quit :unix-status result)
+  (error "Could not quit"))

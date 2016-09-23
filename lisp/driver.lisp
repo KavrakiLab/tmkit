@@ -111,7 +111,9 @@
                           (smt-plan domain-exp facts-exp :max-steps max-steps)))
                     ;; Unknown mode
                     (t
-                     (format *error-output* "~&ERROR: invalid parameters.~&")))))
+                     (format *error-output* "~&ERROR: invalid parameters~%")
+                     (format *error-output* "~&see `tmsmt --help' for usage~%")
+                     (quit-system -1)))))
 
         ;; Maybe display plan
         (when (and gui plan)
@@ -121,7 +123,8 @@
         (if plan
             (output-rope (rope (plan-header) plan)
                          output :if-exists :supersede)
-            (format *error-output* "~&ERROR: no plan found.~&"))))))
+            (progn (format *error-output* "~&ERROR: no plan found.~&")
+                   (quit-system 1)))))))
 
 
 (defparameter +copying+
