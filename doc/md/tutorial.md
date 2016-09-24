@@ -4,12 +4,15 @@ Tutorial {#tutorial}
 <img src="baxter-sussman.png" style="float:left; margin:0em; margin-right: 3em;"/>
 
 This tutorial will show you how to use TMSMT for task-motion planning,
-demonstrating with the Baxter robot.  You will begin with an example
-domain and scene from TMSMT and modify the scene and goal.
-
+by starting by using the [Baxter]
+(http://www.rethinkrobotics.com/baxter/) robot to solve the
+[Sussman Anomaly] (https://en.wikipedia.org/wiki/Sussman_Anomaly), a
+classic example planning problem involving rearranging several blocks.
+Then, you will modify the the problem, first by changing the goal
+positions of the blocks, next by changing the initial scene, and
+finally by addition additional task operators.
 
 [TOC]
-
 
 <div style="clear: both"></div>
 
@@ -28,7 +31,8 @@ Prerequisites
 Setup and Invocation {#tutorial_run_setup}
 --------------------
 
-1. Obtain the baxter URDF:
+1. Obtain the baxter URDF, which describes the kinematics and geometry
+   (meshes) of the robot.
 
    * If you already have an existing ROS installation, you can install
      the `baxter_description` ROS package, for example on ROS Indigo:
@@ -57,8 +61,9 @@ Setup and Invocation {#tutorial_run_setup}
            tmsmt/demo/domains/blocksworld/tm-blocks.* \
            baxter-blocks
 
-3. Visualize the initial scene. You should see the Baxter, a table,
-   and some blocks.
+3. Visualize the initial scene, defined by the Baxter URDF and example
+   scene (*.robray) files. You should see the Baxter, a table, and
+   some blocks.
 
        cd baxter-blocks
        aarxc --gui package://baxter_description/urdf/baxter.urdf sussman-0.robray
@@ -74,7 +79,17 @@ Setup and Invocation {#tutorial_run_setup}
               -g sussman-1.robray  \
               -o baxter-sussman.tmp
 
-   The output is [plan file] (@ref planfile) `baxter-sussman.tmp`.
+   This commands takes a number of inputs and options:
+     - `package://baxter_description/urdf/baxter.urdf`: A scene
+       description (for the robot) for the start scene in URDF format
+     - `sussman-0.robray`: a scene description for the start scene in
+       scene file format
+     - `allowed-collision.robray`: an additional scene description
+       contained the allowable collisions
+     - `tm-blocks.pddl`: The task operators file
+     - `tm-blocks.py`: The domain somantics file
+     - `-g sussman-1.robray`: The goal scene
+     - `-o baxter-sussman.tmp`: The output file [plan file] (@ref planfile)
 
 5. Load and view the computed plan:
 
@@ -83,6 +98,11 @@ Setup and Invocation {#tutorial_run_setup}
               allowed-collision.robray \
               baxter-sussman.tmp \
               --gui
+
+   This command takes as parameters the initial scene (`*.urdf` and
+   `*.robray` files) along with the previously computed plan file
+   `baxter-sussman.tmp`.  The `--gui` option will display the plan in
+   a 3D visualization.
 
 Changing the goal {#tutorial_run_change_goal}
 -----------------
@@ -96,26 +116,29 @@ The goal is specified as an Amino
         cp sussman-1.tmp sussman-reversed.robray
         vi sussman-reversed.robray
 
-2. Change the file so that the stacking order is reverse, with block C
+2. Change the file so that the stacking order is reversed, with block C
    on Block B and Block B on Block A:
 
+        /* include common definitions for blocks */
         include "class.robray"
 
+        /* the kinematic frame for block "C" */
         frame block_c {
-            parent block_b;
+            parent block_b;  // the parent from of block_c is block_b
             geometry {
-                isa block;
+                isa block; // geometry class for blocks
             }
         }
 
+        /* the kinematic frame for block "B" */
         frame block_b {
-            parent block_a;
+            parent block_a;  // the parent frame of block_b is block_a
             geometry {
-                isa block;
+                isa block; // geometry class for blocks
             }
         }
 
-3. Execute the planner and visualize the plan:
+3. Re-execute the planner and visualize the plan:
 
         tmsmt package://baxter_description/urdf/baxter.urdf \
               sussman-0.robray \
@@ -141,19 +164,20 @@ with as Amino
 
 2. Add an additional block:
 
+        /* the kinematic frame for block "D" */
         frame block_d {
-            parent block_b;
+            parent block_b; // block_d is initially on block_b
+            /* set the height of block_d above block_b */
             translation [0, 0, block_stack];
             geometry {
                 isa block;
-                color [0,1,1];
+                color [0,1,1]; // block_d is cyan
             }
         }
 
 3. View the new scene:
 
         aarxc --gui  package://baxter_description/urdf/baxter.urdf 4-blocks-start.robray
-
 
 4. Copy and edit the goal scene:
 
@@ -163,7 +187,8 @@ with as Amino
 5. Add the additional block:
 
         frame block_d {
-            parent block_a;
+            parent block_a; // block "D" is stacked on block "A"
+            /* set the relative height of block "D" */
             translation [0, 0, block_stack];
             geometry {
                 isa block;
