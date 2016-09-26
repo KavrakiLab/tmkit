@@ -75,8 +75,8 @@ planfile_test_LDADD = libtmsmt.la
 EXTRA_DIST += doc.lisp
 
 if HAVE_DOXYGEN
-EXTRA_DIST += scriptapi.md
-scriptapi.md: $(tmsmt_core_SOURCES)
+EXTRA_DIST += py-api.md
+py-api.md: $(tmsmt_core_SOURCES)
 	LD_LIBRARY_PATH=.libs:$(LD_LIBRARY_PATH) \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
@@ -84,7 +84,7 @@ scriptapi.md: $(tmsmt_core_SOURCES)
 	     --eval '(load "doc.lisp")' \
 	     --eval '(sb-ext:quit)'
 
-doxygen: scriptapi.md doc/md/copying.md
+doxygen: py-api.md doc/md/copying.md
 	$(DOXYGEN)
 
 doc/md/copying.md: $(top_srcdir)/COPYING
@@ -123,7 +123,7 @@ endif
 
 EXTRA_DIST += doc/md/command.md \
               doc/md/copying.md \
-              doc/md/domain_script.md \
+              doc/md/semantics.md \
               doc/md/foot.html \
               doc/md/head.html \
               doc/md/install.md \

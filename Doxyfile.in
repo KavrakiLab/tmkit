@@ -759,7 +759,8 @@ INPUT                  = include \
                          doc/md/install.md \
                          doc/md/command.md \
                          doc/md/planfile.md \
-                         scriptapi.md \
+                         doc/md/semantics.md \
+                         py-api.md \
                          doc/md/ReadMe.md \
                          doc/md/copying.md
 

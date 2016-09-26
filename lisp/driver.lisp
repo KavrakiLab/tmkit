@@ -58,7 +58,7 @@
                (loop for elt in list
                   collect (rope text elt #\Newline)))
              (plan-header ()
-               (rope (header-line "# Script" scripts)
+               (rope (header-line "# Semantics: " scripts)
                      (loop for p in pddl
                         collect
                           (rope "# Task Domain: "

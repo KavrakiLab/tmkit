@@ -54,3 +54,4 @@ catkin_generated
 /demo/run/run-baxter-sussman.sh
 /demo/run/run-sussman.sh
 /tmsmt
+/py-api.md

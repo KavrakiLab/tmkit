@@ -4,4 +4,4 @@
   (load (merge-pathnames "load.lisp" top-srcdir)))
 
 (require :ntdoc)
-(ntdoc::markdown "tmsmtpy" :system :tmsmt :target "scriptapi.md" :title "Domain Script API (Python)")
+(ntdoc::markdown "tmsmtpy" :system :tmsmt :target "py-api.md" :title "Domain Semantics API (Python)")

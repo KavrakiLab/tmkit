@@ -1,16 +1,16 @@
-Domain Scripts {#domain_script}
+Domain Semanticss {#domain_semantics}
 ==============
 
 [TOC]
 
-Domain script files specify the mapping between the task and motion
+Domain semantics files specify the mapping between the task and motion
 layers in the particular planning domain.
 
-Functions {#domain_script_functions}
+Functions {#domain_semantics_functions}
 =========
 
 
-Scene State Function {#domain_script_fun_state}
+Scene State Function {#domain_semantics_fun_state}
 --------------------
 
 * **Input:** `SCENE-GRAPH, CONFIGURATION`
@@ -61,7 +61,7 @@ And here is the same return value as a Lisp S-Expression:
 
 
 
-Scene Objects Function {#domain_script_fun_objects}
+Scene Objects Function {#domain_semantics_fun_objects}
 ----------------------
 
 * **Input:** `SCENE-GRAPH`
@@ -106,7 +106,7 @@ clause:
            "location_0" "location_1" "location_2" - location)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Refine Operator Function {#domain_script_fun_refine}
+Refine Operator Function {#domain_semantics_fun_refine}
 ----------------------
 
 * **Input:** `SCENE-GRAPH, CONFIGURATION, OPERATOR`
