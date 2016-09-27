@@ -113,7 +113,7 @@ The goal is specified as an Amino
 
 1. Copy and edit the goal scene:
 
-        cp sussman-1.tmp sussman-reversed.robray
+        cp sussman-1.robray sussman-reversed.robray
         vi sussman-reversed.robray
 
 2. Change the file so that the stacking order is reversed, with block C
@@ -158,7 +158,7 @@ with as Amino
 
 1. Copy and edit the start scene:
 
-        cp sussman-0.tmp 4-blocks-goal.robray
+        cp sussman-0.robray 4-blocks-start.robray
         vi 4-blocks-start.robray
 
 
