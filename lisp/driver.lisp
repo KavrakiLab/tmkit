@@ -31,6 +31,7 @@
                      ;; FIXME:
                      output
                      write-facts
+                     (motion-timeout *motion-timeout*)
                      (start (robray::alist-configuration-map `(("right_s0" . ,(/ pi 5)))))
                      )
 
@@ -41,7 +42,8 @@
   ;; Load Scripts
 
   ;; Load scenes
-  (let* ((scripts (let ((s (ensure-list scripts)))
+  (let* ((*motion-timeout* (or motion-timeout *motion-timeout*))
+         (scripts (let ((s (ensure-list scripts)))
                     (map nil #'tmp-script s)
                     s))
          domain-exp
@@ -184,6 +186,9 @@ Written by Neil T. Dantam
                             :pddl pddl-files
                             :max-steps max-steps
                             :gui gui
+                            :motion-timeout (if-let ((x (uiop/os:getenv "TMSMT_MOTION_TIMEOUT")))
+                                              (max (amino::parse-float x)
+                                                   0.1))
                             :write-facts (uiop/os:getenv "TMSMT_WRITE_FACTS")
                             :output (uiop/os:getenv "TMSMT_OUTPUT")
                             :verbose (uiop/os:getenv "TMSMT_VERBOSE"))))))

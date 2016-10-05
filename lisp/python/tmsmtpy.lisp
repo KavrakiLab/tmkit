@@ -48,7 +48,7 @@ Examples:
                          (tmsmt::tm-op-final-config previous-op)
                          :workspace-goal goal
                          :simplify t
-                         :timeout 1d0)))
+                         :timeout tmsmt::*motion-timeout*)))
     (if mp
         (|plan| previous-op (tmsmt::tm-op-motion mp))
         (clpython:py-bool nil))))
