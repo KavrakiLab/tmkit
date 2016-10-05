@@ -32,8 +32,8 @@
                      output
                      write-facts
                      (motion-timeout *motion-timeout*)
-                     (start (robray::alist-configuration-map `(("right_s0" . ,(/ pi 5)))))
-                     )
+                     start-plan
+                     start )
 
   (when verbose
     (format t "~&Start scene files: ~{~A~^, ~}~%" (ensure-list start-scene))
@@ -52,6 +52,10 @@
          (gui (and gui start-scene))
          (goal-scene (ensure-list goal-scene))
          (start-scene-graph (robray::load-scene-files start-scene))
+         (start (or start
+                    (when start-plan
+                      (parse-tmplan start-scene-graph nil start-plan))
+                    (robray::make-configuration-map)))
          (goal-scene-graph (robray::load-scene-files goal-scene))
          (output (or output *standard-output*)))
     (finish-output *standard-output*)
@@ -182,6 +186,7 @@ Written by Neil T. Dantam
                 ;; Find the plan
                 (tmp-driver :start-scene scene-files
                             :goal-scene goal-files
+                            :start-plan (uiop/os:getenv "TMSMT_INITIAL_PLAN")
                             :scripts script-files
                             :pddl pddl-files
                             :max-steps max-steps

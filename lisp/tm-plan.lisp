@@ -125,8 +125,16 @@
      (format nil "~{p ~{~F	~}~%~}"
              path-list))))
 
+(defmethod configuration-map-string (config)
+  (with-output-to-string (s)
+    (let* ((keys (tree-map-keys config))
+           (values  (map 'list (lambda (k) (tree-map-find config k)) keys)))
+      (format s "m ~{~A~^ ~}~%" keys)
+      (format s "p ~{~F~^ ~}~%" values))))
+
 (defmethod object-rope ((object tm-plan))
-  (rope (tm-plan-ops object)))
+  (rope (configuration-map-string (tm-plan-initial-config object))
+        (tm-plan-ops object)))
 
 
 (defun tm-op-tf-abs (op frame)

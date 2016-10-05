@@ -92,7 +92,13 @@
            (config-indices (loop for name in config-names
                               collect (robray::mutable-scene-graph-config-index m-sg name))))
       (dotimes (j point-count)
-        ;; TODO: Initialize configs from start
+        ;; Initialize configs from start
+        (when *plan-config-map*
+          (map-tree-map :inorder nil
+                        (lambda (k v)
+                          (when-let ((i (robray::mutable-scene-graph-config-index m-sg k)))
+                            (setf (aref path (+ (* j local-config-count) i)) v)))
+                        *plan-config-map*))
         ;; Fill from foreign
         (loop
            for i-n in config-indices
@@ -120,10 +126,19 @@
   (check-type *plan-scene-graph* scene-graph)
   (let* ((type (tmplan-op-type op))
          (op (translate-op type op *plan-scene-graph* *plan-config-map*)))
-    (push op *plan-ops*)
-    (setq *plan-scene-graph* (tm-op-final-scene-graph op)
-          *plan-config-map* (tm-op-final-config op))))
-
+    (if (and (null *plan-ops*)
+             (null *plan-config-map*)
+             (eq :motion-plan type)
+             (and (= 1 (robray::motion-plan-point-count (tm-op-motion-motion-plan op)))))
+        ;; Initial configuration
+        (progn
+          (setq *plan-config-map*
+                (tm-op-final-config op)))
+        ;; Push op
+        (progn
+          (push op *plan-ops*)
+          (setq *plan-scene-graph* (tm-op-final-scene-graph op)
+                *plan-config-map* (tm-op-final-config op))))))
 
 
 (defun translate-tmplan (scene-graph config-map pointer)
@@ -145,7 +160,15 @@
                    (unwind-protect
                         (translate-tmplan scene-graph config-map ptr)
                      (amino::aa-mem-region-local-pop ptr)))))
-      (tm-plan-list ops))))
+      (if ops
+          (tm-plan-list ops)
+          *plan-config-map*))))
+
+(defun tm-plan-file-motion-plans (scene-files start-config plan-file)
+  (tm-plan-motion-plans (parse-tmplan (robray::load-scene-files scene-files)
+                                      (or start-config
+                                          (robray::make-configuration-map))
+                                      plan-file)))
 
 (defun display-tm-plan-file (scene-files start-config plan-file)
   (robray::win-display-motion-plan-sequence
@@ -153,3 +176,9 @@
                                        (or start-config
                                            (robray::make-configuration-map))
                                        plan-file))))
+
+(defun render-tm-plan-file (scene-files start-config plan-file)
+  (tm-plan-motion-plans (parse-tmplan (robray::load-scene-files scene-files)
+                                      (or start-config
+                                          (robray::make-configuration-map))
+                                      plan-file)))

@@ -66,6 +66,7 @@ Options:
   -s SCENE_FILE               Start scene file
   -g SCENE_FILE               Goal scene file
   -o OUTPUT_PLAN_FILE         Output plan file
+  -q PLAN_FILE                Initial configuration
   -s MAX_STEPS                Maximum number of task steps
   -m MOTION_TIMEOUT           Initial motion planning timeout
   -r RESOLUTION               Discretization resolution
@@ -140,6 +141,10 @@ EOF
         -m|--motion-timeout)
             shift;
             export TMSMT_MOTION_TIMEOUT="$1"
+            ;;
+        -q)
+            shift;
+            export TMSMT_INITIAL_PLAN="$1"
             ;;
         --load-plan=*)
             export TMSMT_INPUT=`parse_long "$1"`
