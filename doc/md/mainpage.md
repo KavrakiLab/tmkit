@@ -31,5 +31,5 @@ Contributors
 * [Swarat Chaudhuri] (http://www.cs.rice.edu/~sc40/)
 * [Lydia E. Kavraki] (http://www.cs.rice.edu/~kavraki/)
 
-Development of TMKit was supported in part by NSF IIS-1317849,
-CCF-1514372, and Rice University Funds.
+Development of TMKit was supported in part by NSF CCF-1514372, NSF
+CCF-1139011, NSF IIS-1317849, and Rice University Funds.
