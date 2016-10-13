@@ -84,7 +84,7 @@ py-api.md: $(tmsmt_core_SOURCES)
 	     --eval '(load "doc.lisp")' \
 	     --eval '(sb-ext:quit)'
 
-doxygen: py-api.md doc/md/copying.md
+doxygen: py-api.md doc/md/copying.md doc/md/mainpage.md
 	$(DOXYGEN)
 
 doc/md/copying.md: $(top_srcdir)/COPYING
@@ -92,6 +92,12 @@ doc/md/copying.md: $(top_srcdir)/COPYING
 	cat $(top_srcdir)/doc/md/copying.md.header  \
 	    $(top_srcdir)/COPYING \
 	    > doc/md/copying.md
+
+doc/md/mainpage.md: $(top_srcdir)/AUTHORS $(top_srcdir)/doc/md/mainpage-head.md
+	$(MKDIR_P) doc/md/
+	cat $(top_srcdir)/doc/md/mainpage-head.md \
+	    $(top_srcdir)/AUTHORS \
+	    > doc/md/mainpage.md
 
 doc/manual: doxygen
 

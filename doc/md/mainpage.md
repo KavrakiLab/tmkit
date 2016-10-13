@@ -27,9 +27,15 @@ Publications
 Contributors
 ============
 
-* [Neil T. Dantam] (http://www.neil.dantam.name)
-* [Swarat Chaudhuri] (http://www.cs.rice.edu/~sc40/)
-* [Lydia E. Kavraki] (http://www.cs.rice.edu/~kavraki/)
+<!-- Append AUTHORS file -->
+* [Neil T. Dantam]
+  (http://www.neil.dantam.name)
+
+* [Swarat Chaudhuri]
+  (http://www.cs.rice.edu/~sc40/)
+
+* [Lydia E. Kavraki]
+  (http://www.cs.rice.edu/~kavraki/)
 
 Development of TMKit was supported in part by NSF CCF-1514372, NSF
 CCF-1139011, NSF IIS-1317849, and Rice University Funds.
