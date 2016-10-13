@@ -95,6 +95,8 @@ doc/md/copying.md: $(top_srcdir)/COPYING
 
 doc/manual: doxygen
 
+doc: doxygen
+
 else
 
 doc/manual:

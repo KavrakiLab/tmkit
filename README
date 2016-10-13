@@ -1,4 +1,4 @@
-TMSMT is a task and motion planner.
+The Task-Motion Kit (TMKit) is a task and motion planner.
 
 Features
 ========
@@ -27,5 +27,5 @@ Building
 DOCUMENTATION
 =============
 
-* Manual: http://code.golems.org/pkg/tmsmt/ and `./doc/manual/`
+* Manual: http://tmkit.kavrakilab.org/ and `./doc/manual/`
 * Examples `./demos/`
