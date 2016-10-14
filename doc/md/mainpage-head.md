@@ -2,13 +2,18 @@ Task-Motion Kit {#mainpage}
 ==============
 
 The Task-Motion Kit (TMKit) is a framework for Task and Motion
-Planning.
+Planning.  Everyday activities, e.g., setting a table or making
+coffee, combine discrete decisions about objects and actions with
+geometric decisions about collision free motion.  TMKit jointly
+reasons about task-level objectives, i.e., choosing actions and
+objects, and motion-level objectives, i.e., finding collision free
+paths.
 
 - [Installation] (@ref installation)
 - [Tutorial] (@ref tutorial)
 - [License](@ref copying): 3-clause BSD (permissive)
-- <a href="https://github.com/kavrakilab/tmsmt"><b>Source
-  Code</b></a>: `git clone https://github.com/kavrakilab/tmsmt.git`
+- <a href="https://github.com/kavrakilab/tmkit"><b>Source
+  Code</b></a>: `git clone https://github.com/kavrakilab/tmkit.git`
 
 Usage
 =====
