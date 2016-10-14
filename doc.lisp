@@ -3,5 +3,5 @@
                                "/")))
   (load (merge-pathnames "load.lisp" top-srcdir)))
 
-(require :ntdoc)
+(ql:quickload :ntdoc)
 (ntdoc::markdown "tmsmtpy" :system :tmsmt :target "py-api.md" :title "Domain Semantics API (Python)")

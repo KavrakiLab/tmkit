@@ -55,3 +55,5 @@ catkin_generated
 /demo/run/run-sussman.sh
 /tmsmt
 /py-api.md
+/lisp/dir.lisp
+/tmkit*.tar.gz

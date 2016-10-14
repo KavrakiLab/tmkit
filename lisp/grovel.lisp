@@ -39,16 +39,10 @@
   (in-package :tmsmt)
 
   (pkg-config-cflags "amino")
-  (pkg-config-cflags "amino")
 
   ;; Look for source directory includes
-  (cc-flags #.(concatenate 'string "-I"
-                           (namestring (asdf:system-source-directory :tmsmt))
-                           "../include")
-            #.(when (boundp 'cl-user::*top-builddir*)
-                (concatenate 'string "-I"
-                             cl-user::*top-builddir*
-                             "/include"))
+  (cc-flags #.(format nil "-I~Ainclude" tmsmt::*abs-builddir*)
+            #.(format nil "-I~Ainclude" tmsmt::*abs-srcdir*)
             "-std=gnu99")
 
 

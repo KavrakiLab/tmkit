@@ -1,0 +1,21 @@
+FROM ndantam/amino:ubuntu-xenial-install
+
+RUN (cd /root && git clone https://github.com/ndantam/cl-ntdoc.git) &&\
+    mkdir -p /root/.local/share/common-lisp/source && \
+    ln -s /root/amino/submodules/sycamore/src/*.asd \
+       /root/amino/lisp/*.asd \
+       /root/cl-ntdoc/*.asd \
+       /root/.local/share/common-lisp/source && \
+    ldconfig
+
+
+
+COPY . /root/tmkit
+
+RUN ln -s /root/tmkit/lisp/*.asd \
+       /root/.local/share/common-lisp/source
+
+
+# Local Variables:
+# mode: dockerfile
+# End:

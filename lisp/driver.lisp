@@ -134,7 +134,8 @@
 
 
 (defparameter +copying+
-  (read-file-into-string (merge-pathnames "COPYING" *tmsmt-root*)))
+  (read-file-into-string (merge-pathnames "COPYING"
+                                          *abs-srcdir*)))
 
 (defun tmp-version (&optional (stream *standard-output*))
   (format stream

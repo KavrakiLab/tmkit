@@ -55,7 +55,26 @@ tmsmt_core_SOURCES = \
 	lisp/python/tmsmtpy.lisp \
 	lisp/tmsmt.asd
 
-tmsmt.core$(EXEEXT): $(tmsmt_core_SOURCES) libtmsmt.la
+nodist_tmsmt_core_SOURCES = \
+	$(top_builddir)/lisp/dir.lisp \
+	$(top_builddir)/lisp/config.lisp
+
+$(top_builddir)/lisp/dir.lisp: configure Makefile
+	echo "(in-package :tmsmt) " > lisp/dir.lisp
+	echo "(defparameter *libdir* (pathname \"${libdir}/\"))" >>  lisp/dir.lisp
+	echo "(defparameter *builddir* (pathname \"${top_builddir}/\"))" >>  lisp/dir.lisp
+	echo "(defparameter *srcdir* (pathname \"${top_srcdir}/\"))" >>  lisp/dir.lisp
+	echo "(defparameter *abs-builddir* (pathname \"${abs_top_builddir}/\"))" >>  lisp/dir.lisp
+	echo "(defparameter *abs-srcdir* (pathname \"${abs_top_srcdir}/\"))" >>  lisp/dir.lisp
+
+tmsmt.core$(EXEEXT): $(tmsmt_core_SOURCES) $(nodist_tmsmt_core_SOURCES) libtmsmt.la
+	$(MKDIR_P) lisp/python/
+	if test "x$(top_srcdir)" != "x$(top_builddir)"; then \
+		for i in $(tmsmt_core_SOURCES); \
+		do \
+			cp -v "$(top_srcdir)/$$i" "$(top_builddir)/$$i"; \
+		done; \
+	fi
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
 	LD_LIBRARY_PATH=.libs:$(LD_LIBRARY_PATH) \
@@ -76,12 +95,12 @@ EXTRA_DIST += doc.lisp
 
 if HAVE_DOXYGEN
 EXTRA_DIST += py-api.md
-py-api.md: $(tmsmt_core_SOURCES)
+py-api.md:  $(tmsmt_core_SOURCES) $(nodist_tmsmt_core_SOURCES)  libtmsmt.la
 	LD_LIBRARY_PATH=.libs:$(LD_LIBRARY_PATH) \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
 	sbcl --non-interactive \
-	     --eval '(load "doc.lisp")' \
+	     --eval "(load \"$(top_srcdir)/doc.lisp\")" \
 	     --eval '(sb-ext:quit)'
 
 doxygen: py-api.md doc/md/copying.md doc/md/mainpage.md
@@ -114,7 +133,8 @@ endif
 if HAVE_HELP2MAN
 EXTRA_DIST += doc/tmsmt.1
 doc/tmsmt.1: tmsmt src/tmsmt configure.ac tmsmt.core$(EXEEXT)
-	$(HELP2MAN) --version-option=--version-man --no-info -n "Task-Motion Planner" $(top_srcdir)/tmsmt -o $@
+	$(MKDIR_P) doc
+	$(HELP2MAN) --version-option=--version-man --no-info -n "Task-Motion Planner" $(top_builddir)/tmsmt -o $@
 
 
 if HAVE_GROFF
@@ -135,7 +155,7 @@ EXTRA_DIST += doc/md/command.md \
               doc/md/foot.html \
               doc/md/head.html \
               doc/md/install.md \
-              doc/md/mainpage.md \
+              doc/md/mainpage-head.md \
               doc/md/planfile.md \
               doc/md/ReadMe.md \
               doc/md/tutorial.md \
@@ -143,6 +163,12 @@ EXTRA_DIST += doc/md/command.md \
 
 clean-local:
 	-rm -rf doc/manual/ doc/doxygen_sqlite3.db
+
+distclean-local:
+	-rm -rf py-api.md doc/md/mainpage.md doc/tmsmt.1
+	if test "x$(top_srcdir)" != "x$(top_builddir)"; then \
+		rm -rf $(top_builddir)/lisp build.lisp load.lisp; \
+	fi
 
 ###########
 ## Demos ##

@@ -7,9 +7,14 @@
 (require :asdf)
 
 ;; Add source directory to ASDF registry
-(pushnew (pathname "./lisp/")
-         asdf:*central-registry*
-         :test #'equal)
 
+(let* ((top-srcdir (pathname (concatenate 'string
+                                          (uiop/os:getenv "top_builddir")
+                                          "/")))
+       (lispdir (merge-pathnames (make-pathname :directory '(:relative "lisp"))
+                                 top-srcdir)))
+  (pushnew lispdir
+           asdf:*central-registry*
+           :test #'equal))
 
-(require :tmsmt)
+(ql:quickload :tmsmt)

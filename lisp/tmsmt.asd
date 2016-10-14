@@ -6,7 +6,8 @@
   :depends-on ("alexandria" "cl-ppcre" "sycamore" "cffi" "amino" "amino-rx" "amino-py")
   :components ((:file "package")
 
-               (cffi-grovel:grovel-file "grovel" :depends-on ("package"))
+               (:file "dir" :depends-on ("package"))
+               (cffi-grovel:grovel-file "grovel" :depends-on ("dir"))
 
                (:file "util" :depends-on ("package"))
                (:file "config" :depends-on ("package"))
