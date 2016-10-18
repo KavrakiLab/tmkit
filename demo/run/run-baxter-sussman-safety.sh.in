@@ -11,6 +11,7 @@ tmsmt package://baxter_description/urdf/baxter.urdf \
       $demo/domains/blocksworld/tm-blocks-safety.pddl \
       $demo/domains/blocksworld/blocks-safety-goal.pddl \
       $demo/domains/blocksworld/tm-blocks.py \
+      -q $demo/baxter-sussman/q0.tmp \
       -g $demo/baxter-sussman/sussman-1.robray  \
       -o baxter-sussman-safety.tmp \
       --gui \

@@ -54,7 +54,7 @@
          (start-scene-graph (robray::load-scene-files start-scene))
          (start (or start
                     (when start-plan
-                      (parse-tmplan start-scene-graph nil start-plan))
+                      (parse-tmplan start-scene-graph start-plan))
                     (robray::make-configuration-map)))
          (goal-scene-graph (robray::load-scene-files goal-scene))
          (output (or output *standard-output*)))
@@ -72,8 +72,8 @@
                                   ((or pathname rope) p)
                                   (t nil))
                                 #\Newline))
-                     (header-line "# Start Scene" start-scene)
-                     (header-line "# Goal Scene" goal-scene))))
+                     (header-line "# Start Scene: " start-scene)
+                     (header-line "# Goal Scene: " goal-scene))))
 
       ;; Load PDDL
       (dolist (x (ensure-list pddl))
@@ -182,7 +182,7 @@ Written by Neil T. Dantam
                 (clpython:repl))
                (plan-file
                 ;; Load and display plan
-                (display-tm-plan-file scene-files nil plan-file))
+                (display-tm-plan-file scene-files plan-file))
                (t
                 ;; Find the plan
                 (tmp-driver :start-scene scene-files

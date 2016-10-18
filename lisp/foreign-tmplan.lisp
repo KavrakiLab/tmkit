@@ -51,7 +51,7 @@
 
 ;;; Wrappers ;;;
 
-;;; Special variables for forieng tmplan translation
+;;; Special variables for foriegn tmplan translation
 (defvar *plan-ops*)
 (defvar *plan-config-names*)
 (defvar *plan-scene-graph*)
@@ -80,7 +80,9 @@
          (foreign-config-count (tmplan-op-motion-plan-config-count pointer))
          (foreign-path (tmplan-op-motion-plan-path pointer))
          (local-config-count (robray::mutable-scene-graph-config-count m-sg))
-         (point-count (/ foreign-path-size foreign-config-count))
+         (point-count (if (zerop foreign-path-size)
+                          0
+                          (/ foreign-path-size foreign-config-count)))
          (path (make-vec (* local-config-count point-count))))
     ;; Extract config names
     (tmplan-op-motion-plan-map-var pointer
@@ -118,7 +120,6 @@
     (tm-op-reparent scene-graph new-parent frame
                     :configuration-map config)))
 
-
 (cffi:defcallback translate-plan-op :void
     ((context :pointer) (op :pointer))
   ;; ignore the context argument and use special variables intead
@@ -129,7 +130,7 @@
     (if (and (null *plan-ops*)
              (null *plan-config-map*)
              (eq :motion-plan type)
-             (and (= 1 (robray::motion-plan-point-count (tm-op-motion-motion-plan op)))))
+             (and (<= 1 (robray::motion-plan-point-count (tm-op-motion-motion-plan op)))))
         ;; Initial configuration
         (progn
           (setq *plan-config-map*
@@ -140,45 +141,39 @@
           (setq *plan-scene-graph* (tm-op-final-scene-graph op)
                 *plan-config-map* (tm-op-final-config op))))))
 
-
-(defun translate-tmplan (scene-graph config-map pointer)
+(defun translate-tmplan (scene-graph pointer)
   (declare (type scene-graph scene-graph))
-  (let ((*plan-ops* nil))
-    (setq *plan-config-map* config-map
-          *plan-scene-graph* scene-graph)
+  (let ((*plan-ops* nil)
+        (*plan-config-map* nil)
+        (*plan-scene-graph* scene-graph))
     (tmplan-map-ops pointer
                     (cffi:callback translate-plan-op)
                     (cffi:null-pointer))
-    (reverse *plan-ops*)))
+    (values (reverse *plan-ops*)
+            *plan-config-map*)))
 
-(defun parse-tmplan (scene-graph config-map pathname)
+(defun parse-tmplan (scene-graph pathname)
   ;; Parse pathname using the thread-local memory region
   (let ((ptr (tmplan-parse-filename (rope-string (rope pathname))
                                     (cffi:null-pointer))))
-    (let ((ops (if (cffi:null-pointer-p ptr)
-                   (error "Could not parse plan file `~A'." pathname)
-                   (unwind-protect
-                        (translate-tmplan scene-graph config-map ptr)
-                     (amino::aa-mem-region-local-pop ptr)))))
+    (when (cffi:null-pointer-p ptr)
+      (error "Could not parse plan file `~A'." pathname))
+    (multiple-value-bind (ops config-map)
+        (unwind-protect (translate-tmplan scene-graph ptr)
+          (amino::aa-mem-region-local-pop ptr))
       (if ops
           (tm-plan-list ops)
-          *plan-config-map*))))
+          config-map))))
 
-(defun tm-plan-file-motion-plans (scene-files start-config plan-file)
+(defun tm-plan-file-motion-plans (scene-files plan-file)
   (tm-plan-motion-plans (parse-tmplan (robray::load-scene-files scene-files)
-                                      (or start-config
-                                          (robray::make-configuration-map))
                                       plan-file)))
 
-(defun display-tm-plan-file (scene-files start-config plan-file)
+(defun display-tm-plan-file (scene-files plan-file)
   (robray::win-display-motion-plan-sequence
    (tm-plan-motion-plans (parse-tmplan (robray::load-scene-files scene-files)
-                                       (or start-config
-                                           (robray::make-configuration-map))
                                        plan-file))))
 
-(defun render-tm-plan-file (scene-files start-config plan-file)
+(defun render-tm-plan-file (scene-files plan-file)
   (tm-plan-motion-plans (parse-tmplan (robray::load-scene-files scene-files)
-                                      (or start-config
-                                          (robray::make-configuration-map))
                                       plan-file)))
