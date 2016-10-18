@@ -58,6 +58,7 @@ Setup and Invocation {#tutorial_run_setup}
 
         mkdir baxter-blocks
         cp tmsmt/demo/baxter-sussman/*.robray \
+           tmsmt/demo/baxter-sussman/q0.tmp \
            tmsmt/demo/domains/blocksworld/tm-blocks.* \
            baxter-blocks
 
@@ -76,6 +77,7 @@ Setup and Invocation {#tutorial_run_setup}
               allowed-collision.robray \
               tm-blocks.pddl \
               tm-blocks.py \
+              -q q0.tmp \
               -g sussman-1.robray  \
               -o baxter-sussman.tmp
 
@@ -88,6 +90,7 @@ Setup and Invocation {#tutorial_run_setup}
        contained the allowable collisions
      - `tm-blocks.pddl`: The task operators file
      - `tm-blocks.py`: The domain somantics file
+     - `-q q0.tmp`: The initial configuration
      - `-g sussman-1.robray`: The goal scene
      - `-o baxter-sussman.tmp`: The output file [plan file] (@ref planfile)
 
@@ -145,6 +148,7 @@ The goal is specified as an Amino
               allowed-collision.robray \
               tm-blocks.pddl \
               tm-blocks.py \
+              -q q0.tmp \
               -g sussman-reversed.robray  \
               -o baxter-sussman-reversed.tmp \
               --gui
@@ -202,6 +206,7 @@ with as Amino
               allowed-collision.robray \
               tm-blocks.pddl \
               tm-blocks.py \
+              -q q0.tmp \
               -g 4-blocks-goal.robray  \
               -o 4-blocks.tmp \
               --gui
@@ -275,6 +280,7 @@ Run the planner {#tutorial_task_run}
           tm-blocks-light.pddl \
           light-goal.pddl \
           tm-blocks.py \
+          -q q0.tmp \
           -g baxter-sussman/sussman-1.robray  \
           -o baxter-sussman-light.tmp \
           --gui \
