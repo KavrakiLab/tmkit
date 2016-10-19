@@ -22,7 +22,7 @@ Basic Planner Use {#tutorial_run}
 In this tutorial, you will first see how to run the planner on the
 demo scene, then modify the scene with different goals and objects.
 
-Prerequisites
+Prerequisites {#tutorial_run_pre}
 -------------
 
 * You are comfortable with a unix shell and text editor.
@@ -57,9 +57,9 @@ Setup and Invocation {#tutorial_run_setup}
 2. Copy the example files into a working directory:
 
         mkdir baxter-blocks
-        cp tmsmt/demo/baxter-sussman/*.robray \
-           tmsmt/demo/baxter-sussman/q0.tmp \
-           tmsmt/demo/domains/blocksworld/tm-blocks.* \
+        cp tmkit/demo/baxter-sussman/*.robray \
+           tmkit/demo/baxter-sussman/q0.tmp \
+           tmkit/demo/domains/blocksworld/tm-blocks.* \
            baxter-blocks
 
 3. Visualize the initial scene, defined by the Baxter URDF and example
@@ -219,7 +219,7 @@ operators to enable and disable a safety light.  Then, you will modify
 the other preconditions to ensure that the robot only moves with the
 safety light on.
 
-Prerequisites
+Prerequisites {#tutorial_task_pre}
 -------------
 
 * You have completed the [setup] (@ref tutorial_run_setup) step from
@@ -289,13 +289,15 @@ Run the planner {#tutorial_task_run}
 Extending the Task-Motion Domain {#tutorial_task_motion}
 ================================
 
-**TODO**
-
 This tutorial demonstrates adding new task-motion operators.  You will
-add an operator to push a button when the robot finishes its task.
+add an operator to push a button when the robot finishes its task.  In
+addition to creating the PDDL operator defintion as in the previous
+tutorial, you will also define the *semantics* of the operator: how to
+compute a motion plan for the operator.  These domain semantics are
+defined as Python functions.
 
 
-Prerequisites
+Prerequisites {#tutorial_task_motion_pre}
 -------------
 
 * You have completed the [setup] (@ref tutorial_run_setup) step from
@@ -303,18 +305,124 @@ Prerequisites
 * You are familiar with the
   [Planning Domain Definition Language (PDDL)]
   (https://en.wikipedia.org/wiki/Planning_Domain_Definition_Language)
-* You are familiar with the [Python] (@ref https://www.python.org/)
+* You are familiar with the [Python] (https://www.python.org/)
   programming language
 
 
-Add button geometry
+Add button geometry {#tutorial_task_motion_geom}
 -------------------
 
-Extend the Operators File
+Create the additional frames and geometry for the button that the
+robot will push.
+
+1. Copy and edit the start scene:
+
+        cp sussman-0.robray sussman-extend.robray
+        vi sussman-extend.robray
+
+2. Add the button geometry to `sussman-extend.robray`:
+
+        def button_height .05;
+
+        frame button_base {
+            parent front_table;
+            translation [-.3, -.3, button_height/2];
+            geometry {
+                shape box;
+                dimension [.1, .1, button_height];
+                color [.5, .5, .5];
+            }
+        }
+
+        frame button {
+            parent button_base;
+            translation [0, 0, button_height/2];
+            geometry {
+                shape cylinder;
+                radius .025;
+                height .03;
+                color [1, 0, 0 ];
+            }
+        }
+
+
+Extend the Operators File {#tutorial_task_motion_ops}
 -------------------------
 
-Extend the Facts File
----------------------
+Modify the operators file with an additional operator to push the
+button and a predicate indicating button state.
 
-Extend the Domain Script
-----------------------
+1. Copy and edit the operators file:
+
+        cp tm-blocks.pddl tm-blocks-extend.pddl
+        vi tm-blocks-extend.pddl
+
+2. Add an additional predicate `(running)`.
+
+3. For each action, add `(running)` to the set of preconditions.
+
+4. Add an additional action to push the button:
+
+        (:action push-button
+                  :parameters ()
+                  :precondition (and (handempty) (running))
+                  :effect (and (not (running))))
+
+
+Add an Additional Facts File {#tutorial_task_motion_facts}
+----------------------------
+
+Add additional start state and goal conditions for the button.
+
+1. Edit a new facts file:
+
+        vi extended-facts.pddl
+
+2. Set the start and goal as follows:
+
+        (define (problem itmp) (:domain blocks)
+
+         ;; Start: running is true
+         (:init (running))
+
+         ;; Goal: running is false
+         (:goal (not (running))))
+
+Extend the Domain Semantics {#tutorial_task_motion_script}
+---------------------------
+
+Create the refinement function for the `push-button` action.
+
+1. Copy and edit the domain semantics:
+
+        cp tm-blocks.py tm-blocks-extend.py
+        vi tm-blocks-extend.py
+
+2. Create a new refinement function:
+
+        def op_push_button(scene, config, op):
+            # wrap start scene and configuration
+            nop = tm.op_nop(scene,config)
+            # compute the workspace goal, i.e., the button'spose
+            ws_goal = tm.op_tf_abs(nop,"button")
+            # compute a motion plan to push the button
+            return motion_plan(nop, FRAME, tm.op_tf_abs(nop,"button"))
+
+3. Bind the refinement function
+
+        # Bind the refinement function for the PUSH-Button operator
+        tm.bind_refine_operator(op_push_button, "PUSH-BUTTON")
+
+Run the Planner {#tutorial_task_motion_run}
+---------------
+
+    tmsmt package://baxter_description/urdf/baxter.urdf \
+           sussman-extend-0.robray \
+           allowed-collision.robray \
+           tm-blocks-extend.pddl \
+           extended-facts.pddl \
+           tm-blocks-extend.py \
+           -q q0.tmp \
+           -g sussman-1.robray  \
+           -o baxter-sussman-extend.tmp \
+           --gui

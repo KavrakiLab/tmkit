@@ -1,5 +1,5 @@
-Domain Semanticss {#domain_semantics}
-==============
+Domain Semantics {#domain_semantics}
+================
 
 [TOC]
 
