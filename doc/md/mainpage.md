@@ -1,6 +1,10 @@
 Task-Motion Kit {#mainpage}
 ==============
 
+\htmlonly
+<img src="tmkit-front.jpg" style="float:right; margin: 1em;"></img>
+\endhtmlonly
+
 The Task-Motion Kit (TMKit) is a framework for Task and Motion
 Planning.  Everyday activities, e.g., setting a table or making
 coffee, combine discrete decisions about objects and actions with
