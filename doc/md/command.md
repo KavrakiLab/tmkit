@@ -33,7 +33,7 @@ Domain Scripts {#planner_command_input_scripts}
 
 * The domain-specific mapping from scenes to task state and task
   operators to motion planning problems is specified via functions
-  defined in user-provided [domain script] (@ref domain_script) files
+  defined in user-provided [domain script] (@ref domain_semantics) files
 
 * Scripts may be written in [Python]
   (https://common-lisp.net/project/clpython/) or [Common Lisp]
