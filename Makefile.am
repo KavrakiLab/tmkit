@@ -103,7 +103,7 @@ py-api.md:  $(tmsmt_core_SOURCES) $(nodist_tmsmt_core_SOURCES)  libtmsmt.la
 	     --eval "(load \"$(top_srcdir)/doc.lisp\")" \
 	     --eval '(sb-ext:quit)'
 
-doxygen: py-api.md doc/md/copying.md doc/md/mainpage.md doc/md/authors.md
+doxygen: py-api.md doc/md/copying.md doc/md/mainpage.md doc/md/authors.md Doxyfile
 	$(DOXYGEN)
 
 doc/md/copying.md: $(top_srcdir)/COPYING $(top_srcdir)/doc/md/copying.md.header
