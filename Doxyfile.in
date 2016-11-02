@@ -753,19 +753,18 @@ WARN_LOGFILE           =
 # spaces.
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = include \
-                         doc/md/mainpage.md \
-                         doc/md/authors.md \
-                         doc/md/citations.md \
-                         doc/md/download.md \
-                         doc/md/tutorial.md \
-                         doc/md/install.md \
-                         doc/md/command.md \
-                         doc/md/planfile.md \
-                         doc/md/semantics.md \
-                         py-api.md \
-                         doc/md/ReadMe.md \
-                         doc/md/copying.md
+INPUT                  = @top_srcdir@/include \
+                         @top_srcdir@/doc/md/mainpage.md \
+                         @top_srcdir@/doc/md/citations.md \
+                         @top_srcdir@/doc/md/download.md \
+                         @top_srcdir@/doc/md/tutorial.md \
+                         @top_srcdir@/doc/md/install.md \
+                         @top_srcdir@/doc/md/command.md \
+                         @top_srcdir@/doc/md/planfile.md \
+                         @top_srcdir@/doc/md/semantics.md \
+                         @top_builddir@/doc/md/authors.md \
+                         @top_builddir@/py-api.md \
+                         @top_builddir@/doc/md/copying.md
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -1076,7 +1075,7 @@ HTML_FILE_EXTENSION    = .html
 # of the possible markers and block names see the documentation.
 # This tag requires that the tag GENERATE_HTML is set to YES.
 
-HTML_HEADER            = doc/header.html
+HTML_HEADER            = @top_srcdir@/doc/header.html
 
 # The HTML_FOOTER tag can be used to specify a user-defined HTML footer for each
 # generated HTML page. If the tag is left blank doxygen will generate a standard
@@ -1086,7 +1085,7 @@ HTML_HEADER            = doc/header.html
 # that doxygen normally uses.
 # This tag requires that the tag GENERATE_HTML is set to YES.
 
-HTML_FOOTER            = doc/footer.html
+HTML_FOOTER            = @top_srcdir@/doc/footer.html
 
 # The HTML_STYLESHEET tag can be used to specify a user-defined cascading style
 # sheet that is used by each HTML page. It can be used to fine-tune the look of

@@ -1,0 +1,52 @@
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      sudo: required
+      services:
+        - docker
+      env: DOCKERFILE="ubuntu-xenial" JOBS=4
+
+install:
+  - if [ -n "$DOCKERFILE" ]; then
+      ./script/docker-build.sh "$DOCKERFILE";
+    fi
+
+script:
+  - if [ -n "$DOCKERFILE" ]; then
+      ./script/docker-make.sh "$DOCKERFILE";
+    fi
+
+# notifications:
+#   slack:
+#     secure: UsjxGKXWmNW+6nt0ZDwU3MOEFXf69Paj8gYUpTB/DLrgC9d7LtzvYYmSDitc6XFMVB3RjodhIcD3+Kayz8+SFu/fsRBPqwT19B7e0ThmGY/DHr1xN8A3s/OmHAK+Pybvj3DEUDHhoiqUzKftlxHpUhRXJyxBo9r+CYb+XDnJfQs=
+
+#cache:
+  #apt: true
+  #directories:
+    #- /usr/local
+
+#before_install:
+  #- sudo docker pull ubuntu:xenial
+  #- docker ps -a
+
+
+# addons:
+#   apt:
+#     packages:
+#       - libboost-all-dev
+#       - gfortran
+#       - automake
+#       - autoconf
+#       - autoconf-archive
+#       - autotools-dev
+#       - libblas-dev
+#       - liblapack-dev
+#       - libsdl2-dev
+#       - libompl-dev
+#       - coinor-libclp-dev
+#       - libglpk-dev
+#       - libav-tools
+#       - doxygen
+#       - groff

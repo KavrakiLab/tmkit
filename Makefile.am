@@ -149,23 +149,28 @@ endif
 
 endif
 
-EXTRA_DIST += doc/md/command.md \
-              doc/md/copying.md \
+EXTRA_DIST += doc/md/mainpage.md \
+              doc/md/command.md \
+              doc/md/copying.md.header \
+              doc/md/authors-head.md \
               doc/md/semantics.md \
               doc/md/foot.html \
               doc/md/head.html \
               doc/md/install.md \
-              doc/md/mainpage-head.md \
               doc/md/planfile.md \
-              doc/md/ReadMe.md \
               doc/md/tutorial.md \
+              doc/md/citations.md \
+              doc/md/ReadMe.md \
+              py-api.md \
+              doc/header.html \
+              doc/footer.html \
               doc/manual
 
 clean-local:
 	-rm -rf doc/manual/ doc/doxygen_sqlite3.db
 
 distclean-local:
-	-rm -rf py-api.md doc/md/mainpage.md doc/tmsmt.1
+	-rm -rf py-api.md doc/tmsmt.1 doc/md/authors.md doc/md/copying.md
 	if test "x$(top_srcdir)" != "x$(top_builddir)"; then \
 		rm -rf $(top_builddir)/lisp build.lisp load.lisp; \
 	fi
@@ -188,5 +193,4 @@ EXTRA_DIST += demo/baxter-sussman/allowed-collision.robray \
               demo/domains/blocksworld/tm-blocks-safety.pddl \
               demo/domains/blocksworld/blocks-safety-goal.pddl \
               demo/domains/linear-blocksworld/linear-blocksworld.pddl \
-              demo/domains/linear-blocksworld/linear-blocksworld.py \
-              demo/baxter-sussman.pddl
+              demo/domains/linear-blocksworld/linear-blocksworld.py

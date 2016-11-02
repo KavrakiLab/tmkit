@@ -1,5 +1,8 @@
 FROM ndantam/amino:ubuntu-xenial-install
 
+RUN apt-get -y update && \
+    apt-get install -y graphviz
+
 RUN (cd /root && git clone https://github.com/ndantam/cl-ntdoc.git) &&\
     mkdir -p /root/.local/share/common-lisp/source && \
     ln -s /root/amino/submodules/sycamore/src/*.asd \
