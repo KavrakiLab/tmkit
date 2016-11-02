@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/KavrakiLab/tmkit.svg?branch=master)](https://travis-ci.org/KavrakiLab/tmkit)
+
 The Task-Motion Kit (TMKit) is a framework for Task and Motion
 Planning.  Everyday activities, e.g., setting a table or making
 coffee, combine discrete decisions about objects and actions with
@@ -9,9 +11,11 @@ paths.
 Features
 ========
 
-* Command-line planner command
-* Task-motion plan visualization
-* General, constraint-based task planning
+* PDDL Task Domains
+* URDF and Scene File Motion Domains
+* Incremental, Constraint-Based Planner
+* Plan Visualization
+* Command-line Planner Interface
 
 Installation
 ============
