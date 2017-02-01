@@ -27,7 +27,13 @@
 (defparameter *z* (/ (+ .02 (vec-z *table-dim*) *box-dim*)
                      2))
 
-(defparameter *geometry* (robray::scene-geometry-box (draw-options-default :color '(1 0 0)
+(defparameter *geometry* (robray::scene-geometry-box (draw-options-default :color '(0 0 1)
+                                                                           :type "moveable"
+                                                                           :visual t
+                                                                           :collision t)
+                                                     (vec3* *box-dim* *box-dim* *box-dim*)))
+
+(defparameter *geometry-other* (robray::scene-geometry-box (draw-options-default :color '(1 0 0)
                                                                            :type "moveable"
                                                                            :visual t
                                                                            :collision t)
@@ -52,12 +58,22 @@
 
 (defparameter *sg-block*
   (scene-graph (scene-frame-fixed "front_table"  "block-0"
-                                  :tf (tf* nil (vec3* (* 1 *resolution*) 0 *z*))
+                                  :tf (tf* nil (vec3* (* 1 *resolution*)
+                                                      (* 1 *resolution*)
+                                                      *z*))
                                   :geometry *geometry*)
                (scene-frame-fixed "front_table"  "block-1"
-                                  :tf (tf* nil (vec3* (* 1 *resolution*) (* -1 *resolution*) *z*))
-                                  :geometry *geometry*)
-  ))
+                                  :tf (tf* nil (vec3* (* 1 *resolution*)
+                                                      (* 0 *resolution*)
+                                                      *z*))
+                                  :geometry *geometry-other*)
+
+               ;; (scene-frame-fixed "front_table"  "block-2"
+               ;;                    :tf (tf* nil (vec3* (* 1 *resolution*)
+               ;;                                        (* -1 *resolution*)
+               ;;                                        *z*))
+               ;;                    :geometry *geometry-other*)
+               ))
 
 
 (defparameter *sg-block-1*
@@ -89,12 +105,12 @@
 ;;                                                  :type "robray"))
 ;;             :goal-scene (scene-graph *sg-table* *sg-block-1*)
 ;;             :gui t
-;;             :pddl (demo-file :directory '("domains" "linear-blocksworld")
-;;                              :name "linear-blocksworld"
+;;             :pddl (demo-file :directory '("domains" "blocksworld")
+;;                              :name "tm-blocks"
 ;;                              :type "pddl")
 ;;             :output "/tmp/tmkit-test.tmp"
-;;             :scripts (demo-file :directory '("domains" "linear-blocksworld")
-;;                                 :name "linear-blocksworld"
+;;             :scripts (demo-file :directory '("domains" "blocksworld")
+;;                                 :name "tm-blocks"
 ;;                                 :type "py"))
 
 

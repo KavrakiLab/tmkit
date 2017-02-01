@@ -44,14 +44,20 @@ Examples:
 
 (defun |op_motion| (previous-op sub-scene-graph goal)
   "Create a motion-plan task-motion operator."
-  (let ((mp (motion-plan sub-scene-graph
-                         (tmsmt::tm-op-final-config previous-op)
-                         :workspace-goal goal
-                         :simplify t
-                         :timeout tmsmt::*motion-timeout*)))
+  (multiple-value-bind (mp planner)
+      (motion-plan sub-scene-graph
+                   (tmsmt::tm-op-final-config previous-op)
+                   :workspace-goal goal
+                   :simplify t
+                   :track-collisions t
+                   :timeout tmsmt::*motion-timeout*)
     (if mp
         (|plan| previous-op (tmsmt::tm-op-motion mp))
-        (clpython:py-bool nil))))
+        (progn
+          ;;(clpython:py-bool nil)
+          ;;(format t "~&planner-0: ~A" planner)
+          (error 'tmsmt::planning-failure
+                 :planner planner)))))
 
 (defun |op_reparent| (previous-op parent frame)
   "Create a reparent task-motion operator."

@@ -167,9 +167,7 @@ def scene_objects(scene):
 def motion_plan(op, frame, goal):
     scene = op.final_scene
     sub_scenegraph = aa.scene_chain(scene, "", frame)
-    mp = tm.op_motion( op, sub_scenegraph, goal )
-    if False == mp: raise tm.PlanningFailure()
-    else: return mp
+    return tm.op_motion( op, sub_scenegraph, goal )
 
 # def pick(op, obj):
 #     mp = motion_plan(op, FRAME, tm.op_tf_abs(op,obj))

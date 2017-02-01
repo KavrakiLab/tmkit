@@ -2,7 +2,8 @@
 
 (define-condition planning-failure (error)
   ((operator :initarg :operator :reader operator)
-   (value :initarg :value :reader value)))
+   (value :initarg :value :reader value)
+   (planner :initarg :planner :reader planner)))
 
 
 (defstruct tm-op

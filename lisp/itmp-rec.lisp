@@ -56,7 +56,11 @@
                             sexp))
           ;; No refinement function (pure task action)
           action-op))
-    (planning-failure nil)))
+    (planning-failure (e)
+      (let ((planner (slot-value e 'planner)))
+        (format t "~&collisions: ~A"
+                (robray::motion-planner-collisions planner))
+        nil))))
 
 
 (defun itmp-abort ()
