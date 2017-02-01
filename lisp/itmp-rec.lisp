@@ -206,13 +206,16 @@
                                      for (a . b) in c-list
                                      do (setf (gethash a h) t
                                               (gethash b h) t)
-                                     finally (return (hash-table-keys h))))
-                           (e (canonize-exp (funcall *constraint-function* scene-graph op c-set))))
-                      (format t "~&  collision exp: ~A" e)
-                      ;(smt-plan-constrain-op smt-cx e op)
-                      (smt-plan-invalidate-op smt-cx e op)
-                      ;(smt-plan-invalidate-plan smt-cx action-encoding)
-                      ))
+                                     finally (return (hash-table-keys h)))))
+                      (format t "~&  c-list: ~A" c-list)
+                      (format t "~&  c-set: ~A" c-set)
+                      (if c-set
+                          (let ((e (canonize-exp (funcall *constraint-function* scene-graph op c-set))))
+                            (format t "~&  collision exp: ~A" e)
+                            (smt-plan-invalidate-op smt-cx e op))
+                          ;;(smt-plan-invalidate-plan smt-cx action-encoding)
+                          (smt-plan-invalidate-op smt-cx nil op)
+                          )))
                    ;; Informaed
                    (t
                     (let ((state (scene-state *scene-state-function* scene-graph

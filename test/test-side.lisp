@@ -68,11 +68,11 @@
                                                       *z*))
                                   :geometry *geometry-other*)
 
-               ;; (scene-frame-fixed "front_table"  "block-2"
-               ;;                    :tf (tf* nil (vec3* (* 1 *resolution*)
-               ;;                                        (* -1 *resolution*)
-               ;;                                        *z*))
-               ;;                    :geometry *geometry-other*)
+               (scene-frame-fixed "front_table"  "block-2"
+                                  :tf (tf* nil (vec3* (* 1 *resolution*)
+                                                      (* -1 *resolution*)
+                                                      *z*))
+                                  :geometry *geometry-other*)
                ))
 
 

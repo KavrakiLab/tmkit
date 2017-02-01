@@ -656,7 +656,18 @@
 
 
 (defun smt-plan-invalidate-op (cx state op)
-  (smt-plan-constrain-op cx (apply #'smt-and state) op))
+  (if state
+      (smt-plan-constrain-op cx (apply #'smt-and state) op)
+      (let* ((action-encoding (smt-plan-context-action-encoding cx))
+             (stmts (loop for i to (smt-plan-context-step cx)
+                       collect (smt-not (ecase action-encoding
+                                          (:boolean (mangle-var op :step i))
+                                          (:enum (smt-= (mangle-var 'action :step i)
+                                                        (mangle-var op)))))))
+             (e (apply #'smt-and stmts)))
+        (smt-eval (smt-plan-context-smt cx)
+                  (smt-assert e)))))
+
 
   ;; (let* ((action-encoding (smt-plan-context-action-encoding cx))
   ;;        (stmts (loop for i to (smt-plan-context-step cx)
