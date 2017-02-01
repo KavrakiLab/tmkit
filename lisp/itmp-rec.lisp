@@ -46,21 +46,31 @@
 (defun itmp-action (scene-graph sexp
                              &key
                                start)
-  (handler-case
-      (let ((action-op (tm-op-action sexp scene-graph start)))
-        (if-let (function (gethash (car sexp) *refine-functions*))
-          ;; Have a refinement function
-          (tm-plan action-op
-                   (funcall function
-                            scene-graph start
-                            sexp))
-          ;; No refinement function (pure task action)
-          action-op))
-    (planning-failure (e)
-      (let ((planner (slot-value e 'planner)))
-        (format t "~&collisions: ~A"
-                (robray::motion-planner-collisions planner))
-        nil))))
+  (let (planner error)
+    (labels ((helper ()
+               (handler-case
+                   (let ((action-op (tm-op-action sexp scene-graph start)))
+                     (if-let (function (gethash (car sexp) *refine-functions*))
+                       ;; Have a refinement function
+                       (tm-plan action-op
+                                (funcall function
+                                         scene-graph start
+                                         sexp))
+                       ;; No refinement function (pure task action)
+                       action-op))
+                 (planning-failure (e)
+                   (setq planner (slot-value e 'planner)
+                         error e)))))
+      (multiple-value-bind (result run-time)
+          (sycamore-util:with-timing (helper))
+        (incf *itmp-motion-time* run-time)
+        (if error
+            (error 'planning-failure
+                   :planner planner
+                   :scene-graph scene-graph
+                   :operator sexp)
+            result)))))
+
 
 
 (defun itmp-abort ()
@@ -74,25 +84,23 @@
 (defvar *itmp-int-time*)
 (defvar *itmp-total-time*)
 
-(defun tmp-reify (cache task-plan init-graph start &key
+(defun tmp-refine (task-plan init-graph start &key
                                                      naive)
   (declare (type list task-plan)
-           (type hash-table cache))
-  (let ((motion-time 0))
+           (type hash-table *itmp-cache*))
+  (let ()
     (labels ((cache (plan)
-               ;;(print (hash-table-alist cache))
                (let* ((prefixes (reverse (loop
                                             for trail on (reverse plan)
                                             collect trail)))
-                                        ;(format t "~&keys: ~A" (hash-table-keys cache))
                       (prefix
                        (loop for p in prefixes
                           for n in (cdr prefixes)
-                          for has-p = (gethash p cache)
-                          for has-n = (gethash n cache)
+                          for has-p = (gethash p *itmp-cache*)
+                          for has-n = (gethash n *itmp-cache*)
                           until (not has-n)
                           finally (return p))))
-                 (if-let ((c (gethash prefix cache)))
+                 (if-let ((c (gethash prefix *itmp-cache*)))
                    (progn
                      (format t "~&prefix: ~A" prefix)
                      (rec (subseq plan (length prefix))
@@ -114,47 +122,35 @@
                (assert start)
                (itmp-abort)
                (if task-plan
-                   (reify task-plan tm-plan graph start trail)
-                   (result tm-plan cache motion-time
-                           nil nil nil nil)))
-             (result (tm-plan cache motion-time end-graph op what-failed object)
-               (values tm-plan cache motion-time
-                       end-graph op what-failed object))
-             (reify (task-plan tm-plan graph start trail)
+                   (refine task-plan tm-plan graph start trail)
+                   ;; Result
+                   tm-plan))
+             (refine (task-plan tm-plan graph start trail)
                (let* ((op (car task-plan))
                       (task-plan (cdr task-plan))
                       (trail (cons op trail)))
                  (cond
                    ((equal (car op) "NO-OP")
-                    (abort)
-                    ;(push :no-op plan-steps)
-                    )
+                    (abort))
                    (t
-                    (format t "~&Reify: ~A..." op)
-                    (multiple-value-bind (new-tm-plan what-failed object)
-                        (multiple-value-bind (result run-time)
-                            (sycamore-util:with-timing
-                              (multiple-value-list
-                               (itmp-action graph op
-                                            :start start)))
-                          (incf motion-time run-time)
-                          (apply #'values result))
+                    (format t "~&Refine: ~A..." op)
+                    ;; Failure will raise a condition
+                    (let ((new-tm-plan (itmp-action graph op :start start)))
                       (declare (type (or null tm-plan tm-op) new-tm-plan))
-                      (if new-tm-plan
-                          (let ((tm-plan (tm-plan tm-plan new-tm-plan)))
-                            (assert (null what-failed))
-                            (format t "~&success.~%")
-                            (setf (gethash trail cache) tm-plan)
-                            (rec task-plan tm-plan trail))
-                          ;; failed
-                          (progn
-                            (format t "~&failure (~A ~A).~%" what-failed object)
-                            (result nil cache motion-time
-                                    graph op what-failed object)))))))))
+                      (format t "~&  success.")
+                      (let ((tm-plan (tm-plan tm-plan new-tm-plan)))
+                        (setf (gethash trail *itmp-cache*) tm-plan)
+                        (rec task-plan tm-plan trail))))))))
       (if naive
           (rec-start task-plan)
           (cache task-plan)))))
 
+
+(defun itmp-times ()
+  (format t "~&IDITMP -- total time:  ~,3F~&" *itmp-total-time*)
+  (format t "~&IDITMP -- task time:   ~,3F~&" *itmp-task-time*)
+  (format t "~&IDITMP -- motion time: ~,3F~&" *itmp-motion-time*)
+  (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*))
 
 (defun itmp-rec (init-graph goal-graph operators
                  &key
@@ -168,8 +164,8 @@
            (type robray::configuration-map q-all-start))
   (with-smt (smt)
     (let* ((time-0 (get-internal-real-time))
-           (cache (make-hash-table :test #'equal))
-           (motion-time 0d0)
+           (*itmp-cache* (make-hash-table :test #'equal))
+           (*itmp-motion-time* 0d0)
            (operators (load-operators operators))
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
@@ -180,64 +176,49 @@
                                      :facts task-facts
                                      :action-encoding action-encoding
                                      :smt smt)))
-      (setq *itmp-cache* cache)
       (labels ((next ()
                  (itmp-abort)
                  (if-let ((plan (smt-plan-next smt-cx :max-steps max-steps)))
                    (progn
                      (print plan)
-                     (reify plan))
+                     (refine plan))
                    (error "no plan found after max steps")))
                (result (plan-steps)
                  (setq *itmp-task-time* (smt-runtime smt)
-                       *itmp-motion-time* motion-time
                        *itmp-total-time* (coerce (/ (- (get-internal-real-time) time-0)
                                                     internal-time-units-per-second)
                                                  'double-float))
                  (setq *itmp-int-time* (max (- *itmp-total-time*
                                                (+ *itmp-task-time* *itmp-motion-time*))
                                             0))
-                 (format t "~&IDITMP -- total time:  ~,3F~&" *itmp-total-time*)
-                 (format t "~&IDITMP -- task time:   ~,3F~&" *itmp-task-time*)
-                 (format t "~&IDITMP -- motion time: ~,3F~&" *itmp-motion-time*)
-                 (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*)
+                 (itmp-times)
                  plan-steps)
-               (invalidate-informed (failed-graph failed-op what-failed object)
-                 (let ((state (scene-state *scene-state-function* failed-graph
-                                           (robray::make-configuration-map)
-                                           operators)))
-                   ;; TODO: failed transfer picks should apply to all possible object locations
-                   ;;       Will have to handle in a domain script function
-                      (smt-plan-invalidate-op smt-cx state failed-op))
-                   ;; (ecase what-failed
-                   ;;   (:place
-                   ;;    (smt-plan-invalidate-op smt-cx state failed-op))
-                   ;;   (:pick
-                   ;;    (if (rope= "TRANSFER" (first failed-op))
-                   ;;        ;; special case transfer
-                   ;;        (dolist (loc locations)
-                   ;;          (smt-plan-invalidate-op smt-cx
-                   ;;                                  state
-                   ;;                                  (list* "TRANSFER" object loc)))
-                   ;;        ;; default, deny op
-                   ;;        (smt-plan-invalidate-op smt-cx state failed-op))))
-                   )
-               (invalidate (failed-graph failed-op what-failed object)
-                 (format t "~&Failed operator: ~A" failed-op)
-                 (if naive
-                     (smt-plan-invalidate-plan smt-cx action-encoding)
-                     (invalidate-informed failed-graph failed-op what-failed object))
-                 (next))
-               (reify (plan)
-                 (multiple-value-bind (plan-steps new-cache new-motion-time
-                                                  failed-graph failed-op what-failed object)
-                     (tmp-reify cache plan init-graph q-all-start
-                                :naive naive)
-                   (setq cache new-cache)
-                   (incf motion-time new-motion-time)
-                   (if plan-steps
-                       (result plan-steps)
-                       (invalidate failed-graph failed-op what-failed object)))))
+               (add-constraint (scene-graph op planner)
+                 (format t "~&  failed")
+                 (format t "~&  collisions: ~A"
+                         (robray::motion-planner-collisions planner))
+                 (cond
+                   ;; Naive
+                   (naive
+                    (smt-plan-invalidate-plan smt-cx action-encoding))
+                   ;; Informaed
+                   (t
+                    (let ((state (scene-state *scene-state-function* scene-graph
+                                              (robray::make-configuration-map)
+                                              operators)))
+                      ;; TODO: failed transfer picks should apply to all possible object locations
+                      ;;       Will have to handle in a domain script function
+                      (smt-plan-invalidate-op smt-cx state op)))))
+               (refine (plan)
+                 (handler-case
+                     (result (tmp-refine plan init-graph q-all-start
+                                        :naive naive))
+                   ;; Handle failure
+                   (planning-failure (e)
+                     ;;(incf *itmp-motion-time* new-motion-time)
+                     (with-slots (scene-graph operator planner) e
+                       (add-constraint scene-graph operator planner))
+                     (next)))))
         (next)))))
 
 

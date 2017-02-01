@@ -640,21 +640,38 @@
     (smt-eval (smt-plan-context-smt cx)
               `(|get-value| ,step-ops))))
 
-
-(defun smt-plan-invalidate-op (cx state op)
+(defun smt-plan-constrain-op (cx exp op)
   (let* ((action-encoding (smt-plan-context-action-encoding cx))
          (stmts (loop for i to (smt-plan-context-step cx)
                    collect
-                     (smt-implies (apply #'smt-and
-                                         (loop for s in state
-                                            collect (rewrite-exp s i)))
+                     (smt-implies (rewrite-exp exp i)
                                   (smt-not (ecase action-encoding
                                              (:boolean (mangle-var op :step i))
                                              (:enum (smt-= (mangle-var 'action :step i)
                                                                (mangle-var op))))))))
          (e (apply #'smt-and stmts)))
+    ;(print e)
     (smt-eval (smt-plan-context-smt cx)
               (smt-assert e))))
+
+
+(defun smt-plan-invalidate-op (cx state op)
+  (smt-plan-constrain-op cx (apply #'smt-and state) op))
+
+  ;; (let* ((action-encoding (smt-plan-context-action-encoding cx))
+  ;;        (stmts (loop for i to (smt-plan-context-step cx)
+  ;;                  collect
+  ;;                    (smt-implies (apply #'smt-and
+  ;;                                        (loop for s in state
+  ;;                                           collect (rewrite-exp s i)))
+  ;;                                 (smt-not (ecase action-encoding
+  ;;                                            (:boolean (mangle-var op :step i))
+  ;;                                            (:enum (smt-= (mangle-var 'action :step i)
+  ;;                                                              (mangle-var op))))))))
+  ;;        (e (apply #'smt-and stmts)))
+  ;;   (print e)
+  ;;   (smt-eval (smt-plan-context-smt cx)
+  ;;             (smt-assert e))))
 
     ;; (dotimes (i (smt-plan-context-step cx))
     ;; (format t "~&state: ~A" state)

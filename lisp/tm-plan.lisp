@@ -1,9 +1,10 @@
 (in-package :tmsmt)
 
 (define-condition planning-failure (error)
-  ((operator :initarg :operator :reader operator)
-   (value :initarg :value :reader value)
-   (planner :initarg :planner :reader planner)))
+  ((operator :initarg :operator)
+   (value :initarg :value)
+   (scene-graph :initarg :scene-graph)
+   (planner :initarg :planner)))
 
 
 (defstruct tm-op
