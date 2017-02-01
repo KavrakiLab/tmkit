@@ -26,6 +26,7 @@
    |bind_scene_state|
    |bind_scene_objects|
    |bind_refine_operator|
+   |bind_collision_constraint|
 
    ;; Operators
    |op_nop|

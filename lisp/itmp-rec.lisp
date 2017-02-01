@@ -3,7 +3,6 @@
 
 ;(defvar *itmp-cache*)
 
-(defvar *refine-functions* (make-hash-table :test #'equal))
 
 (defun scene-collect-type (scene type)
   (let ((frames (make-tree-set (lambda (a b)
@@ -195,12 +194,25 @@
                  plan-steps)
                (add-constraint (scene-graph op planner)
                  (format t "~&  failed")
-                 (format t "~&  collisions: ~A"
-                         (robray::motion-planner-collisions planner))
                  (cond
                    ;; Naive
                    (naive
                     (smt-plan-invalidate-plan smt-cx action-encoding))
+                   ;; domain function
+                   ((and (boundp '*constraint-function*)
+                         *constraint-function*)
+                    (let* ((c-list (robray::motion-planner-collisions planner))
+                           (c-set (loop with h = (make-hash-table :test #'equal)
+                                     for (a . b) in c-list
+                                     do (setf (gethash a h) t
+                                              (gethash b h) t)
+                                     finally (return (hash-table-keys h))))
+                           (e (canonize-exp (funcall *constraint-function* scene-graph op c-set))))
+                      (format t "~&  collision exp: ~A" e)
+                      ;(smt-plan-constrain-op smt-cx e op)
+                      (smt-plan-invalidate-op smt-cx e op)
+                      ;(smt-plan-invalidate-plan smt-cx action-encoding)
+                      ))
                    ;; Informaed
                    (t
                     (let ((state (scene-state *scene-state-function* scene-graph

@@ -21,6 +21,11 @@
   (setf (gethash operator tmsmt::*refine-functions*)
         function))
 
+
+(defun |bind_collision_constraint| (function)
+  "Bind FUNCTION as the collision constraint generator."
+  (setq tmsmt::*constraint-function* function))
+
 (defun |mangle| (&rest args)
   "Convert ARGS in to a valid PDDL/SMTlib symbol.
 
