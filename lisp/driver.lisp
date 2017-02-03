@@ -33,7 +33,9 @@
                      write-facts
                      (motion-timeout *motion-timeout*)
                      start-plan
-                     start )
+                     start
+                     (prefix-cache t)
+                     (constraints :state))
 
   (when verbose
     (format t "~&Start scene files: ~{~A~^, ~}~%" (ensure-list start-scene))
@@ -111,6 +113,8 @@
                     ((and start-scene domain-exp)
                      (itmp-rec start-scene-graph goal-scene-graph
                                domain-exp
+                               :prefix-cache prefix-cache
+                               :constraints constraints
                                :facts facts-exp
                                :q-all-start start
                                :max-steps max-steps))

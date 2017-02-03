@@ -83,8 +83,9 @@
 (defvar *itmp-int-time*)
 (defvar *itmp-total-time*)
 
-(defun tmp-refine (task-plan init-graph start &key
-                                                     naive)
+(defun tmp-refine (task-plan init-graph start
+                   &key
+                     prefix-cache)
   (declare (type list task-plan)
            (type hash-table *itmp-cache*))
   (let ()
@@ -140,9 +141,9 @@
                       (let ((tm-plan (tm-plan tm-plan new-tm-plan)))
                         (setf (gethash trail *itmp-cache*) tm-plan)
                         (rec task-plan tm-plan trail))))))))
-      (if naive
-          (rec-start task-plan)
-          (cache task-plan)))))
+      (if prefix-cache
+          (cache task-plan)
+          (rec-start task-plan)))))
 
 
 (defun itmp-times ()
@@ -156,15 +157,22 @@
                    facts
                    q-all-start
                    (action-encoding :boolean)
-                   (naive nil)
-                   (max-steps 3)
-                   )
-  (declare (optimize (speed 0) (debug 3))
-           (type robray::configuration-map q-all-start))
+                   (prefix-cache t)
+                   (constraints :state)
+                   (max-steps 3))
+  (declare ;;(optimize (speed 0) (debug 3))
+           (type robray::configuration-map q-all-start)
+           (type (or (eql :plan)
+                     (eql :state)
+                     (eql :collision))
+                 constraints))
+  (setq *itmp-motion-time* 0d0
+        *itmp-task-time* 0d0
+        *itmp-total-time* 0d0
+        *itmp-int-time* 0d0)
   (with-smt (smt)
     (let* ((time-0 (get-internal-real-time))
            (*itmp-cache* (make-hash-table :test #'equal))
-           (*itmp-motion-time* 0d0)
            (operators (load-operators operators))
            (init-graph (scene-graph init-graph))
            (goal-graph (scene-graph goal-graph))
@@ -194,12 +202,12 @@
                  plan-steps)
                (add-constraint (scene-graph op planner)
                  (format t "~&  failed")
-                 (cond
-                   ;; Naive
-                   (naive
+                 (ecase constraints
+                   (:plan
                     (smt-plan-invalidate-plan smt-cx action-encoding))
                    ;; domain function
-                   ((and (boundp '*constraint-function*)
+                   (:collision
+                    (and (boundp '*constraint-function*)
                          *constraint-function*)
                     (let* ((c-list (robray::motion-planner-collisions planner))
                            (c-set (loop with h = (make-hash-table :test #'equal)
@@ -217,7 +225,7 @@
                           (smt-plan-invalidate-op smt-cx nil op)
                           )))
                    ;; Informaed
-                   (t
+                   (:state
                     (let ((state (scene-state *scene-state-function* scene-graph
                                               (robray::make-configuration-map)
                                               operators)))
@@ -227,7 +235,7 @@
                (refine (plan)
                  (handler-case
                      (result (tmp-refine plan init-graph q-all-start
-                                        :naive naive))
+                                        :prefix-cache prefix-cache))
                    ;; Handle failure
                    (planning-failure (e)
                      ;;(incf *itmp-motion-time* new-motion-time)
