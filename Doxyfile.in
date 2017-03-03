@@ -761,6 +761,7 @@ INPUT                  = @top_srcdir@/include \
                          @top_srcdir@/doc/md/install.md \
                          @top_srcdir@/doc/md/command.md \
                          @top_srcdir@/doc/md/planfile.md \
+                         @top_srcdir@/doc/md/hacking.md \
                          @top_srcdir@/doc/md/semantics.md \
                          @top_builddir@/doc/md/authors.md \
                          @top_builddir@/py-api.md \

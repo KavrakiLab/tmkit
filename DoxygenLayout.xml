@@ -11,6 +11,7 @@
       <tab type="user" visible="yes" title="Domain Semantics" url="@ref domain_semantics"/>
       <tab type="user" visible="yes" title="Domain Semantics Python API" url="@ref tmsmtpy"/>
       <tab type="user" visible="yes" title="Plan Files" url="@ref planfile"/>
+      <tab type="user" visible="yes" title="TMKit Internals" url="@ref tmkit_hacking"/>
     </tab>
     <tab type="usergroup" visible="yes" title="About">
       <tab type="user" visible="yes" title="License" url="@ref license"/>
