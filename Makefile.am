@@ -99,7 +99,7 @@ py-api.md:  $(tmsmt_core_SOURCES) $(nodist_tmsmt_core_SOURCES)  libtmsmt.la
 	LD_LIBRARY_PATH=.libs:$(LD_LIBRARY_PATH) \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
-	sbcl --non-interactive \
+	./tmsmt.core \
 	     --eval "(load \"$(top_srcdir)/doc.lisp\")" \
 	     --eval '(sb-ext:quit)'
 
