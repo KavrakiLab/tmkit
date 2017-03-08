@@ -7,6 +7,7 @@ is not necessarily familiar with all the tools used to develop TMKit.
 
 [TOC]
 
+
 --------------------------------------------------------------------------------
 
 
@@ -75,7 +76,9 @@ unacceptable latices due to memory management and threading.  Many of
 the routines from Amino, including the scene graph structure used by
 TMKit, are capable of low-latency, real-time performance.
 
+
 --------------------------------------------------------------------------------
+
 
 Implementation Choices {#tmkit_hacking_implementation_choices}
 ======================
@@ -141,7 +144,10 @@ SBCL includes a high-quality compiler that produces efficient native
 code on all major [CPU architectures]
 (http://www.sbcl.org/platform-table.html).
 
+
 --------------------------------------------------------------------------------
+
+
 APIs {#tmkit_hacking_apis}
 ====
 
@@ -177,7 +183,63 @@ Consequently, we also provide a
 [CLPython](https://github.com/metawilm/cl-python)-based [interface]
 (@ref tmsmtpy) for writing domain semantics definitions.
 
+
+
 --------------------------------------------------------------------------------
+
+
+Code Organization {#tmkit_hacking_org}
+=================
+
+The TMKit Source code is organized into several major modules.
+
+SMT Solving
+-----------
+
+* `smtlib.lisp`: Handling of SMTlib expressions
+* `smtrun.lisp`: Management of the SMT solver child process
+
+PDDL and Task Planning
+----------------------
+
+* `pddl.lisp`: parsing of PDDL files and expressions
+* `planner.lisp`: The incremental, constraint-based task planner
+
+Motion Planning
+---------------
+
+All delegated to [Amino](http://amino.kavrakilab.org) and [OMPL]
+(http://ompl.kavrakilab.org/).
+
+Task-Motion Planning
+--------------------
+
+* `python/tmsmtpy.lisp`: CLPython binds for domain semantics scripts
+* `tm-plan.lisp`: Structure definitions for task-motion plans
+* `itmp-rec.lisp`: Core task-motion planner
+* `driver.lisp`: High-level frontend to the task-motion planner
+
+Plan Files
+----------
+
+*Note: Plan file parsing is implemented in C to support real-time
+ processes executing plans.*
+
+* `tmplan.c`: C plan file structure
+* `planfile.l`: <a href="https://en.wikipedia.org/wiki/Flex_(lexical_analyser_generator)">Flex</a>
+  parser for plan files
+* `foreign-tmplan.lisp`: Lisp interface to the C plan-file parser
+
+Utility
+-------
+
+* `expression.lisp`: Misc. s-expression helpers, used for SMTlib and
+  PDDL parsing/generation
+* `utility.lisp`: Misc. utility routines
+
+
+--------------------------------------------------------------------------------
+
 
 Development Environment {#tmkit_hacking_dev_env}
 =======================
@@ -217,6 +279,7 @@ Some alternatives to SLIME exist, but these are much less widely used.
 
 
 --------------------------------------------------------------------------------
+
 
 References {#tmkit_hacking_references}
 ==========
