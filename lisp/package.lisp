@@ -12,7 +12,17 @@
   (:use :cl :alexandria :sycamore :amino :sycamore :robray :sycamore-util :sycamore-cgen
         :tmsmt/pddl)
   (:export
-   ))
+   :tmp-driver
+   :tmp-refine
+
+   :tm-op
+   :tm-op-nop
+   :tm-op-action
+   :tm-op-reparent
+   :tm-op-motion
+   :tm-plan
+   :tm-plan-endpoint
+   :tm-plan-motion-plans))
 
 
 (defpackage tmsmtpy

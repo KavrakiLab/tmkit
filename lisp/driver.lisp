@@ -36,6 +36,39 @@
                      start
                      (prefix-cache t)
                      (constraints :state))
+  "High-level frontend for the Task-Motion Planner.
+
+START-SCENE: The initial scene graph (or list of scene graphs).
+Passed directly to SCENE-GRAPH, so files will be automatically loaded.
+
+GOAL-SCENE: The goal scene graph (or list of scene graphs).
+Passed directly to SCENE-GRAPH, so files will be automatically loaded.
+
+PDDL: List of PDDL files to load.  Only a single domain file may be
+provided, but multiple (or zero) facts files may be given, all of
+which will be merged together.
+
+GUI: Whether to visualize the result via a GUI.
+
+SCRIPTS: Domain semantics scripts to load.
+
+MAX-STEPS: Maximum number of task steps to consider for bounded task
+planning.
+
+WRITE-FACTS: If not nil, a file to which the initial facts will be written.
+
+OUTPUT: A stream or filename to output the computed plan.
+
+MOTION-TIMEOUT: The initial motion planning timeout.
+
+START-PLAN: Plan file to give the initial configuration.
+
+START: Initial configurtion
+
+PREFIX-CACHE: Whether to use the prefix cache
+
+CONSTRAINTS: What type of incremental constraints to use to generate alternate plans.
+"
 
   (when verbose
     (format t "~&Start scene files: ~{~A~^, ~}~%" (ensure-list start-scene))

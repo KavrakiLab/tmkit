@@ -58,3 +58,4 @@ catkin_generated
 /lisp/dir.lisp
 /tmkit*.tar.gz
 /doc/md/authors.md
+/lisp-api.md

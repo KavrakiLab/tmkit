@@ -86,6 +86,18 @@
 (defun tmp-refine (task-plan init-graph start
                    &key
                      prefix-cache)
+  "Attempt to refine a task plan into corresponding motion plans.
+
+Returns the task-motion plan or throws an error.
+
+TASK-PLAN: The candidate task plan, given as a list of operators
+
+INIT-GRAPH: The initial scene graph
+
+START: the start configuration
+
+PREFIX-CACHE: Cache of plan prefixes
+"
   (declare (type list task-plan)
            (type hash-table *itmp-cache*))
   (let ()

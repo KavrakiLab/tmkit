@@ -92,10 +92,12 @@ planfile_test_LDADD = libtmsmt.la
 ###################
 
 EXTRA_DIST += doc.lisp
+EXTRA_DIST += py-api.md lisp-api.md
 
 if HAVE_DOXYGEN
-EXTRA_DIST += py-api.md
-py-api.md:  $(tmsmt_core_SOURCES) $(nodist_tmsmt_core_SOURCES)  libtmsmt.la
+
+
+py-api.md: tmsmt.core $(top_srcdir)/doc.lisp
 	LD_LIBRARY_PATH=.libs:$(LD_LIBRARY_PATH) \
 	top_srcdir=$(top_srcdir) \
 	top_builddir=$(top_builddir) \
@@ -103,7 +105,9 @@ py-api.md:  $(tmsmt_core_SOURCES) $(nodist_tmsmt_core_SOURCES)  libtmsmt.la
 	     --eval "(load \"$(top_srcdir)/doc.lisp\")" \
 	     --eval '(sb-ext:quit)'
 
-doxygen: py-api.md doc/md/copying.md doc/md/mainpage.md doc/md/authors.md Doxyfile
+lisp-api.md: py-api.md
+
+doxygen: py-api.md lisp-api.md doc/md/copying.md doc/md/mainpage.md doc/md/authors.md Doxyfile
 	$(DOXYGEN)
 
 doc/md/copying.md: $(top_srcdir)/COPYING $(top_srcdir)/doc/md/copying.md.header
@@ -161,7 +165,6 @@ EXTRA_DIST += doc/md/mainpage.md \
               doc/md/tutorial.md \
               doc/md/citations.md \
               doc/md/ReadMe.md \
-              py-api.md \
               doc/header.html \
               doc/footer.html \
               doc/manual
@@ -170,7 +173,7 @@ clean-local:
 	-rm -rf doc/manual/ doc/doxygen_sqlite3.db
 
 distclean-local:
-	-rm -rf py-api.md doc/tmsmt.1 doc/md/authors.md doc/md/copying.md
+	-rm -rf py-api.md lisp-api.md doc/tmsmt.1 doc/md/authors.md doc/md/copying.md
 	if test "x$(top_srcdir)" != "x$(top_builddir)"; then \
 		rm -rf $(top_builddir)/lisp build.lisp load.lisp; \
 	fi

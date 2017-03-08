@@ -8,6 +8,7 @@
 
 
 (defstruct tm-op
+  "Abstract type for a task-motion operator"
   initial-scene-graph
   initial-config
   final-scene-graph
@@ -17,18 +18,22 @@
   `(or null tm-op))
 
 
-(defstruct (tm-op-nop (:include tm-op)))
+(defstruct (tm-op-nop (:include tm-op))
+  "Operator type for a No-Op.")
 
 (defun tm-op-nop (scene config)
+  "Construct a no-op."
   (make-tm-op-nop :initial-scene-graph scene
                   :initial-config config
                   :final-scene-graph scene
                   :final-config config))
 
 (defstruct (tm-op-action (:include tm-op))
+  "Operator type for a task action."
   action)
 
 (defun tm-op-action (action scene-graph config)
+  "Construct an operator for a task action."
   (make-tm-op-action :initial-scene-graph scene-graph
                      :initial-config config
                      :final-scene-graph scene-graph
@@ -38,11 +43,13 @@
 
 
 (defstruct (tm-op-reparent (:include tm-op))
+  "Operator type for a reparent."
   frame
   new-parent)
 
 (defun tm-op-reparent (scenegraph new-parent frame &key
-                                                    configuration-map)
+                                                     configuration-map)
+  "Construct an operator for a reparent."
   (make-tm-op-reparent :frame frame
                        :new-parent new-parent
                        :initial-config configuration-map
@@ -53,15 +60,18 @@
 
 
 (defstruct (tm-op-motion (:include tm-op))
+  "Operator type for a motion plan."
   motion-plan)
 
 (defun tm-op-motion (motion-plan)
+  "Construct a TM-OP for a motion plan."
   (make-tm-op-motion :motion-plan motion-plan
                      :final-config (robray::motion-plan-endpoint-map motion-plan)
                      :initial-scene-graph (robray::motion-plan-scene-graph motion-plan)
                      :final-scene-graph (robray::motion-plan-scene-graph motion-plan)))
 
 (defstruct (tm-plan (:include tm-op))
+  "Container for a task-motion-plan."
   ops)
 
 (defun tm-plan-list (ops)
@@ -89,14 +99,17 @@
                     :final-config (tm-op-final-config last)))))
 
 (defun tm-plan (&rest ops)
+  "Construct a TM-PLAN for the given operators."
   (tm-plan-list ops))
 
 (defun tm-plan-motion-plans (tm-plan)
+  "Return a list of the motion plans contained in tm-plan."
   (loop for op in (tm-plan-ops tm-plan)
      when (tm-op-motion-p op)
      collect (tm-op-motion-motion-plan op)))
 
 (defun tm-plan-endpoint (tm-plan)
+  "Return the final configuration in TM-PLAN."
   (loop
      for a = tm-plan then b
      for b = (cddr a)

@@ -4,15 +4,22 @@
   <navindex>
     <tab type="mainpage" visible="yes" title="TMKit"/>
     <tab type="user" visible="yes" title="Download" url="@ref download"/>
+
     <tab type="usergroup" visible="yes" title="Documentation">
       <tab type="user" visible="yes" title="Installation" url="@ref installation"/>
       <tab type="user" visible="yes" title="Tutorial" url="@ref tutorial"/>
       <tab type="user" visible="yes" title="Planner Command" url="@ref planner_command"/>
       <tab type="user" visible="yes" title="Domain Semantics" url="@ref domain_semantics"/>
-      <tab type="user" visible="yes" title="Domain Semantics Python API" url="@ref tmsmtpy"/>
       <tab type="user" visible="yes" title="Plan Files" url="@ref planfile"/>
       <tab type="user" visible="yes" title="TMKit Internals" url="@ref tmkit_hacking"/>
     </tab>
+
+    <tab type="usergroup" visible="yes" title="API">
+      <tab type="user" visible="yes" title="Domain Semantics (Python) API" url="@ref tmsmtpy"/>
+      <tab type="filelist" visible="yes" title="C API" intro=""/>
+      <tab type="user" visible="yes" title="Lisp API" url="@ref TMKIT_LISP"/>
+    </tab>
+
     <tab type="usergroup" visible="yes" title="About">
       <tab type="user" visible="yes" title="License" url="@ref license"/>
       <tab type="user" visible="yes" title="Citations" url="@ref citations"/>
