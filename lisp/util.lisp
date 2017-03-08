@@ -2,10 +2,12 @@
 
 (defvar *resolution* .1)
 
+(defvar *refine-functions* (make-hash-table :test #'equal))
 (defvar *scene-state-function*)
 (defvar *goal-state-function*)
 (defvar *scene-objects-function*)
 (defvar *refine-operator-function*)
+(defvar *constraint-function*)
 
 
 

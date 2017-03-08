@@ -33,7 +33,9 @@
                      write-facts
                      (motion-timeout *motion-timeout*)
                      start-plan
-                     start )
+                     start
+                     (prefix-cache t)
+                     (constraints :state))
 
   (when verbose
     (format t "~&Start scene files: ~{~A~^, ~}~%" (ensure-list start-scene))
@@ -51,18 +53,22 @@
          (start-scene (ensure-list start-scene))
          (gui (and gui start-scene))
          (goal-scene (ensure-list goal-scene))
-         (start-scene-graph (robray::load-scene-files start-scene))
+         (pddl (ensure-list pddl))
+         (start-scene-graph (scene-graph start-scene))
          (start (or start
                     (when start-plan
                       (parse-tmplan start-scene-graph start-plan))
                     (robray::make-configuration-map)))
-         (goal-scene-graph (robray::load-scene-files goal-scene))
+         (goal-scene-graph (scene-graph goal-scene))
          (output (or output *standard-output*)))
     (finish-output *standard-output*)
 
     (labels ((header-line (text list)
                (loop for elt in list
-                  collect (rope text elt #\Newline)))
+                  collect (rope text (typecase elt
+                                       (rope elt)
+                                       (otherwise "N/A"))
+                                #\Newline)))
              (plan-header ()
                (rope (header-line "# Semantics: " scripts)
                      (loop for p in pddl
@@ -107,6 +113,8 @@
                     ((and start-scene domain-exp)
                      (itmp-rec start-scene-graph goal-scene-graph
                                domain-exp
+                               :prefix-cache prefix-cache
+                               :constraints constraints
                                :facts facts-exp
                                :q-all-start start
                                :max-steps max-steps))

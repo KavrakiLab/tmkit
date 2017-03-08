@@ -59,6 +59,41 @@ def map_locations(function, scene):
                     i+=1
 
 
+def location_table(parent,frame):
+    parent_name = parent.name
+    name = frame.name
+    trans = aa.translation( aa.frame_fixed_tf(frame) )
+    i = int(round( trans[0] / RESOLUTION))
+    j = int(round( trans[1] / RESOLUTION))
+    position = tm.mangle(parent_name,i,j)
+    return (["ONTABLE", name, position], i, j)
+
+############################
+### Collision Constraint ###
+############################
+
+def collision_constraint(scene,op,objs):
+    # TODO: stacking
+
+    moveable = []
+    def collect_moveable(frame_name):
+        frame = scene[frame_name]
+        if aa.frame_isa(frame,"moveable"):
+            moveable.append(frame)
+    map(collect_moveable, objs)
+
+    conjunction = []
+
+    def handle_moveable(frame):
+        parent_name = frame.parent
+        parent = scene[parent_name]
+        if aa.frame_isa(parent, "surface"):
+            (x, i, j) = location_table(parent,frame)
+            conjunction.append(x)
+
+    map(handle_moveable, moveable)
+
+    return conjunction
 
 ##########################
 ## Scene State Function ##
@@ -95,11 +130,9 @@ def make_state(scene, configuration, is_goal):
             # appropriate grid cell on the surface.
             parent_frame = scene[parent_name]
             if aa.frame_isa(parent_frame, "surface"):
-                trans = aa.translation( aa.frame_fixed_tf(frame) )
-                i = int(round( trans[0] / RESOLUTION))
-                j = int(round( trans[1] / RESOLUTION))
-                position = tm.mangle(parent_name,i,j)
-                conjunction.append(["ONTABLE", name, position])
+                (x, i, j) = location_table(parent_frame,frame)
+                conjunction.append(x)
+
                 occupied[(parent_name,i,j)] = True
             else:
                 add_on(name,parent_name)
@@ -167,9 +200,7 @@ def scene_objects(scene):
 def motion_plan(op, frame, goal):
     scene = op.final_scene
     sub_scenegraph = aa.scene_chain(scene, "", frame)
-    mp = tm.op_motion( op, sub_scenegraph, goal )
-    if False == mp: raise tm.PlanningFailure()
-    else: return mp
+    return tm.op_motion( op, sub_scenegraph, goal )
 
 # def pick(op, obj):
 #     mp = motion_plan(op, FRAME, tm.op_tf_abs(op,obj))
@@ -235,6 +266,7 @@ def op_unstack(scene, config, op):
     return op_pick_up(scene,config,op)
 
 
+
 ##########################
 ### Register functions ###
 ##########################
@@ -246,3 +278,5 @@ tm.bind_refine_operator(op_pick_up, "PICK-UP")
 tm.bind_refine_operator(op_put_down, "PUT-DOWN")
 tm.bind_refine_operator(op_stack, "STACK")
 tm.bind_refine_operator(op_unstack, "UNSTACK")
+
+tm.bind_collision_constraint(collision_constraint)
