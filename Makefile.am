@@ -154,7 +154,7 @@ endif
 endif
 
 sync-doc:
-	rsync -r doc/manual/ tmkit.kavrakilab.org:/srv/www/amino
+	rsync -r doc/manual/ tmkit.kavrakilab.org:/srv/www/tmkit
 
 EXTRA_DIST += doc/md/mainpage.md \
               doc/md/command.md \
