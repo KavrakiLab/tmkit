@@ -153,6 +153,9 @@ endif
 
 endif
 
+sync-doc:
+	rsync -r doc/manual/ tmkit.kavrakilab.org:/srv/www/amino
+
 EXTRA_DIST += doc/md/mainpage.md \
               doc/md/command.md \
               doc/md/copying.md.header \
