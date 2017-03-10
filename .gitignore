@@ -59,3 +59,4 @@ catkin_generated
 /tmkit*.tar.gz
 /doc/md/authors.md
 /lisp-api.md
+/demo/tmpexec

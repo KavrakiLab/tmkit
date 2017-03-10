@@ -87,6 +87,12 @@ noinst_PROGRAMS += planfile_test
 planfile_test_SOURCES = src/tmplan_test.c
 planfile_test_LDADD = libtmsmt.la
 
+
+
+noinst_PROGRAMS += demo/tmpexec
+demo_tmpexec_SOURCES = demo/tmpexec.c
+demo_tmpexec_LDADD = libtmsmt.la
+
 ###################
 ## Documentation ##
 ###################
