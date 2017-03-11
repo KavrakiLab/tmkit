@@ -13,6 +13,13 @@ tmplan_create (struct aa_mem_region *reg)
     return x;
 }
 
+
+AA_API size_t
+tmplan_op_count (struct tmplan * tmp )
+{
+    return tmp->count;
+}
+
 AA_API void
 tmplan_finish_op(struct tmplan * tmp )
 {
@@ -114,6 +121,26 @@ tmplan_op_motion_plan_map_var (struct tmplan_op_motion_plan *op,
     aa_mem_rlist_map( op->names, map_var_helper, &cxp );
 }
 
+struct vars_cx {
+    const char **name;
+    size_t i;
+};
+static void vars_helper(void *cx_, const char *name)
+{
+    struct vars_cx *cx = (struct vars_cx*)cx_;
+    cx->name[cx->i++] = name;
+}
+
+AA_API void
+tmplan_op_motion_plan_vars ( struct tmplan_op_motion_plan *op,
+                             size_t n, const char **name )
+{
+    assert( n >= tmplan_op_motion_plan_config_count(op) );
+    struct vars_cx cx;
+    cx.name = name;
+    cx.i = 0;
+    tmplan_op_motion_plan_map_var( op, vars_helper, &cx );
+}
 
 AA_API void
 tmplan_op_motion_plan_path_start (struct tmplan_op_motion_plan *op )

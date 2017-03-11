@@ -60,3 +60,7 @@ catkin_generated
 /doc/md/authors.md
 /lisp-api.md
 /demo/tmpexec
+/demo/baxter-model.c
+/demo/baxter-model.c.h
+/demo/sussman-scene.c
+/demo/sussman-scene.c.h

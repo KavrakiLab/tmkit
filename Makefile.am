@@ -206,3 +206,24 @@ EXTRA_DIST += demo/baxter-sussman/allowed-collision.robray \
               demo/domains/blocksworld/blocks-safety-goal.pddl \
               demo/domains/linear-blocksworld/linear-blocksworld.pddl \
               demo/domains/linear-blocksworld/linear-blocksworld.py
+
+if BUILD_DEMO_BAXTER
+
+demo/baxter-model.c:
+	aarxc 'package://baxter_description/urdf/baxter.urdf' \
+	-o demo/baxter-model.c -n "baxter"
+
+
+lib_LTLIBRARIES += demo/tmkit-baxter-model.la
+demo_tmkit_baxter_model_la_SOURCES = demo/baxter-model.c
+demo_tmkit_baxter_model_la_LDFLAGS = -avoid-version -module -shared -export-dynamic
+
+endif # BUILD_DEMO_BAXTER
+
+demo/sussman-scene.c:
+	aarxc $(top_srcdir)/demo/baxter-sussman/sussman-0.robray \
+	-o demo/sussman-scene.c -n "sussman"
+
+lib_LTLIBRARIES += demo/tmkit-sussman-scene.la
+demo_tmkit_sussman_scene_la_SOURCES = demo/sussman-scene.c
+demo_tmkit_sussman_scene_la_LDFLAGS = -avoid-version -module -shared -export-dynamic

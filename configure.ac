@@ -66,7 +66,26 @@ AS_IF([test "x$enable_man" = xyes -a "x$build" = "x$host"],
 AM_CONDITIONAL([HAVE_HELP2MAN], [test x$HELP2MAN != x])
 AM_CONDITIONAL([HAVE_GROFF], [test x$GROFF != x])
 
+# Demos
 
+AC_DEFUN([DEF_DEMO],
+[
+AC_ARG_ENABLE([demo-$1],
+              [AS_HELP_STRING([--enable-demo-$1], [Build the $1 demo])],
+              [],
+              [])
+
+AS_IF([test "x$enable_demo_$1" = "xyes"],
+      [ENABLED_DEMOS="$1 $ENABLED_DEMOS"])
+
+AM_CONDITIONAL([BUILD_DEMO_$2], [test "x$enable_demo_$1" = "xyes"])
+
+])
+
+DEF_DEMO([baxter],[BAXTER])
+
+
+# Output
 AC_CONFIG_FILES([Makefile Doxyfile lisp/config.lisp])
 
 AC_DEFUN([CONFIG_SCRIPT],

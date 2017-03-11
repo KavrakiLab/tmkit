@@ -34,6 +34,13 @@ struct tmplan;
 AA_API struct tmplan *
 tmplan_create (struct aa_mem_region *reg);
 
+
+/**
+ * Return the number of operators in the plan
+ */
+AA_API size_t
+tmplan_op_count (struct tmplan * tmp );
+
 /**
  * Finalize the last added operator.
  *
@@ -132,6 +139,13 @@ AA_API void
 tmplan_op_motion_plan_map_var (struct tmplan_op_motion_plan *op,
                                void (*function)(void *cx, const char *name),
                                void *cx);
+
+/**
+ * Fill name with the configuration variable names.
+ */
+AA_API void
+tmplan_op_motion_plan_vars ( struct tmplan_op_motion_plan *op,
+                             size_t n, const char **name );
 
 /**
  * Apply function to each op in the plan.
