@@ -45,6 +45,7 @@
 #include <amino/rx/rxtype.h>
 #include <amino/rx/scenegraph.h>
 #include <amino/rx/scene_plugin.h>
+#include <amino/rx/rx_ct.h>
 
 #include "tmsmt/tmplan.h"
 
@@ -54,6 +55,7 @@ static int g_verbosity = 0;
 struct exec_handler {
     struct aa_rx_sg *scenegraph;
     double *q;
+    struct aa_ct_seg_list *segs;
 };
 
 struct exec_cx {
@@ -98,6 +100,14 @@ int main(int argc, char *argv[])
     tmplan_map_ops( plan, op_function, &ecx );
 
     /* TODO: Execute Plan File */
+    for( size_t i = 0; i < ecx.n; i++ ) {
+        if( ecx.handlers[i].segs ) {
+            //do segs
+            size_t n_q = aa_rx_sg_config_count(ecx.handlers[i].scenegraph);
+            aa_ct_seg_list_plot( ecx.handlers[i].segs, n_q, .01 );
+            exit(0);
+        }
+    }
 
     /* Cleanup */
     aa_mem_region_pop(&plan_region, plan);
@@ -176,6 +186,17 @@ static void parseopt( int argc, char **argv,
     }
 }
 
+static void check_fp( const double *q, size_t n )
+{
+    for( size_t i = 0; i < n; i ++ ) {
+        //int r = fpclassify(q[i]);
+        //assert( (FP_NAN != r) && (FP_INFINITE != r) );
+        assert( isfinite(q[i]) );
+    }
+}
+
+
+
 static void op_function(void *cx_, const struct tmplan_op *op)
 {
     struct exec_cx *cx = (struct exec_cx *)cx_;
@@ -206,19 +227,74 @@ static void op_function(void *cx_, const struct tmplan_op *op)
         if( g_verbosity ) {
             printf("OP MOTION\n");
         }
-        double *op_path = tmplan_op_motion_plan_path(top);
+        /* extract operator info */
+        const double *op_path = tmplan_op_motion_plan_path(top);
         size_t op_n_q = tmplan_op_motion_plan_config_count(top);
         size_t op_n_elt = tmplan_op_motion_plan_path_size(top);
+        check_fp( op_path, op_n_elt );
         const char *op_names[op_n_q];
         aa_rx_config_id op_ids[op_n_q];
         tmplan_op_motion_plan_vars(top, op_n_q, op_names);
         aa_rx_sg_config_indices( scenegraph_end, op_n_q, op_names, op_ids );
+
         if( g_verbosity ) {
             for( size_t i = 0; i < op_n_q; i ++ ) {
                 printf("\tq[%lu]:\t%s (%d)\n", i, op_names[i], op_ids[i]);
             }
         }
+
+        if( op_n_q > 0 && op_n_elt > 0 ) {
+            /* Remap points to scene graph indices */
+            size_t n_point = op_n_elt / op_n_q;
+            size_t n_q = aa_rx_sg_config_count(scenegraph_end);
+            double *path = AA_MEM_REGION_NEW_N(cx->region, double, n_q*n_point);
+            for( size_t i = 0; i < n_point; i ++ ) {
+                double *p_path = path + (i*n_q);
+                const double *p_op = op_path + (i*op_n_q);
+                AA_MEM_CPY(p_path, q_end, n_q);
+                aa_rx_sg_config_set( scenegraph_end, n_q,
+                                     op_n_q, op_ids,
+                                     p_op, p_path );
+            }
+            check_fp( path, n_q*n_point );
+            /* Compute interpolation parameters */
+            {
+                struct aa_ct_limit *limit = aa_rx_ct_limits( cx->region, scenegraph_end );
+                /* check limits */
+                double lim[op_n_q];
+                aa_rx_sg_config_get( scenegraph_end, n_q, op_n_q,
+                                     op_ids, limit->max->q, lim );
+
+                struct aa_ct_pt_list *pt_list = aa_rx_ct_pt_list( cx->region, n_q, n_point, path );
+                cx->handlers[cx->i].segs = aa_ct_tjq_pb_generate( cx->region, pt_list, limit->max );
+            }
+
+            /* Validate */
+            {
+                double q0[op_n_q];
+                struct aa_ct_state *s0 = aa_ct_state_alloc( cx->region, n_q, 0 );
+                int i = aa_ct_seg_list_eval( cx->handlers[cx->i].segs, s0, 0 );
+                if( g_verbosity ) {
+                    printf("\ttrajectory all: "); aa_dump_vec( stdout, s0->q, n_q);
+                }
+
+                check_fp( s0->q, n_q );
+                check_fp( s0->dq, n_q );
+
+                aa_rx_sg_config_get( scenegraph_end, n_q, op_n_q,
+                                     op_ids, s0->q, q0 );
+
+                check_fp( q0, op_n_q );
+
+                if( g_verbosity ) {
+                    printf("\twaypoint start:   "); aa_dump_vec( stdout, op_path, op_n_q);
+                    printf("\ttrajectory start: "); aa_dump_vec( stdout, q0, op_n_q);
+                }
+                assert( aa_la_ssd(op_n_q, q0, op_path) < 1e-3 );
+            }
+        }
     }
+
     break;
     case TMPLAN_OP_REPARENT:
     {

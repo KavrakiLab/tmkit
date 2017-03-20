@@ -91,7 +91,7 @@ planfile_test_LDADD = libtmsmt.la
 
 noinst_PROGRAMS += demo/tmpexec
 demo_tmpexec_SOURCES = demo/tmpexec.c
-demo_tmpexec_LDADD = libtmsmt.la
+demo_tmpexec_LDADD = libtmsmt.la -lm
 
 ###################
 ## Documentation ##
