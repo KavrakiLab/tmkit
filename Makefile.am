@@ -91,7 +91,8 @@ planfile_test_LDADD = libtmsmt.la
 
 noinst_PROGRAMS += demo/tmpexec
 demo_tmpexec_SOURCES = demo/tmpexec.c
-demo_tmpexec_LDADD = libtmsmt.la -lm
+demo_tmpexec_LDADD = libtmsmt.la -lm -lamino-gl
+demo_tmpexec_CFLAGS = $(SDL2_CFLAGS) -lpthread
 
 ###################
 ## Documentation ##

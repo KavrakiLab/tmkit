@@ -40,12 +40,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <pthread.h>
+#include <unistd.h>
 
 #include <amino.h>
 #include <amino/rx/rxtype.h>
 #include <amino/rx/scenegraph.h>
 #include <amino/rx/scene_plugin.h>
 #include <amino/rx/rx_ct.h>
+#include <amino/rx/scene_win.h>
 
 #include "tmsmt/tmplan.h"
 
@@ -54,6 +57,7 @@ static int g_verbosity = 0;
 
 struct exec_handler {
     struct aa_rx_sg *scenegraph;
+    struct aa_ct_limit *limit;
     double *q;
     struct aa_ct_seg_list *segs;
 };
@@ -65,6 +69,10 @@ struct exec_cx {
     double *q;
     size_t i;
     size_t n;
+
+
+    /* simulation */
+    struct aa_rx_win * win;
 };
 
 static void op_function(void *cx, const struct tmplan_op *op);
@@ -72,17 +80,22 @@ static void op_function(void *cx, const struct tmplan_op *op);
 static void parseopt( int argc, char **argv,
                       struct aa_rx_sg **scenegraph, const char **plan_file );
 
+
+static int check_state(void *cx, double t, const struct aa_ct_state *state );
+
+static void * sim_thread_routine(void *cx);
+
 int main(int argc, char *argv[])
 {
     const char *plan_file=NULL;
     struct exec_cx ecx;
     AA_MEM_ZERO(&ecx,1);
 
+    /* Parse arguments */
     parseopt( argc, argv,
               &ecx.scenegraph, &plan_file );
 
-    /* Load Scene Plugin */
-
+    /* Initialize Scene */
     aa_rx_sg_init(ecx.scenegraph);
 
     /* Load Plan File */
@@ -92,22 +105,31 @@ int main(int argc, char *argv[])
 
     /* Compute interpolation parameters */
     ecx.q = AA_MEM_REGION_NEW_N(&plan_region,double, aa_rx_sg_config_count(ecx.scenegraph));
-    // TODO: start config
+    // TODO: start config?
     ecx.region = &plan_region;
     ecx.n = tmplan_op_count(plan);
     ecx.i = 0;
     ecx.handlers = AA_MEM_REGION_NEW_N(&plan_region, struct exec_handler, ecx.n);
     tmplan_map_ops( plan, op_function, &ecx );
 
-    /* TODO: Execute Plan File */
-    for( size_t i = 0; i < ecx.n; i++ ) {
-        if( ecx.handlers[i].segs ) {
-            //do segs
-            size_t n_q = aa_rx_sg_config_count(ecx.handlers[i].scenegraph);
-            aa_ct_seg_list_plot( ecx.handlers[i].segs, n_q, .01 );
-            exit(0);
-        }
+    /* Validate trajectories */
+
+    /* Simulate */
+    pthread_t sim_thread;
+    {
+        ecx.win = aa_rx_win_default_create ("TMPexec", 640, 480);
+        int r = pthread_create( &sim_thread, NULL, sim_thread_routine, &ecx );
+        aa_rx_win_run();
     }
+
+    /* for( size_t i = 0; i < ecx.n; i++ ) { */
+    /*     if( ecx.handlers[i].segs ) { */
+    /*         //do segs */
+    /*         size_t n_q = aa_rx_sg_config_count(ecx.handlers[i].scenegraph); */
+    /*         aa_ct_seg_list_plot( ecx.handlers[i].segs, n_q, .01 ); */
+    /*         exit(0); */
+    /*     } */
+    /* } */
 
     /* Cleanup */
     aa_mem_region_pop(&plan_region, plan);
@@ -257,6 +279,8 @@ static void op_function(void *cx_, const struct tmplan_op *op)
                                      p_op, p_path );
             }
             check_fp( path, n_q*n_point );
+            q_end = & path[ (n_point-1)*n_q ];
+
             /* Compute interpolation parameters */
             {
                 struct aa_ct_limit *limit = aa_rx_ct_limits( cx->region, scenegraph_end );
@@ -266,32 +290,32 @@ static void op_function(void *cx_, const struct tmplan_op *op)
                                      op_ids, limit->max->q, lim );
 
                 struct aa_ct_pt_list *pt_list = aa_rx_ct_pt_list( cx->region, n_q, n_point, path );
-                cx->handlers[cx->i].segs = aa_ct_tjq_pb_generate( cx->region, pt_list, limit->max );
+                cx->handlers[cx->i].segs = aa_ct_tjq_lin_generate( cx->region, pt_list, limit->max );
             }
 
-            /* Validate */
-            {
-                double q0[op_n_q];
-                struct aa_ct_state *s0 = aa_ct_state_alloc( cx->region, n_q, 0 );
-                int i = aa_ct_seg_list_eval( cx->handlers[cx->i].segs, s0, 0 );
-                if( g_verbosity ) {
-                    printf("\ttrajectory all: "); aa_dump_vec( stdout, s0->q, n_q);
-                }
+            /* /\* Validate *\/ */
+            /* { */
+            /*     double q0[op_n_q]; */
+            /*     struct aa_ct_state *s0 = aa_ct_state_alloc( cx->region, n_q, 0 ); */
+            /*     int i = aa_ct_seg_list_eval( cx->handlers[cx->i].segs, s0, 0 ); */
+            /*     if( g_verbosity ) { */
+            /*         printf("\ttrajectory all: "); aa_dump_vec( stdout, s0->q, n_q); */
+            /*     } */
 
-                check_fp( s0->q, n_q );
-                check_fp( s0->dq, n_q );
+            /*     check_fp( s0->q, n_q ); */
+            /*     check_fp( s0->dq, n_q ); */
 
-                aa_rx_sg_config_get( scenegraph_end, n_q, op_n_q,
-                                     op_ids, s0->q, q0 );
+            /*     aa_rx_sg_config_get( scenegraph_end, n_q, op_n_q, */
+            /*                          op_ids, s0->q, q0 ); */
 
-                check_fp( q0, op_n_q );
+            /*     check_fp( q0, op_n_q ); */
 
-                if( g_verbosity ) {
-                    printf("\twaypoint start:   "); aa_dump_vec( stdout, op_path, op_n_q);
-                    printf("\ttrajectory start: "); aa_dump_vec( stdout, q0, op_n_q);
-                }
-                assert( aa_la_ssd(op_n_q, q0, op_path) < 1e-3 );
-            }
+            /*     if( g_verbosity ) { */
+            /*         printf("\twaypoint start:   "); aa_dump_vec( stdout, op_path, op_n_q); */
+            /*         printf("\ttrajectory start: "); aa_dump_vec( stdout, q0, op_n_q); */
+            /*     } */
+            /*     assert( aa_la_ssd(op_n_q, q0, op_path) < 1e-3 ); */
+            /* } */
         }
     }
 
@@ -323,11 +347,20 @@ static void op_function(void *cx_, const struct tmplan_op *op)
         /* Update scenegraph */
         assert( aa_rx_sg_frame_id(scenegraph_end, child) > 0 );
         assert( aa_rx_sg_frame_id(scenegraph_end, new_parent) >= 0 );
-        scenegraph_end = aa_rx_sg_copy( scenegraph_end );
-        aa_rx_sg_reparent_name( scenegraph_end, new_parent, child, tf_rel );
-        aa_rx_sg_init(scenegraph_end);
+        struct aa_rx_sg *sg = aa_rx_sg_copy( scenegraph_end );
+        aa_rx_sg_reparent_name( sg, new_parent, child, tf_rel );
+        aa_rx_sg_init(sg);
 
-        // Remap configuration?
+        /* Remap */
+        double *q_tmp = AA_MEM_REGION_NEW_N(cx->region, double, n_q);
+        const char *names0[n_q];
+        aa_rx_config_id ids1[n_q];
+        aa_rx_sg_config_names( scenegraph_end, n_q, names0 );
+        aa_rx_sg_config_indices( sg, n_q, names0, ids1 );
+        aa_rx_sg_config_set( sg, n_q, n_q, ids1, q_end, q_tmp );
+
+        scenegraph_end = sg;
+        q_end = q_tmp;
     }
     break;
     default:
@@ -339,5 +372,44 @@ static void op_function(void *cx_, const struct tmplan_op *op)
     if( cx->i < cx->n ) {
         cx->handlers[cx->i].scenegraph = scenegraph_end;
         cx->handlers[cx->i].q = q_end;
+    }
+}
+
+static int check_state(void *cx_, double t, const struct aa_ct_state *state )
+{
+    (void) t;
+    struct exec_cx *cx = (struct exec_cx *)cx_;
+}
+
+static void *
+sim_thread_routine(void *cx_)
+{
+    struct exec_cx *cx = (struct exec_cx*)cx_;
+    struct aa_mem_region *reg = aa_mem_region_local_get();
+    double dt = .01;
+
+    /* iterate over operarations */
+    for( size_t i = 0; i < cx->n; i = (i+1)%cx->n ) {
+        if( NULL == cx->handlers[i].segs ) continue;
+        double dur = aa_ct_seg_list_duration( cx->handlers[i].segs );
+        struct aa_ct_state * state = aa_ct_state_alloc( reg, aa_rx_sg_config_count(cx->handlers[i].scenegraph), 0 );
+
+        aa_ct_seg_list_eval( cx->handlers[i].segs, state, 0 );
+
+        aa_rx_win_lock( cx->win );
+        aa_rx_win_set_sg( cx->win, cx->handlers[i].scenegraph );
+        aa_rx_win_set_config( cx->win, state->n_q, state->q );
+        aa_rx_win_unlock( cx->win );
+
+        aa_rx_config_id k = aa_rx_sg_config_id( cx->handlers[i].scenegraph, "head_pan" );
+        /* simulate trajectory */
+        for( double t = 0; t < dur; t += dt ) {
+            aa_ct_seg_list_eval( cx->handlers[i].segs, state, t );
+            aa_rx_win_set_config( cx->win, state->n_q, state->q );
+            usleep( dt * 1000000 );
+            printf("pan (%d): %f\n", k, state->q[k]);
+        }
+
+        aa_mem_region_pop(reg, state);
     }
 }

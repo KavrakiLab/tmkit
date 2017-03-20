@@ -42,6 +42,14 @@ PKG_CHECK_MODULES([AMINO], [amino],
 ])
 
 
+
+PKG_CHECK_MODULES([SDL2],
+                  [sdl2],
+                  [HAVE_SDL2=yes])
+
+AC_SUBST([SDL2_CFLAGS])
+AC_SUBST([SDL2_LIBS])
+
 # Doxygen
 AC_ARG_WITH([doxygen],
             AS_HELP_STRING([--without-doxygen], [Disable doxygen support]),
