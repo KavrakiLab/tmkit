@@ -49,6 +49,9 @@
 #include <amino/rx/scene_plugin.h>
 #include <amino/rx/rx_ct.h>
 #include <amino/rx/scene_win.h>
+#include <amino/rx/scene_collision.h>
+
+#include <amino/ct/traj.h>
 
 #include "tmsmt/tmplan.h"
 
@@ -60,6 +63,9 @@ struct exec_handler {
     struct aa_ct_limit *limit;
     double *q;
     struct aa_ct_seg_list *segs;
+
+    struct aa_rx_cl *cl;
+    struct aa_rx_cl_set *cl_set;
 };
 
 struct exec_cx {
@@ -97,6 +103,7 @@ int main(int argc, char *argv[])
 
     /* Initialize Scene */
     aa_rx_sg_init(ecx.scenegraph);
+    aa_rx_sg_cl_init( ecx.scenegraph );
 
     /* Load Plan File */
     struct aa_mem_region plan_region;
@@ -104,12 +111,17 @@ int main(int argc, char *argv[])
     struct tmplan *plan = tmplan_parse_filename( plan_file, &plan_region );
 
     /* Compute interpolation parameters */
-    ecx.q = AA_MEM_REGION_NEW_N(&plan_region,double, aa_rx_sg_config_count(ecx.scenegraph));
+    size_t n_q = aa_rx_sg_config_count(ecx.scenegraph);
+    ecx.q = AA_MEM_REGION_NEW_N(&plan_region,double, n_q);
     // TODO: start config?
+    AA_MEM_ZERO(ecx.q,n_q);
+    aa_rx_sg_allow_config( ecx.scenegraph, aa_rx_sg_config_count(ecx.scenegraph), ecx.q );
+    aa_rx_sg_cl_init( ecx.scenegraph );
     ecx.region = &plan_region;
     ecx.n = tmplan_op_count(plan);
     ecx.i = 0;
     ecx.handlers = AA_MEM_REGION_NEW_N(&plan_region, struct exec_handler, ecx.n);
+    AA_MEM_ZERO(ecx.handlers,ecx.n);
     tmplan_map_ops( plan, op_function, &ecx );
 
     /* Validate trajectories */
@@ -130,15 +142,6 @@ int main(int argc, char *argv[])
         int r = pthread_create( &sim_thread, NULL, sim_thread_routine, &ecx );
         aa_rx_win_run();
     }
-
-    /* for( size_t i = 0; i < ecx.n; i++ ) { */
-    /*     if( ecx.handlers[i].segs ) { */
-    /*         //do segs */
-    /*         size_t n_q = aa_rx_sg_config_count(ecx.handlers[i].scenegraph); */
-    /*         aa_ct_seg_list_plot( ecx.handlers[i].segs, n_q, .01 ); */
-    /*         exit(0); */
-    /*     } */
-    /* } */
 
     /* Cleanup */
     aa_mem_region_pop(&plan_region, plan);
@@ -359,14 +362,67 @@ static void op_function(void *cx_, const struct tmplan_op *op)
 static int check_state(void *cx_, double t, const struct aa_ct_state *state )
 {
     (void) t;
-    struct exec_cx *cx = (struct exec_cx *)cx_;
+    struct exec_handler *cx = (struct exec_handler *)cx_;
+    size_t n_q = aa_rx_sg_config_count(cx->scenegraph);
+    size_t n_f = aa_rx_sg_frame_count(cx->scenegraph);
 
-    /* TODO: finiteness */
+    /* finiteness */
+    for( size_t i = 0; i < n_q; i ++ ) {
+        assert( isfinite(state->q[i]) );
+        assert( isfinite(state->dq[i]) );
+        /* assert( isfinite(state->ddq[i]) ); */
+        /* assert( isfinite(state->eff[i]) ); */
+    }
 
-    /* TODO: limit */
+    /* limits */
+    for( size_t i = 0; i < n_q; i ++ ) {
 
-    /* TODO: collision */
+        assert( (cx->limit->min->q[i] <= state->q[i] )
+                && (state->q[i] <= cx->limit->max->q[i]) );
 
+        assert( (cx->limit->min->dq[i] <= state->dq[i] )
+                && (state->dq[i] <= cx->limit->max->dq[i]) );
+
+        /* assert( (cx->limit->min->ddq[i] <= state->ddq[i] ) */
+        /*         && (state->ddq[i] <= cx->limit->max->ddq[i]) ); */
+
+        /* assert( (cx->limit->min->eff[i] <= state->eff[i] ) */
+        /*         && (state->eff[i] <= cx->limit->max->eff[i]) ); */
+
+    }
+
+    /* collision */
+    if( NULL == cx->cl ) {
+        /* lazily create collision checking context */
+        aa_rx_sg_cl_init( cx->scenegraph );
+        cx->cl = aa_rx_cl_create(cx->scenegraph);
+        cx->cl_set = aa_rx_cl_set_create(cx->scenegraph);
+    }
+
+    aa_rx_cl_set_clear(cx->cl_set);
+    {
+        double TF_rel[7*n_f], TF_abs[7*n_f];
+        double q[n_q];
+        AA_MEM_ZERO(q,n_q);
+        aa_rx_sg_tf(cx->scenegraph, n_q, q, n_f,
+                    TF_rel, 7, TF_abs, 7);
+        int collision = aa_rx_cl_check(cx->cl, n_f, TF_abs, 7, cx->cl_set );
+
+        /* print detected collisions */
+        if( collision ) {
+            for( size_t i = 0; i < n_f; i ++ ) {
+                for( size_t j = 0; j < i; j ++ ) {
+                    if( aa_rx_cl_set_get(cx->cl_set, i, j) ) {
+                        fprintf(stderr,
+                                "WARNING: Collision between %s(%d) <-> %s(%d)\n",
+                                aa_rx_sg_frame_name(cx->scenegraph,i), i,
+                                aa_rx_sg_frame_name(cx->scenegraph,j), j );
+                    }
+                }
+            }
+        }
+        assert( 0 == collision );
+    }
 
     return 0;
 }
