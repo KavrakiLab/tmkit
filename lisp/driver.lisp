@@ -137,8 +137,7 @@ CONSTRAINTS: What type of incremental constraints to use to generate alternate p
 
       ;; Maybe display scene
       (when gui
-        (robray::win-set-scene-graph start-scene-graph)
-        (robray::win-set-config start))
+        (robray::win-set-scene-graph start-scene-graph :configuration-map start))
 
       ;; Now plan!
       (let ((plan (cond

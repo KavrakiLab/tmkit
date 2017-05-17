@@ -49,6 +49,8 @@ Examples:
 
 (defun |op_motion| (previous-op sub-scene-graph goal)
   "Create a motion-plan task-motion operator."
+  ;; (print 'motion)
+  ;; (print goal)
   (multiple-value-bind (mp planner)
       (motion-plan sub-scene-graph
                    (tmsmt::tm-op-final-config previous-op)
@@ -56,6 +58,7 @@ Examples:
                    :simplify t
                    :track-collisions t
                    :timeout tmsmt::*motion-timeout*)
+    ;(when mp (print (robray::motion-plan-endpoint-map mp)))
     (if mp
         (|plan| previous-op (tmsmt::tm-op-motion mp))
         (progn
@@ -63,6 +66,23 @@ Examples:
           ;;(format t "~&planner-0: ~A" planner)
           (error 'tmsmt::planning-failure
                  :planner planner)))))
+
+
+(defun |op_cartesian| (previous-op sub-scene-graph goal)
+  "Create a motion-plan task-motion operator."
+  ;; (print 'cartesian)
+  ;; (print (tmsmt::tm-op-final-config previous-op))
+  ;; (print goal)
+  (let ((mp (robray::cartesian-path sub-scene-graph
+                                    (tmsmt::tm-op-final-config previous-op)
+                                    goal)))
+
+    ;; (when mp (print (robray::motion-plan-endpoint-map mp)))
+    ;; (print mp)
+    (if mp
+        (|plan| previous-op (tmsmt::tm-op-motion mp))
+        (error 'tmsmt::planning-failure))))
+
 
 (defun |op_reparent| (previous-op parent frame)
   "Create a reparent task-motion operator."

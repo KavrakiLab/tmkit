@@ -41,6 +41,7 @@
    ;; Operators
    |op_nop|
    |op_motion|
+   |op_cartesian|
    |op_reparent|
    |op_tf_abs|
    |op_tf_rel|
