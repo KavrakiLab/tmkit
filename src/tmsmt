@@ -61,15 +61,16 @@ Usage: tmsmt [OPTIONS] INPUT...
 Compute a task-motion plan
 
 Options:
-  -t TASK_FILE                Task Domain or Facts (PDDL) file
-  -l SCRIPT_FILE              Load script file
-  -s SCENE_FILE               Start scene file
-  -g SCENE_FILE               Goal scene file
-  -o OUTPUT_PLAN_FILE         Output plan file
-  -q PLAN_FILE                Initial configuration
-  -s MAX_STEPS                Maximum number of task steps
-  -m MOTION_TIMEOUT           Initial motion planning timeout
-  -r RESOLUTION               Discretization resolution
+  -t <task-file>              Task Domain or Facts (PDDL) file
+  -l <script-file>            Load script file
+  -s <scene-file>             Start scene file
+  -g <scene-file>             Goal scene file
+  -o <output-plan-file>       Output plan file
+  -q <plan-file>              Initial configuration
+  -s <max-steps>              Maximum number of task steps
+  -m <motion-timeout>         Initial motion planning timeout
+  -r <resolution>             Discretization resolution
+  -T <times-file>             Append timing data to times-file
   --gui                       Enable graphical interface
   --load-plan=PLAN_FILE       Load plan from file
   --write-facts=FILE          Write inititial task facts to FILE
@@ -145,6 +146,10 @@ EOF
         -q)
             shift;
             export TMSMT_INITIAL_PLAN="$1"
+            ;;
+        -T)
+            shift;
+            export TMSMT_TIMES_FILE="$1"
             ;;
         --load-plan=*)
             export TMSMT_INPUT=`parse_long "$1"`

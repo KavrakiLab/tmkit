@@ -21,6 +21,7 @@
 
 
 (defun tmp-driver (&key
+                     times-file
                      start-scene
                      goal-scene
                      pddl
@@ -146,6 +147,7 @@ CONSTRAINTS: What type of incremental constraints to use to generate alternate p
                     ((and start-scene domain-exp)
                      (itmp-rec start-scene-graph goal-scene-graph
                                domain-exp
+                               :times-file times-file
                                :prefix-cache prefix-cache
                                :constraints constraints
                                :facts facts-exp
@@ -202,6 +204,12 @@ Written by Neil T. Dantam
                                  (uiop/os:getenv varname)
                                  ")")))
 
+(defun env-string (varname)
+  (let ((result (uiop/os:getenv varname)))
+    (if (zerop (length result))
+        nil
+        result)))
+
 (defun tmp-command ()
   (let* ((scene-files (env-list "TMSMT_SCENE_FILES"))
          (goal-files (env-list "TMSMT_GOAL_FILES"))
@@ -227,6 +235,7 @@ Written by Neil T. Dantam
                (t
                 ;; Find the plan
                 (tmp-driver :start-scene scene-files
+                            :times-file (env-string "TMSMT_TIMES_FILE")
                             :goal-scene goal-files
                             :start-plan (uiop/os:getenv "TMSMT_INITIAL_PLAN")
                             :scripts script-files

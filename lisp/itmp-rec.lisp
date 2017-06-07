@@ -158,14 +158,23 @@ PREFIX-CACHE: Cache of plan prefixes
           (rec-start task-plan)))))
 
 
-(defun itmp-times ()
-  (format t "~&IDITMP -- total time:  ~,3F~&" *itmp-total-time*)
-  (format t "~&IDITMP -- task time:   ~,3F~&" *itmp-task-time*)
-  (format t "~&IDITMP -- motion time: ~,3F~&" *itmp-motion-time*)
-  (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*))
+(defun itmp-times (times-file)
+  (if times-file
+      (with-open-file (s times-file :direction :output :if-exists :append :if-does-not-exist :create)
+        (format s "~&# Total, Task, Motion, Integration~%")
+        (format s "~,9F, " *itmp-total-time*)
+        (format s "~,9F, " *itmp-task-time*)
+        (format s "~,9F, " *itmp-motion-time*)
+        (format s "~,9F~%" *itmp-int-time*))
+      (progn
+        (format t "~&IDITMP -- total time:  ~,3F~&" *itmp-total-time*)
+        (format t "~&IDITMP -- task time:   ~,3F~&" *itmp-task-time*)
+        (format t "~&IDITMP -- motion time: ~,3F~&" *itmp-motion-time*)
+        (format t "~&IDITMP -- int. time:   ~,3F~&" *itmp-int-time*))))
 
 (defun itmp-rec (init-graph goal-graph operators
                  &key
+                   times-file
                    facts
                    q-all-start
                    (action-encoding :boolean)
@@ -210,7 +219,7 @@ PREFIX-CACHE: Cache of plan prefixes
                  (setq *itmp-int-time* (max (- *itmp-total-time*
                                                (+ *itmp-task-time* *itmp-motion-time*))
                                             0))
-                 (itmp-times)
+                 (itmp-times times-file)
                  plan-steps)
                (add-constraint (scene-graph op planner)
                  (format t "~&  failed")
