@@ -257,6 +257,7 @@ Written by Neil T. Dantam
                 (render-tm-plan-file scene-files plan-file
                                      :options render-options
                                      :include (env-string "TMSMT_RENDER_INCLUDE")
+                                     :encode-video (env-bool  "TMSMT_ENCODE_VIDEO")
                                      :camera-tf camera-tf))
                (t
                 ;; Find the plan

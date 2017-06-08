@@ -177,6 +177,7 @@
 (defun render-tm-plan-file (scene-files plan-file
                             &key
                               (options *render-options*)
+                              encode-video
                               include
                               camera-tf)
   (robray::render-motion-plans
@@ -185,4 +186,5 @@
    :options options
    :render t
    :include include
+   :encode-video encode-video
    :camera-tf camera-tf))

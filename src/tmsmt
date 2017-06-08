@@ -82,6 +82,7 @@ Options:
   --render-medium             Enable options for medium-quality rendering
   --render-full-hd            Enable options for full HD (1920x1080) rendering
   --render-4k                 Enable options for full 4K rendering
+  --encode-video              Encode renderings into video file
   --python-shell              Start an interactive (CL)Python shell
   -v,--verbose                Be verbose
   -h,-?,--help                Display this help and exit
@@ -188,6 +189,9 @@ EOF
             ;;
         --render-4k)
             export TMSMT_RENDER_4K=1
+            ;;
+        --encode-video)
+            export TMSMT_ENCODE_VIDEO=1
             ;;
         --camera-tf=*)
             export TMSMT_CAMERA_TF="`parse_long \"$1\"`"
