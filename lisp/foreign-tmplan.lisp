@@ -174,6 +174,15 @@
    (tm-plan-motion-plans (parse-tmplan (robray::load-scene-files scene-files)
                                        plan-file))))
 
-(defun render-tm-plan-file (scene-files plan-file)
-  (tm-plan-motion-plans (parse-tmplan (robray::load-scene-files scene-files)
-                                      plan-file)))
+(defun render-tm-plan-file (scene-files plan-file
+                            &key
+                              (options *render-options*)
+                              include
+                              camera-tf)
+  (robray::render-motion-plans
+   (tm-plan-motion-plans (parse-tmplan (robray::load-scene-files scene-files)
+                                       plan-file))
+   :options options
+   :render t
+   :include include
+   :camera-tf camera-tf))
