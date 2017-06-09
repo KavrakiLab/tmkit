@@ -91,7 +91,8 @@ planfile_test_LDADD = libtmsmt.la
 
 noinst_PROGRAMS += demo/tmpexec
 demo_tmpexec_SOURCES = demo/tmpexec.c
-demo_tmpexec_LDADD = libtmsmt.la
+demo_tmpexec_LDADD = libtmsmt.la -lm -lamino-gl -lamino-collision
+demo_tmpexec_CFLAGS = $(SDL2_CFLAGS) -lpthread
 
 ###################
 ## Documentation ##
@@ -209,8 +210,9 @@ EXTRA_DIST += demo/baxter-sussman/allowed-collision.robray \
 
 if BUILD_DEMO_BAXTER
 
-demo/baxter-model.c:
+demo/baxter-model.c: $(top_srcdir)/demo/baxter-sussman/allowed-collision.robray
 	aarxc 'package://baxter_description/urdf/baxter.urdf' \
+	$(top_srcdir)/demo/baxter-sussman/allowed-collision.robray \
 	-o demo/baxter-model.c -n "baxter"
 
 

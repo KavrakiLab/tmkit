@@ -21,6 +21,7 @@
 
 
 (defun tmp-driver (&key
+                     times-file
                      start-scene
                      goal-scene
                      pddl
@@ -145,6 +146,7 @@ CONSTRAINTS: What type of incremental constraints to use to generate alternate p
                     ((and start-scene domain-exp)
                      (itmp-rec start-scene-graph goal-scene-graph
                                domain-exp
+                               :times-file times-file
                                :prefix-cache prefix-cache
                                :constraints constraints
                                :facts facts-exp
@@ -201,6 +203,23 @@ Written by Neil T. Dantam
                                  (uiop/os:getenv varname)
                                  ")")))
 
+(defun env-string (varname)
+  (let ((result (uiop/os:getenv varname)))
+    (if (zerop (length result))
+        nil
+        result)))
+
+(defun env-bool (varname)
+  (let ((result (uiop/os:getenv varname)))
+    (not (or (zerop (length result))
+             (find (string-downcase result)
+                   '("0" "no" "false")
+                   :test #'string=)))))
+
+(defun env-tf (varname)
+  (when-let ((vals (env-list varname)))
+    (tf vals)))
+
 (defun tmp-command ()
   (let* ((scene-files (env-list "TMSMT_SCENE_FILES"))
          (goal-files (env-list "TMSMT_GOAL_FILES"))
@@ -209,9 +228,20 @@ Written by Neil T. Dantam
          (max-steps (if-let ((s (uiop/os:getenv "TMSMT_MAX_STEPS")))
                       (parse-integer s)
                       10))
-         (plan-file (uiop/os:getenv "TMSMT_INPUT"))
-         (gui (or (uiop/os:getenv "TMSMT_GUI")
-                  plan-file)))
+         (plan-file (env-string "TMSMT_INPUT"))
+         (render (env-bool "TMSMT_RENDER"))
+         (camera-tf (env-tf "TMSMT_CAMERA_TF"))
+         (render-options (append (when (env-bool "TMSMT_RENDER_FAST")
+                                   (render-options-fast))
+                                 (when (env-bool "TMSMT_RENDER_MEDIUM")
+                                   (render-options-medium))
+                                 (when (env-bool "TMSMT_RENDER_FULL_HD")
+                                   (render-options-full-hd))
+                                 (when (env-bool "TMSMT_RENDER_4K")
+                                   (render-options-4k))
+                                 (render-options (env-list "TMSMT_RENDER_OPTIONS"))
+                                 (render-options-default)))
+         (gui (env-bool  "TMSMT_GUI")))
     (flet ((helper ()
              (cond
                ((uiop/os:getenv "TMSMT_VERSION")
@@ -220,12 +250,18 @@ Written by Neil T. Dantam
                 (tmp-version-man))
                ((uiop/os:getenv "TMSMT_PYTHON_SHELL")
                 (clpython:repl))
-               (plan-file
-                ;; Load and display plan
+               ((and plan-file gui)
                 (display-tm-plan-file scene-files plan-file))
+               ((and plan-file render)
+                (render-tm-plan-file scene-files plan-file
+                                     :options render-options
+                                     :include (env-string "TMSMT_RENDER_INCLUDE")
+                                     :encode-video (env-bool  "TMSMT_ENCODE_VIDEO")
+                                     :camera-tf camera-tf))
                (t
                 ;; Find the plan
                 (tmp-driver :start-scene scene-files
+                            :times-file (env-string "TMSMT_TIMES_FILE")
                             :goal-scene goal-files
                             :start-plan (uiop/os:getenv "TMSMT_INITIAL_PLAN")
                             :scripts script-files

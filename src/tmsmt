@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2016, Rice University
+# Copyright (c) 2016-2017, Rice University
 # All rights reserved.
 #
 # Author(s): Neil T. Dantam <ntd@rice.edu>
@@ -52,7 +52,7 @@ parse_long() {
     echo "$1" | cut -d = -f 2
 }
 
-while test "$1" != x-- -a "x$#" != x0; do
+while test "x$1" != x-- -a "x$#" != x0; do
     case "$1" in
         -h|-\?|--help)
             # HELP TEXT
@@ -61,18 +61,28 @@ Usage: tmsmt [OPTIONS] INPUT...
 Compute a task-motion plan
 
 Options:
-  -t TASK_FILE                Task Domain or Facts (PDDL) file
-  -l SCRIPT_FILE              Load script file
-  -s SCENE_FILE               Start scene file
-  -g SCENE_FILE               Goal scene file
-  -o OUTPUT_PLAN_FILE         Output plan file
-  -q PLAN_FILE                Initial configuration
-  -s MAX_STEPS                Maximum number of task steps
-  -m MOTION_TIMEOUT           Initial motion planning timeout
-  -r RESOLUTION               Discretization resolution
+  -t <task-file>              Task Domain or Facts (PDDL) file
+  -l <script-file>            Load script file
+  -s <scene-file>             Start scene file
+  -g <scene-file>             Goal scene file
+  -o <output-plan-file>       Output plan file
+  -q <plan-file>              Initial configuration
+  -s <max-steps>              Maximum number of task steps
+  -m <motion-timeout>         Initial motion planning timeout
+  -r <resolution>             Discretization resolution
+  -T <times-file>             Append timing data to times-file
+  --load-plan=<plan-file>     Load plan from file
+  --write-facts=<file>        Write inititial task facts to FILE
   --gui                       Enable graphical interface
-  --load-plan=PLAN_FILE       Load plan from file
-  --write-facts=FILE          Write inititial task facts to FILE
+  --render                    Raytrace the play
+  --camera-tf=<tf>            Camera position (quaternion-vector)
+  --render-options=<opts>     Options for rendering
+  --render-include=<file>     Include <file> in rendering output
+  --render-fast               Enable options for fast rendering
+  --render-medium             Enable options for medium-quality rendering
+  --render-full-hd            Enable options for full HD (1920x1080) rendering
+  --render-4k                 Enable options for full 4K rendering
+  --encode-video              Encode renderings into video file
   --python-shell              Start an interactive (CL)Python shell
   -v,--verbose                Be verbose
   -h,-?,--help                Display this help and exit
@@ -146,14 +156,45 @@ EOF
             shift;
             export TMSMT_INITIAL_PLAN="$1"
             ;;
+        -T)
+            shift;
+            export TMSMT_TIMES_FILE="$1"
+            ;;
         --load-plan=*)
-            export TMSMT_INPUT=`parse_long "$1"`
+            export TMSMT_INPUT="`parse_long \"$1\"`"
             ;;
         --write-facts=*)
-            export TMSMT_WRITE_FACTS=`parse_long "$1"`
+            export TMSMT_WRITE_FACTS="`parse_long \"$1\"`"
             ;;
         --gui)
             export TMSMT_GUI=1
+            ;;
+        --render)
+            export TMSMT_RENDER=1
+            ;;
+        --render-options=*)
+            export TMSMT_RENDER_OPTIONS="`parse_long \"$1\"`"
+            ;;
+        --render-include=*)
+            export TMSMT_RENDER_INCLUDE="`parse_long \"$1\"`"
+            ;;
+        --render-fast)
+            export TMSMT_RENDER_FAST=1
+            ;;
+        --render-medium)
+            export TMSMT_RENDER_MEDIUM=1
+            ;;
+        --render-full-hd)
+            export TMSMT_RENDER_FULL_HD=1
+            ;;
+        --render-4k)
+            export TMSMT_RENDER_4K=1
+            ;;
+        --encode-video)
+            export TMSMT_ENCODE_VIDEO=1
+            ;;
+        --camera-tf=*)
+            export TMSMT_CAMERA_TF="`parse_long \"$1\"`"
             ;;
         --python-shell)
             export TMSMT_PYTHON_SHELL=1
