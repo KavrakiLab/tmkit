@@ -78,6 +78,7 @@ Options:
   --camera-tf=<tf>            Camera position (quaternion-vector)
   --render-options=<opts>     Options for rendering
   --render-include=<file>     Include <file> in rendering output
+  --render-time-scale=<val>   Scale time in rendering
   --render-fast               Enable options for fast rendering
   --render-medium             Enable options for medium-quality rendering
   --render-full-hd            Enable options for full HD (1920x1080) rendering
@@ -189,6 +190,9 @@ EOF
             ;;
         --render-4k)
             export TMSMT_RENDER_4K=1
+            ;;
+        --render-time-scale=*)
+            export TMSMT_RENDER_TIME_SCALE="`parse_long \"$1\"`"
             ;;
         --encode-video)
             export TMSMT_ENCODE_VIDEO=1

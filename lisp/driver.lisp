@@ -220,6 +220,11 @@ Written by Neil T. Dantam
   (when-let ((vals (env-list varname)))
     (tf vals)))
 
+(defun env-double (varname &optional (default 0d0))
+  (if-let ((str (env-string varname)))
+    (parse-float str)
+    default))
+
 (defun tmp-command ()
   (let* ((scene-files (env-list "TMSMT_SCENE_FILES"))
          (goal-files (env-list "TMSMT_GOAL_FILES"))
@@ -255,6 +260,7 @@ Written by Neil T. Dantam
                ((and plan-file render)
                 (render-tm-plan-file scene-files plan-file
                                      :options render-options
+                                     :time-scale (env-double "TMSMT_RENDER_TIME_SCALE" 1d0)
                                      :include (env-string "TMSMT_RENDER_INCLUDE")
                                      :encode-video (env-bool  "TMSMT_ENCODE_VIDEO")
                                      :camera-tf camera-tf))

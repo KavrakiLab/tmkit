@@ -176,6 +176,7 @@
 
 (defun render-tm-plan-file (scene-files plan-file
                             &key
+                              (time-scale 1d0)
                               (options *render-options*)
                               encode-video
                               include
@@ -185,6 +186,7 @@
                                        plan-file))
    :options options
    :render t
+   :time-scale time-scale
    :include include
    :encode-video encode-video
    :camera-tf camera-tf))
