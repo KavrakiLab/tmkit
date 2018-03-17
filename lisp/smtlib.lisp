@@ -7,8 +7,10 @@
                (let    . |let|)
                (not    . |not|)
                (ite    . |ite|)
+               (true   . |true|)
                (assert . |assert|)
                (bool   . |Bool|)
+               (int    . |Int|)
                (and    . |and|)))))
   (defun smt-symbol-substitute (s)
     (cond
@@ -48,10 +50,19 @@
 (defun smt-ident (thing)
   (etypecase thing
     (string thing)
+    (symbol (string thing))
     (list (smt-mangle-list thing))))
+
+(defun smt-declare-sort (name &optional (arity 0))
+  (list '|declare-sort| (smt-ident name) arity))
+
+(defun smt-declare-const (name &optional (type 'bool))
+  (smt-declare-fun  name nil type))
 
 (defun smt-declare-fun (name args type)
   (list '|declare-fun| (smt-ident name) args type))
+
+
 
 (defun smt-define-fun (name args type exp)
   (list '|define-fun| (smt-ident name) args type
@@ -87,9 +98,18 @@
 (defun smt-comment (x)
   (list 'comment x))
 
-(defun smt-declare-enum (typename values)
+(defun smt-declare-datatype (typename values)
   `(|declare-datatypes| () ((,typename ,@values))))
   ;`(|declare-datatypes| ((,typename ,@(loop for v in values collect (list v))))))
+
+(defun smt-declare-enum (typename values)
+  `(|declare-datatypes| ((,typename 0))
+                        ((,@(map 'list #'list values)))))
+  ;(smt-declare-datatype typename values))
+
+
+(defun smt-forall (bindings exp)
+  `(|forall| ,bindings ,exp))
 
 (defparameter +smt-separator+ "__")
 (defparameter +smt-left-paren+ "-LP-")

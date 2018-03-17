@@ -26,8 +26,7 @@
 (defstruct pddl-typed
   "A PDDL type"
   name
-  type
-  )
+  (type 'bool))
 
 (defstruct pddl-operators
   "A PDDL set of operators"
