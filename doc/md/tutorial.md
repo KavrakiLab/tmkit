@@ -185,7 +185,7 @@ with as Amino
 
 4. Copy and edit the goal scene:
 
-        cp sussman-1.tmp 4-blocks-goal.robray
+        cp sussman-1.robray 4-blocks-goal.robray
         vi 4-blocks-goal.robray
 
 5. Add the additional block:
@@ -281,7 +281,7 @@ Run the planner {#tutorial_task_run}
           light-goal.pddl \
           tm-blocks.py \
           -q q0.tmp \
-          -g baxter-sussman/sussman-1.robray  \
+          -g sussman-1.robray  \
           -o baxter-sussman-light.tmp \
           --gui \
 
@@ -417,7 +417,7 @@ Run the Planner {#tutorial_task_motion_run}
 ---------------
 
     tmsmt package://baxter_description/urdf/baxter.urdf \
-           sussman-extend-0.robray \
+           sussman-extend.robray \
            allowed-collision.robray \
            tm-blocks-extend.pddl \
            extended-facts.pddl \
