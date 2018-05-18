@@ -147,10 +147,33 @@
     (((check-sat |check-sat| :check-sat))
      (smt-check solver context))))
 
+(defun model-value (context model thing)
+  (let* ((ent  (smt-lookup thing context))
+         (d  (z3-mk-func-decl context
+                              (smt-symbol-object ent)
+                              0 (null-pointer)
+                              (smt-symbol-sort ent)))
+         (a (z3-model-get-const-interp context model d)))
+    (ecase (z3-get-bool-value context a)
+      (:true t)
+      (:false nil))))
 
-(defun smt-prog (stmts)
-  (let* ((context (z3-mk-context (z3-mk-config)))
-         (solver (z3-mk-solver context)))
+
+(defun smt-values (symbols &optional (solver *solver*) (context *context*))
+  (let ((m (z3-solver-get-model context solver)))
+    ;(z3-model-to-string context m)))
+  (loop
+     for s in symbols
+     for v = (model-value context m s)
+     collect (cons s v))))
+
+(defun smt-prog (stmts &key
+                         context
+                         solver)
+  (let* ((context (or context
+                      (z3-mk-context (z3-mk-config))))
+         (solver (or solver
+                     (z3-mk-solver context))))
     (labels ((rec (stmts)
                (let ((x (smt-eval (car stmts) solver context)))
                  (if (cdr stmts)
@@ -161,14 +184,33 @@
 
 (defun check-sat (exp &key)
   (let* ((context (z3-mk-context (z3-mk-config)))
-         (solver (z3-mk-solver context)))
-    ;; declare variables
-    (loop for v in (smt-exp-variables exp)
-       do (smt-declare v :bool context))
-    ;; assert
-    (smt-assert exp solver context)
-    ;; check
-    (ecase (smt-check solver context)
-      (:sat t)
-      (:unsat nil)
+         (solver (z3-mk-solver context))
+         (vars (smt-exp-variables exp))
+         (stmts
+          `(
+            ;; declare variables
+            ,@(loop for v in (smt-exp-variables exp)
+                 collect `(declare-fun ,v () bool))
+              ;; assert
+              (assert ,exp)
+              ;; check
+              (check-sat))))
+    (ecase (smt-prog stmts :context context :solver solver)
+      (:sat (values t
+                    (smt-values vars solver context)))
+      (:unsat (values nil nil))
       (:unknown (error "Could not check: ~A" exp)))))
+
+;; (defun check-sat (exp &key)
+;;   (let* ((context (z3-mk-context (z3-mk-config)))
+;;          (solver (z3-mk-solver context)))
+;;     ;; declare variables
+;;     (loop for v in (smt-exp-variables exp)
+;;        do (smt-declare v :bool context))
+;;     ;; assert
+;;     (smt-assert exp solver context)
+;;     ;; check
+;;     (ecase (smt-check solver context)
+;;       (:sat t)
+;;       (:unsat nil)
+;;       (:unknown (error "Could not check: ~A" exp)))) )

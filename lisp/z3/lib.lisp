@@ -37,6 +37,11 @@
   (context z3-context-type)
   (solver z3-solver-type))
 
+(defcfun "Z3_solver_get_model" z3-model-type
+  (context z3-context-type)
+  (solver z3-solver-type))
+
+
 ;;; Symbols
 (defcfun "Z3_mk_int_symbol" z3-symbol-type
   (context z3-context-type)
@@ -94,8 +99,37 @@
   (symbol z3-symbol-type)
   (sort z3-sort-type))
 
+(defcfun "Z3_mk_func_decl" z3-func-decl-type
+  (context z3-context-type)
+  (symbol z3-symbol-type)
+  (domain-size :unsigned-int)
+  (domain :pointer) ;; array of sorts
+  (range z3-sort-type))
 
 ;; String conversion
 (defcfun "Z3_ast_to_string" :string
   (context z3-context-type)
   (a z3-ast-type))
+
+(defcfun "Z3_model_to_string" :string
+  (context z3-context-type)
+  (m z3-model-type))
+
+;;; Accessors
+
+(defcfun "Z3_get_bool_value" z3-lbool
+  (context z3-context-type)
+  (a z3-ast-type))
+
+;;; Model
+
+(defcfun "Z3_model_get_func_interp" z3-func-interp-type
+  (context z3-context-type)
+  (model z3-model-type)
+  (func-decl z3-func-decl-type))
+
+
+(defcfun "Z3_model_get_const_interp" z3-ast-type
+  (context z3-context-type)
+  (model z3-model-type)
+  (func-decl z3-func-decl-type))

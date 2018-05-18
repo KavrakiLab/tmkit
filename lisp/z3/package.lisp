@@ -1,9 +1,3 @@
 (defpackage z3
-  (:use :cl :alexandria :cffi)
-  (:export
-   :domain
-   :define
-   :exists
-   :forall
-   :define
-   :problem))
+  (:use :cl :alexandria :cffi :smt-symbol)
+  (:export))

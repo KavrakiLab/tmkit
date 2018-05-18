@@ -5,6 +5,9 @@
   :description "SMT-based planner"
   :depends-on ("alexandria" "cl-ppcre" "sycamore" "cffi" "amino" "amino-rx" "amino-py")
   :components (
+               ;; SMT Symbols
+               (:file "smt/smt-symbols")
+
                ;; Z3
                (:file "z3/package")
                (cffi-grovel:grovel-file "z3/z3-grovel" :depends-on ("z3/package"))
