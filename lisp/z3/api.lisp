@@ -68,6 +68,25 @@
             collect (smt->ast ,e ,context))
        ,@body)))
 
+(defun smt-exp-variables (exp)
+  (let ((hash (make-hash-table :test #'equal)))
+    (labels ((add (e)
+               (setf (gethash e hash) t))
+             (visit (e) ;; TODO: predicates
+               (if (atom e)
+                   (add e)
+                   (case (car e)
+                     ((=
+                       and |and| :and
+                       or |or| :or
+                       not |not| :not
+                       iff |iff| :iff
+                       implies |implies| :implies)
+                      (map nil #'visit (cdr e)))
+                     (otherwise
+                      (add e))))))
+      (visit exp))
+    (hash-table-keys hash)))
 
 (defun smt->ast (e &optional (context *context*))
   (declare (type z3-context context))
@@ -95,10 +114,11 @@
         ((nil :false)
          (z3-mk-false context))
         (otherwise
-         (let ((e (smt-lookup e context)))
+         (let ((v (smt-lookup e context)))
+           (unless v (error "Unbound: ~A" e))
            (z3-mk-const context
-                        (smt-symbol-object e)
-                        (smt-symbol-sort e)))))))
+                        (smt-symbol-object v)
+                        (smt-symbol-sort v)))))))
 
 (defun smt-assert (exp
                    &optional
@@ -138,3 +158,17 @@
                      x))))
       (when stmts
         (rec stmts)))))
+
+(defun check-sat (exp &key)
+  (let* ((context (z3-mk-context (z3-mk-config)))
+         (solver (z3-mk-solver context)))
+    ;; declare variables
+    (loop for v in (smt-exp-variables exp)
+       do (smt-declare v :bool context))
+    ;; assert
+    (smt-assert exp solver context)
+    ;; check
+    (ecase (smt-check solver context)
+      (:sat t)
+      (:unsat nil)
+      (:unknown (error "Could not check: ~A" exp)))))
