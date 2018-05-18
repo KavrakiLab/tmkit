@@ -4,7 +4,15 @@
 (asdf:defsystem tmsmt
   :description "SMT-based planner"
   :depends-on ("alexandria" "cl-ppcre" "sycamore" "cffi" "amino" "amino-rx" "amino-py")
-  :components ((:file "package")
+  :components (
+               ;; Z3
+               (:file "z3/package")
+               (cffi-grovel:grovel-file "z3/z3-grovel" :depends-on ("z3/package"))
+               (:file "z3/type" :depends-on ("z3/z3-grovel"))
+               (:file "z3/lib" :depends-on ("z3/type"))
+               (:file "z3/api" :depends-on ("z3/lib"))
+
+               (:file "package")
 
                (:file "dir" :depends-on ("package"))
                (cffi-grovel:grovel-file "grovel" :depends-on ("dir"))
