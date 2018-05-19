@@ -45,3 +45,19 @@
   (is (eq :unsat (smtlibtutorial-basic-boolean)))
   (is (eq :sat (smtlibtutorial-integer-arithmetic)))
   (is (eq :unsat (smtlibtutorial-integer-arithmetic2))))
+
+
+(defun smtlibtutorial-values ()
+  (z3::smt-prog
+   '((declare-fun x () Int)
+     (declare-fun y () Int)
+     (assert (= (+ x (* 2 y)) 20))
+     (assert (= (- x y) 2))
+     (check-sat)
+     (get-value (x y)))))
+
+(test smtlibtutorial-get-values
+  "Test get values"
+  (is-true (let ((r (smtlibtutorial-values)))
+             (and (= 8 (cdr (assoc 'x r)))
+                  (= 6 (cdr (assoc 'y r)))))))

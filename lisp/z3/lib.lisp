@@ -61,6 +61,10 @@
 (defcfun "Z3_mk_real_sort" z3-sort-type
   (context z3-context-type))
 
+(defcfun "Z3_get_sort_kind" z3-sort-kind
+  (context z3-context-type)
+  (sort z3-sort-type))
+
 ;;; AST - Boolean
 (defmacro def-ast-unop (name)
   `(defcfun ,name z3-ast-type
@@ -159,6 +163,11 @@
 (defcfun "Z3_get_bool_value" z3-lbool
   (context z3-context-type)
   (a z3-ast-type))
+
+(defcfun "Z3_get_numeral_int" z3-lbool
+  (context z3-context-type)
+  (a z3-ast-type)
+  (i :pointer))
 
 ;;; Model
 

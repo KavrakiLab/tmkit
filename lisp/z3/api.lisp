@@ -166,7 +166,7 @@
     ;; TODO: if-then-else
 
     (+ :nary #'z3-mk-add)
-    (* :nary #'z3-mk-add)
+    (* :nary #'z3-mk-mul)
     (- smt-sub)
     (/ :binary #'z3-mk-div)
     (mod :binary #'z3-mk-mod)
@@ -228,7 +228,15 @@
     (((assert |assert| :assert) exp)
      (smt-assert exp solver context))
     (((check-sat |check-sat| :check-sat))
-     (smt-check solver context))))
+     (smt-check solver context))
+    (((get-value |get-value| :get-value) symbols)
+     (smt-values symbols solver context))))
+
+(defun smt-value-int (context ast)
+  (with-foreign-object (i :int)
+    (let ((r (z3-get-numeral-int context ast i)))
+      (assert (eq :true r)) ;; TODO: handle other cases
+      (mem-ref i :int))))
 
 (defun model-value (context model thing)
   (let* ((ent  (smt-lookup thing context))
@@ -237,10 +245,15 @@
                               0 (null-pointer)
                               (smt-symbol-sort ent)))
          (a (z3-model-get-const-interp context model d)))
-    (cond
-      ((null-pointer-p (z3-ast-pointer a))
-       :unknown)
-      (t (z3-get-bool-value context a)))))
+    (if (null-pointer-p (z3-ast-pointer a))
+        :unknown
+        (let ((kind (z3-get-sort-kind context (smt-symbol-sort ent))))
+          (ecase kind
+            (:int
+             (smt-value-int context a))
+            (:bool
+             (z3-get-bool-value context a)))))))
+
 
 
 (defun smt-values (symbols &optional (solver *solver*) (context *context*))
