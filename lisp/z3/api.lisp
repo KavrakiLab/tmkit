@@ -50,6 +50,27 @@
 (defun smt-error (e)
   (error "Malformed SMT Expression: ~A" e))
 
+(defun smt-exp-variables (exp)
+  (let ((hash (make-hash-table :test #'equal)))
+    (labels ((add (e)
+               (setf (gethash e hash) t))
+             (visit (e) ;; TODO: predicates
+               (if (atom e)
+                   (add e)
+                   (case (car e)
+                     ((=
+                       and |and| :and
+                       or |or| :or
+                       not |not| :not
+                       iff |iff| :iff
+                       ite |ite| :ite
+                       implies |implies| :implies)
+                      (map nil #'visit (cdr e)))
+                     (otherwise
+                      (add e))))))
+      (visit exp))
+    (hash-table-keys hash)))
+
 (defmacro with-ast-array ((var args context) &body body)
   (with-gensyms (i e)
     `(with-foreign-object (,var :pointer (length ,args))
@@ -68,45 +89,102 @@
             collect (smt->ast ,e ,context))
        ,@body)))
 
-(defun smt-exp-variables (exp)
-  (let ((hash (make-hash-table :test #'equal)))
-    (labels ((add (e)
-               (setf (gethash e hash) t))
-             (visit (e) ;; TODO: predicates
-               (if (atom e)
-                   (add e)
-                   (case (car e)
-                     ((=
-                       and |and| :and
-                       or |or| :or
-                       not |not| :not
-                       iff |iff| :iff
-                       implies |implies| :implies)
-                      (map nil #'visit (cdr e)))
-                     (otherwise
-                      (add e))))))
-      (visit exp))
-    (hash-table-keys hash)))
+
+(defun smt-unop (context function args)
+  (declare (type z3-context context)
+           (type function function)
+           (type list args))
+  (unless (and args
+               (null (cdr args)))
+    (error "Wanted one argument: ~A" args) )
+  (funcall function context (smt->ast (car args) context)))
+
+(defun smt-binop (context function args)
+  (declare (type z3-context context)
+           (type function function)
+           (type list args))
+  (unless (and args
+               (cdr args)
+               (null (cddr args)))
+    (error "Wanted two arguments: ~A" args) )
+  (funcall function context
+           (smt->ast (first args) context)
+           (smt->ast (second args) context)))
+
+(defun smt-nary-op (context function args)
+  (declare (type z3-context context)
+           (type function function)
+           (type list args))
+  (with-ast-array (a args context)
+    (funcall function context (length args) a)))
+
+(defun smt-sub (context args)
+  (if (and args (null (cdr args)))
+      ;; unary
+      (smt-unop context #'z3-mk-unary-minus args)
+      ;; n-ary
+      (smt-nary-op context #'z3-mk-sub args)))
+
+(defun smt-ite (context args)
+  (declare (type z3-context context)
+           (type list args))
+  (unless (and args
+               (cdr args)
+               (cddr args)
+               (null (cdddr args)))
+    (error "Wanted three arguments: ~A" args) )
+  (z3-mk-ite context
+             (smt->ast (first args) context)
+             (smt->ast (second args) context)
+             (smt->ast (third args) context)))
+
+(defmacro def-smt-op (&rest cases)
+  `(defun smt-op (context e)
+     (let ((op (car e))
+           (args (cdr e)))
+       (ecase op
+         ,@(loop for (kw type function) in cases
+              collect
+                `(,kw
+                  ,(case type
+                    (:unary `(smt-unop context ,function args))
+                    (:binary `(smt-binop context ,function args))
+                    (:nary `(smt-nary-op context ,function args))
+                    (otherwise `(,type context args)))))))))
+
+(def-smt-op
+    (= :binary #'z3-mk-eq)
+
+    (not :unary #'z3-mk-not)
+    (and :nary #'z3-mk-and)
+    (or :nary #'z3-mk-or)
+    (distinct :nary #'z3-mk-or)
+    (implies :binary #'z3-mk-eq)
+    (iff :binary #'z3-mk-eq)
+    (xor :binary #'z3-mk-eq)
+    (ite smt-ite)
+    ;; TODO: if-then-else
+
+    (+ :nary #'z3-mk-add)
+    (* :nary #'z3-mk-add)
+    (- smt-sub)
+    (/ :binary #'z3-mk-div)
+    (mod :binary #'z3-mk-mod)
+    (rem :binary #'z3-mk-rem)
+    (power :binary #'z3-mk-power)
+    (< :binary #'z3-mk-lt)
+    (<= :binary #'z3-mk-le)
+    (> :binary #'z3-mk-gt)
+    (>= :binary #'z3-mk-ge)
+
+    )
+
 
 (defun smt->ast (e &optional (context *context*))
   (declare (type z3-context context))
   (if (consp e)
       ;; expression
-      (destructuring-bind (op &rest args) e
-        (ecase op
-          (and (with-ast-array (a args context)
-                 (z3-mk-and context (length args) a)))
-          (or (with-ast-array (a args context)
-                (z3-mk-or context (length args) a)))
-          (=
-           (with-asts (l r) args context
-             (z3-mk-eq context l r)))
-          (not
-           (with-asts (arg) args context
-             (z3-mk-not context arg)))
-          (:ite)
-          (:iff)
-          (:implies)))
+      (smt-op context e)
       ;; atom
       (case e
         ((t :true)
@@ -154,14 +232,14 @@
                               0 (null-pointer)
                               (smt-symbol-sort ent)))
          (a (z3-model-get-const-interp context model d)))
-    (ecase (z3-get-bool-value context a)
-      (:true t)
-      (:false nil))))
+    (cond
+      ((null-pointer-p (z3-ast-pointer a))
+       :unknown)
+      (t (z3-get-bool-value context a)))))
 
 
 (defun smt-values (symbols &optional (solver *solver*) (context *context*))
   (let ((m (z3-solver-get-model context solver)))
-    ;(z3-model-to-string context m)))
   (loop
      for s in symbols
      for v = (model-value context m s)

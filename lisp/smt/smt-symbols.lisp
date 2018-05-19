@@ -2,6 +2,12 @@
   (:use :cl)
   (:export
 
+   :declare-fun
+   :|declare-fun|
+
+   :declare-const
+   :|declare-const|
+
    :define-fun
    :|define-fun|
 
