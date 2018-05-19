@@ -172,3 +172,20 @@
   (context z3-context-type)
   (model z3-model-type)
   (func-decl z3-func-decl-type))
+
+;;; Numerals
+
+(defcfun "Z3_mk_int" z3-ast-type
+  (context z3-context-type)
+  (value :int)
+  (sort z3-sort-type))
+
+(defcfun "Z3_mk_unsigned_int" z3-ast-type
+  (context z3-context-type)
+  (value :unsigned-int)
+  (sort z3-sort-type))
+
+(defcfun "Z3_mk_real" z3-ast-type
+  (context z3-context-type)
+  (numerator :int)
+  (denominator :int))

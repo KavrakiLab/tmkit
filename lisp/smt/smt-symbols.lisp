@@ -23,6 +23,9 @@
    :bool
    :|Bool|
 
+   :int
+   :|Int|
+
    :let
    :|let|
 

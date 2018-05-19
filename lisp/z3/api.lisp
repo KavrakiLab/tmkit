@@ -12,8 +12,8 @@
 (defun smt-sort (name &optional (context *context*))
   (ecase name
     ((:bool bool |Bool|) (z3-mk-bool-sort context))
-    (:int (z3-mk-int-sort context))
-    (:real (z3-mk-real-sort context))))
+    ((:int int |Int|) (z3-mk-int-sort context))
+    ((:real real |Real|) (z3-mk-real-sort context))))
 
 (defun smt-declare (name sort &optional (context *context*))
   (let ((table (z3-context-symbols context))
@@ -179,24 +179,29 @@
 
     )
 
+(defun smt-atom (context e)
+  (declare (type z3-context context))
+  (etypecase e
+    (fixnum
+     (z3-mk-int context e (z3-mk-int-sort context)))
+    (symbol
+     (case e
+       ((t :true)
+        (z3-mk-true context))
+       ((nil :false)
+        (z3-mk-false context))
+       (otherwise
+        (let ((v (smt-lookup e context)))
+          (unless v (error "Unbound: ~A" e))
+          (z3-mk-const context
+                       (smt-symbol-object v)
+                       (smt-symbol-sort v))))))))
 
 (defun smt->ast (e &optional (context *context*))
   (declare (type z3-context context))
   (if (consp e)
-      ;; expression
       (smt-op context e)
-      ;; atom
-      (case e
-        ((t :true)
-         (z3-mk-true context))
-        ((nil :false)
-         (z3-mk-false context))
-        (otherwise
-         (let ((v (smt-lookup e context)))
-           (unless v (error "Unbound: ~A" e))
-           (z3-mk-const context
-                        (smt-symbol-object v)
-                        (smt-symbol-sort v)))))))
+      (smt-atom context e)))
 
 (defun smt-assert (exp
                    &optional
