@@ -20,7 +20,8 @@
   :slots ((symbols (make-hash-table :test #'equal))))
 
 (amino-ffi::def-foreign-container
-    z3-solver z3-solver-type)
+    z3-solver z3-solver-type
+  :slots (context))
 
 (amino-ffi::def-foreign-container
     z3-func-decl z3-func-decl-type)

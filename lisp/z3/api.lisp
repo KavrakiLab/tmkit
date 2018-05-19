@@ -1,5 +1,21 @@
 (in-package :z3)
 
+;; (defstruct (smt-state (:constructor %make-smt-state (context solver model)))
+;;   context
+;;   solver
+;;   model)
+
+;; (defun make-smt-state ()
+;;   (let* ((context (z3-mk-context (z3-mk-config)))
+;;          (solver (z3-mk-solver context)))
+;;     (%make-smt-state context solver nil)))
+
+(defun make-solver (&key context)
+  (let* ((context (or context (z3-mk-context (z3-mk-config))))
+         (solver (z3-mk-solver context)))
+    (setf (z3-solver-context solver) context)
+    solver))
+
 (defvar *context*)
 (defvar *solver*)
 
@@ -9,25 +25,28 @@
     (string key)
     (fixnum key)))
 
-(defun smt-sort (name &optional (context *context*))
+(defun smt-sort (context name)
+  (declare (type z3-context context))
   (ecase name
     ((:bool bool |Bool|) (z3-mk-bool-sort context))
     ((:int int |Int|) (z3-mk-int-sort context))
     ((:real real |Real|) (z3-mk-real-sort context))))
 
-(defun smt-declare (name sort &optional (context *context*))
+(defun smt-declare (context name sort)
+  (declare (type z3-context context))
   (let ((table (z3-context-symbols context))
         (key (smt-normalize-id name)))
     (assert (null (gethash key table)))
     (setf (gethash key table)
           (make-smt-symbol :name key
-                           :sort (smt-sort sort context)
+                           :sort (smt-sort context sort)
                            :object
                            (etypecase key
                              (string (z3-mk-string-symbol context key))
                              (fixnum (z3-mk-int-symbol context key)))))))
 
-(defun smt-lookup (name &optional (context *context*))
+(defun smt-lookup (context name)
+  (declare (type z3-context context))
   (gethash (smt-normalize-id name)
            (z3-context-symbols context)))
 
@@ -78,7 +97,7 @@
           for ,i from 0
           for ,e in ,args
           do (setf (mem-aref ,var :pointer ,i)
-                   (z3-ast-pointer (smt->ast ,e ,context))))
+                   (z3-ast-pointer (smt->ast ,context ,e))))
        ,@body)))
 
 (defmacro with-asts (lambda-list args context
@@ -86,7 +105,7 @@
   (with-gensyms (e)
     `(destructuring-bind ,lambda-list
          (loop for ,e in ,args
-            collect (smt->ast ,e ,context))
+            collect (smt->ast ,context ,e))
        ,@body)))
 
 
@@ -97,7 +116,7 @@
   (unless (and args
                (null (cdr args)))
     (error "Wanted one argument: ~A" args) )
-  (funcall function context (smt->ast (car args) context)))
+  (funcall function context (smt->ast context (car args))))
 
 (defun smt-binop (context function args)
   (declare (type z3-context context)
@@ -108,8 +127,8 @@
                (null (cddr args)))
     (error "Wanted two arguments: ~A" args) )
   (funcall function context
-           (smt->ast (first args) context)
-           (smt->ast (second args) context)))
+           (smt->ast context (first args))
+           (smt->ast context (second args))))
 
 (defun smt-nary-op (context function args)
   (declare (type z3-context context)
@@ -159,9 +178,9 @@
     (and :nary #'z3-mk-and)
     (or :nary #'z3-mk-or)
     (distinct :nary #'z3-mk-or)
-    (implies :binary #'z3-mk-eq)
-    (iff :binary #'z3-mk-eq)
-    (xor :binary #'z3-mk-eq)
+    (implies :binary #'z3-mk-implies)
+    (iff :binary #'z3-mk-iff)
+    (xor :binary #'z3-mk-xor)
     (ite smt-ite)
     ;; TODO: if-then-else
 
@@ -191,46 +210,43 @@
        ((nil :false)
         (z3-mk-false context))
        (otherwise
-        (let ((v (smt-lookup e context)))
+        (let ((v (smt-lookup context e)))
           (unless v (error "Unbound: ~A" e))
           (z3-mk-const context
                        (smt-symbol-object v)
                        (smt-symbol-sort v))))))))
 
-(defun smt->ast (e &optional (context *context*))
+(defun smt->ast (context e)
   (declare (type z3-context context))
   (if (consp e)
       (smt-op context e)
       (smt-atom context e)))
 
-(defun smt-assert (exp
-                   &optional
-                     (solver *solver*)
-                     (context *context*))
-  (z3-solver-assert context solver (smt->ast exp context)))
+(defun smt-assert (solver exp)
+  (declare (type z3-solver solver))
+  (let ((context  (z3-solver-context solver)))
+    (z3-solver-assert context solver (smt->ast context exp))))
 
-(defun smt-check  (&optional
-                     (solver *solver*)
-                     (context *context*))
-  (ecase (z3-solver-check context solver)
+(defun smt-check  (solver)
+  (ecase (z3-solver-check (z3-solver-context solver) solver)
     (:true :sat)
     (:undef :unknown)
     (:false :unsat)))
 
-(defun smt-eval (stmt
-                 &optional
-                   (solver *solver*)
-                   (context *context*))
-  (destructuring-ecase stmt
-    (((declare-fun |declare-fun| :declare-fun) name args type)
-     (assert (null args)) ;; TODO: functions
-     (smt-declare name type context))
-    (((assert |assert| :assert) exp)
-     (smt-assert exp solver context))
-    (((check-sat |check-sat| :check-sat))
-     (smt-check solver context))
-    (((get-value |get-value| :get-value) symbols)
-     (smt-values symbols solver context))))
+(defun smt-eval (solver stmt)
+  (declare (type z3-solver solver))
+  (flet ((context ()
+           (z3-solver-context solver)))
+    (destructuring-ecase stmt
+      (((declare-fun |declare-fun| :declare-fun) name args type)
+       (assert (null args)) ;; TODO: functions
+       (smt-declare (context) name type))
+      (((assert |assert| :assert) exp)
+       (smt-assert solver exp))
+      (((check-sat |check-sat| :check-sat))
+       (smt-check solver))
+      (((get-value |get-value| :get-value) symbols)
+       (smt-values solver symbols)))))
 
 (defun smt-value-int (context ast)
   (with-foreign-object (i :int)
@@ -239,7 +255,8 @@
       (mem-ref i :int))))
 
 (defun model-value (context model thing)
-  (let* ((ent  (smt-lookup thing context))
+  (declare (type z3-context context))
+  (let* ((ent  (smt-lookup context thing))
          (d  (z3-mk-func-decl context
                               (smt-symbol-object ent)
                               0 (null-pointer)
@@ -256,32 +273,30 @@
 
 
 
-(defun smt-values (symbols &optional (solver *solver*) (context *context*))
-  (let ((m (z3-solver-get-model context solver)))
+(defun smt-values (solver symbols)
+  (declare (type z3-solver solver))
+  (let* ((context (z3-solver-context solver))
+         (m (z3-solver-get-model context solver)))
   (loop
      for s in symbols
      for v = (model-value context m s)
      collect (cons s v))))
 
 (defun smt-prog (stmts &key
-                         context
                          solver)
-  (let* ((context (or context
-                      (z3-mk-context (z3-mk-config))))
-         (solver (or solver
-                     (z3-mk-solver context))))
+  (let* ((solver (or solver (make-solver))))
     (labels ((rec (stmts)
-               (let ((x (smt-eval (car stmts) solver context)))
+               (let ((x (smt-eval solver (car stmts))))
                  (if (cdr stmts)
                      (rec (cdr stmts))
                      x))))
-      (when stmts
-        (rec stmts)))))
+      (values
+       (when stmts
+         (rec stmts))
+       solver))))
 
-(defun check-sat (exp &key)
-  (let* ((context (z3-mk-context (z3-mk-config)))
-         (solver (z3-mk-solver context))
-         (vars (smt-exp-variables exp))
+(defun check-sat (exp &key solver)
+  (let* ((vars (smt-exp-variables exp))
          (stmts
           `(
             ;; declare variables
@@ -291,11 +306,14 @@
               (assert ,exp)
               ;; check
               (check-sat))))
-    (ecase (smt-prog stmts :context context :solver solver)
-      (:sat (values t
-                    (smt-values vars solver context)))
-      (:unsat (values nil nil))
-      (:unknown (error "Could not check: ~A" exp)))))
+    (multiple-value-bind (result solver)
+        (smt-prog stmts :solver solver)
+      (ecase result
+        (:sat (values t
+                      (smt-values solver vars)
+                      solver))
+        (:unsat (values nil nil solver))
+        (:unknown (error "Could not check: ~A" exp))))))
 
 ;; (defun check-sat (exp &key)
 ;;   (let* ((context (z3-mk-context (z3-mk-config)))
