@@ -409,10 +409,13 @@
   (declare (type z3-solver solver))
   (let* ((context (z3-solver-context solver))
          (m (z3-solver-get-model context solver)))
-  (loop
-     for s in symbols
-     for v = (model-value context m s)
-     collect (cons s v))))
+    (z3-model-inc-ref context m)
+    (unwind-protect
+         (loop
+            for s in symbols
+            for v = (model-value context m s)
+            collect (cons s v))
+      (z3-model-dec-ref context m))))
 
 (defun smt-prog (stmts &key
                          solver)

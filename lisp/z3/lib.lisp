@@ -54,6 +54,13 @@
   (context z3-context-type)
   (solver z3-solver-type))
 
+(defcfun "Z3_model_inc_ref" :void
+  (context z3-context-type)
+  (model z3-model-type))
+
+(defcfun "Z3_model_dec_ref" :void
+  (context z3-context-type)
+  (model z3-model-type))
 
 ;;; Symbols
 (defcfun "Z3_mk_int_symbol" z3-symbol-type
