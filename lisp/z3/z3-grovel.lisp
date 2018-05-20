@@ -27,4 +27,19 @@
          ((:re "Z3_RE_SORT"))
          ((:unknown "Z3_UNKNOWN_SORT")))
 
+  (cenum z3-error-code
+         ((:OK "Z3_OK"))
+         ((:SORT_ERROR "Z3_SORT_ERROR"))
+         ((:IOB "Z3_IOB"))
+         ((:INVALID_ARG "Z3_INVALID_ARG"))
+         ((:PARSER_ERROR "Z3_PARSER_ERROR"))
+         ((:NO_PARSER "Z3_NO_PARSER"))
+         ((:INVALID_PATTERN "Z3_INVALID_PATTERN"))
+         ((:MEMOUT_FAIL "Z3_MEMOUT_FAIL"))
+         ((:FILE_ACCESS_ERROR "Z3_FILE_ACCESS_ERROR"))
+         ((:INTERNAL_FATAL "Z3_INTERNAL_FATAL"))
+         ((:INVALID_USAGE "Z3_INVALID_USAGE"))
+         ((:DEC_REF_ERROR "Z3_DEC_REF_ERROR"))
+         ((:EXCEPTION "Z3_EXCEPTION")))
+
   )

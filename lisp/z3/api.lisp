@@ -10,11 +10,19 @@
 ;;          (solver (z3-mk-solver context)))
 ;;     (%make-smt-state context solver nil)))
 
+(defcallback error-callback
+    :void
+    ((context z3-context-type)
+     (code z3-error-code))
+  (declare (ignore context))
+  (error "Z3 Error: ~A" code))
+
 (defun make-solver (&key context)
   (let* ((context (or context (z3-mk-context (z3-mk-config))))
          (solver (z3-mk-solver context)))
     ;; Seems that we get an initial refcount of 0?
     (z3-solver-inc-ref context solver)
+    (z3-set-error-handler context (callback error-callback))
     (setf (z3-solver-context solver) context)
     solver))
 
@@ -58,7 +66,7 @@
                            :ast ast
                            :symbol symbol))))
 
-(defun smt-declare (context name sort)
+(defun smt-declare-const (context name sort)
   "Constant declaration"
   (declare (type z3-context context))
   (let* ((key (smt-normalize-id name))
@@ -69,6 +77,26 @@
                          :sort sort
                          :symbol symbol
                          :ast  (z3-mk-const context symbol sort))))
+
+(defun smt-declare-fun (context name params sort)
+  "Function declaration"
+  (let* ((key (smt-normalize-id name))
+         (symbol (smt-symbol context name))
+         (sort (smt-sort context sort))
+         (n (length params)))
+    (with-foreign-object (domain :pointer n)
+      (loop for p in params
+         for s = (smt-sort context p)
+         do (setf (mem-aref domain :pointer)
+                  (z3-sort-pointer s)))
+      (let ((fdec (z3-mk-func-decl context symbol
+                                   n domain sort)))
+        (smt-add-declaration context
+                             :name key
+                             :sort sort
+                             :symbol symbol
+                             :ast (z3-func-decl-to-ast context fdec))))))
+
 
 (defun smt-declare-enumeration (context sortname symbols)
   ;(format t "~&name: ~A" sortname)
@@ -330,10 +358,11 @@
     (destructuring-ecase stmt
       ;; declarations
       (((declare-fun |declare-fun| :declare-fun) name args type)
-       (assert (null args)) ;; TODO: functions
-       (smt-declare (context) name type))
+       (if args
+           (smt-declare-fun (context) name args type)
+           (smt-declare-const (context) name type)))
       (((declare-const |declare-const| :declare-const) name type)
-       (smt-declare (context) name type))
+       (smt-declare-const (context) name type))
       (((declare-enum |declare-enum| :declare-enum) sortname &rest symbols)
        (smt-declare-enumeration (context) sortname symbols))
       ;; Asssertions

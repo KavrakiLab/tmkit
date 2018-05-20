@@ -15,6 +15,10 @@
 (defcfun "Z3_mk_context" z3-context-type
   (config z3-config-type))
 
+(defcfun "Z3_set_error_handler" :void
+  (context z3-context-type)
+  (handler :pointer))
+
 ;;; Solver
 (defcfun "Z3_mk_solver" z3-solver-type
   (context z3-context-type))
