@@ -19,9 +19,18 @@
 (defcfun "Z3_mk_solver" z3-solver-type
   (context z3-context-type))
 
+(defcfun "Z3_solver_inc_ref" :void
+  (context z3-context-type)
+  (solver z3-solver-type))
+
+(defcfun "Z3_solver_dec_ref" :void
+  (context z3-context-type)
+  (solver z3-solver-type))
+
 (defcfun "Z3_solver_push" :void
   (context z3-context-type)
   (solver z3-solver-type))
+
 
 (defcfun "Z3_solver_pop" :void
   (context z3-context-type)
@@ -51,6 +60,10 @@
   (context z3-context-type)
   (s :string))
 
+(defcfun "Z3_get_symbol_string" :string
+  (context z3-context-type)
+  (sym z3-symbol-type))
+
 ;;; Sorts
 (defcfun "Z3_mk_bool_sort" z3-sort-type
   (context z3-context-type))
@@ -61,11 +74,24 @@
 (defcfun "Z3_mk_real_sort" z3-sort-type
   (context z3-context-type))
 
+(defcfun "Z3_mk_enumeration_sort" z3-sort-type
+  (context z3-context-type)
+  (symbol z3-symbol-type)
+  (count :unsigned-int)
+  (names :pointer)    ; symbols
+  (consts :pointer)   ; func_decl
+  (testers :pointer)) ; func_decl
+
 (defcfun "Z3_get_sort_kind" z3-sort-kind
   (context z3-context-type)
   (sort z3-sort-type))
 
 ;;; AST - Boolean
+(defcfun "Z3_inc_ref" :void
+  (context z3-context-type)
+  (sort z3-ast-type))
+
+
 (defmacro def-ast-unop (name)
   `(defcfun ,name z3-ast-type
      (context z3-context-type)
@@ -149,6 +175,15 @@
   (domain :pointer) ;; array of sorts
   (range z3-sort-type))
 
+
+(defcfun "Z3_get_decl_name" z3-symbol-type
+  (context z3-context-type)
+  (decl z3-func-decl-type))
+
+(defcfun "Z3_func_decl_to_ast" z3-ast-type
+  (context z3-context-type)
+  (decl z3-func-decl-type))
+
 ;; String conversion
 (defcfun "Z3_ast_to_string" :string
   (context z3-context-type)
@@ -157,6 +192,14 @@
 (defcfun "Z3_model_to_string" :string
   (context z3-context-type)
   (m z3-model-type))
+
+(defcfun "Z3_sort_to_string" :string
+  (context z3-context-type)
+  (obj z3-sort-type))
+
+(defcfun "Z3_func_decl_to_string" :string
+  (context z3-context-type)
+  (obj z3-func-decl-type))
 
 ;;; Accessors
 

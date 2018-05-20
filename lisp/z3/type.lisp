@@ -11,13 +11,19 @@
 (defstruct smt-symbol
   name
   sort
-  object)
+  symbol
+  ast
+  )
 
+;; (defstruct smt-sortdec
+;;   name
+;;   sort)
 
 (amino-ffi::def-foreign-container
     z3-context z3-context-type
   :destructor ("Z3_del_context" z3-del-context)
-  :slots ((symbols (make-hash-table :test #'equal))))
+  :slots ((symbols (make-hash-table :test #'equal))
+          (sorts (make-hash-table :test #'equal))))
 
 (amino-ffi::def-foreign-container
     z3-solver z3-solver-type

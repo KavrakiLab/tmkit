@@ -13,6 +13,8 @@
 (defun make-solver (&key context)
   (let* ((context (or context (z3-mk-context (z3-mk-config))))
          (solver (z3-mk-solver context)))
+    ;; Seems that we get an initial refcount of 0?
+    (z3-solver-inc-ref context solver)
     (setf (z3-solver-context solver) context)
     solver))
 
@@ -25,25 +27,109 @@
     (string key)
     (fixnum key)))
 
-(defun smt-sort (context name)
+(defun smt-add-sort (context name sort)
+  (let ((hash (z3-context-sorts context)))
+    (assert (null (gethash name hash)))
+    (setf (gethash name hash) sort)))
+
+(defun smt-sort (context sort)
   (declare (type z3-context context))
-  (ecase name
-    ((:bool bool |Bool|) (z3-mk-bool-sort context))
-    ((:int int |Int|) (z3-mk-int-sort context))
-    ((:real real |Real|) (z3-mk-real-sort context))))
+  (if (z3-sort-p sort)
+      sort
+      (or (gethash sort (z3-context-sorts context))
+          (smt-add-sort context sort
+                        (ecase sort
+                          ((:bool bool |Bool|) (z3-mk-bool-sort context))
+                          ((:int int |Int|) (z3-mk-int-sort context))
+                          ((:real real |Real|) (z3-mk-real-sort context)))))))
+
+(defun smt-symbol (context name)
+  (etypecase name
+    (string (z3-mk-string-symbol context name))
+    (symbol (z3-mk-string-symbol context (string name)))
+    (fixnum (z3-mk-int-symbol context name))))
+
+(defun smt-add-declaration (context &key name sort symbol ast)
+  (let* ((table (z3-context-symbols context)))
+    (assert (null (gethash name table)))
+    (setf (gethash name table)
+          (make-smt-symbol :name name
+                           :sort sort
+                           :ast ast
+                           :symbol symbol))))
 
 (defun smt-declare (context name sort)
+  "Constant declaration"
   (declare (type z3-context context))
-  (let ((table (z3-context-symbols context))
-        (key (smt-normalize-id name)))
-    (assert (null (gethash key table)))
-    (setf (gethash key table)
-          (make-smt-symbol :name key
-                           :sort (smt-sort context sort)
-                           :object
-                           (etypecase key
-                             (string (z3-mk-string-symbol context key))
-                             (fixnum (z3-mk-int-symbol context key)))))))
+  (let* ((key (smt-normalize-id name))
+         (symbol (smt-symbol context name))
+         (sort (smt-sort context sort)))
+    (smt-add-declaration context
+                         :name key
+                         :sort sort
+                         :symbol symbol
+                         :ast  (z3-mk-const context symbol sort))))
+
+(defun smt-declare-enumeration (context sortname symbols)
+  ;(format t "~&name: ~A" sortname)
+  ;(format t "~&symbols: ~A" symbols)
+  ;(print symbols)
+  (let* ((n (length symbols))
+         (smt-symbols (loop for s in symbols
+                         collect (smt-symbol context s)))
+         (consts (foreign-alloc :pointer :count n))
+         (testers (foreign-alloc :pointer :count n)))
+    (with-foreign-objects  ((names :pointer n)
+                           ; (consts :pointer n)
+                           ; (testers :pointer n)
+                            )
+      ;; fill names array
+      (loop for i from 0
+         for s in smt-symbols
+         do
+           ;(print (z3-get-symbol-string context s))
+           (setf (mem-aref names :pointer i)
+                  (z3-symbol-pointer s)))
+
+      ;; create sort
+      (let ((sort (z3-mk-enumeration-sort context
+                                          (smt-symbol context sortname)
+                                          n
+                                          names
+                                          consts
+                                          testers)))
+        ;(print (z3-sort-to-string context sort))
+
+        ;; collect consts
+        (loop for i from 0 below n
+           for obj = (%make-z3-func-decl (mem-aref consts :pointer i))
+           for namesym = (z3-get-decl-name context obj)
+           do
+             ;(print (z3-func-decl-to-string context obj))
+             ;(print (z3-get-symbol-string context namesym))
+             ;(z3-inc-ref context (z3-func-decl-to-ast context obj))
+             (smt-add-declaration context
+                                  :name (z3-func-decl-to-string context obj)
+                                  :sort sort
+                                  :symbol namesym
+                                  :ast (z3-func-decl-to-ast context obj)
+                                  ))
+
+        (loop for i from 0 below n
+           for obj = (%make-z3-func-decl (mem-aref testers :pointer i))
+           for namesym = (z3-get-decl-name context obj)
+           do
+             ;(print (z3-func-decl-to-string context obj))
+             ;(print (z3-get-symbol-string context namesym))
+             ;(z3-inc-ref context (z3-func-decl-to-ast context obj))
+             (smt-add-declaration context
+                                  :name (z3-func-decl-to-string context obj)
+                                  :sort sort
+                                  :symbol namesym
+                                  :ast (z3-func-decl-to-ast context obj)
+                                  ))
+
+      (smt-add-sort context sortname sort)))))
 
 (defun smt-lookup (context name)
   (declare (type z3-context context))
@@ -163,8 +249,12 @@
            (args (cdr e)))
        (ecase op
          ,@(loop for (kw type function) in cases
+              for s = (string kw)
+              for kws = (list (intern s :keyword)
+                              (intern s :smt-symbol)
+                              (intern (string-downcase s) :smt-symbol))
               collect
-                `(,kw
+                `(,kws
                   ,(case type
                     (:unary `(smt-unop context ,function args))
                     (:binary `(smt-binop context ,function args))
@@ -177,12 +267,11 @@
     (not :unary #'z3-mk-not)
     (and :nary #'z3-mk-and)
     (or :nary #'z3-mk-or)
-    (distinct :nary #'z3-mk-or)
+    (distinct :nary #'z3-mk-distinct)
     (implies :binary #'z3-mk-implies)
     (iff :binary #'z3-mk-iff)
     (xor :binary #'z3-mk-xor)
     (ite smt-ite)
-    ;; TODO: if-then-else
 
     (+ :nary #'z3-mk-add)
     (* :nary #'z3-mk-mul)
@@ -212,15 +301,16 @@
        (otherwise
         (let ((v (smt-lookup context e)))
           (unless v (error "Unbound: ~A" e))
-          (z3-mk-const context
-                       (smt-symbol-object v)
-                       (smt-symbol-sort v))))))))
+          (smt-symbol-ast v)))))))
 
 (defun smt->ast (context e)
   (declare (type z3-context context))
   (if (consp e)
       (smt-op context e)
       (smt-atom context e)))
+
+
+
 
 (defun smt-assert (solver exp)
   (declare (type z3-solver solver))
@@ -238,15 +328,28 @@
   (flet ((context ()
            (z3-solver-context solver)))
     (destructuring-ecase stmt
+      ;; declarations
       (((declare-fun |declare-fun| :declare-fun) name args type)
        (assert (null args)) ;; TODO: functions
        (smt-declare (context) name type))
+      (((declare-const |declare-const| :declare-const) name type)
+       (smt-declare (context) name type))
+      (((declare-enum |declare-enum| :declare-enum) sortname &rest symbols)
+       (smt-declare-enumeration (context) sortname symbols))
+      ;; Asssertions
       (((assert |assert| :assert) exp)
        (smt-assert solver exp))
+      ;; Checking
       (((check-sat |check-sat| :check-sat))
        (smt-check solver))
       (((get-value |get-value| :get-value) symbols)
-       (smt-values solver symbols)))))
+       (smt-values solver symbols))
+      ;; Stack
+      (((push |push| :push) &optional (count 1))
+       (dotimes (i count)
+         (z3-solver-push (context) solver)))
+      (((pop |pop| :pop) &optional (count 1))
+       (z3-solver-pop (context) solver count)))))
 
 (defun smt-value-int (context ast)
   (with-foreign-object (i :int)
@@ -258,7 +361,7 @@
   (declare (type z3-context context))
   (let* ((ent  (smt-lookup context thing))
          (d  (z3-mk-func-decl context
-                              (smt-symbol-object ent)
+                              (smt-symbol-symbol ent)
                               0 (null-pointer)
                               (smt-symbol-sort ent)))
          (a (z3-model-get-const-interp context model d)))
@@ -286,6 +389,7 @@
                          solver)
   (let* ((solver (or solver (make-solver))))
     (labels ((rec (stmts)
+               ;;(print (car stmts))
                (let ((x (smt-eval solver (car stmts))))
                  (if (cdr stmts)
                      (rec (cdr stmts))

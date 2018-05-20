@@ -8,6 +8,15 @@
    :declare-const
    :|declare-const|
 
+   :declare-enum
+   :|declare-enum|
+
+   :declare-datatype
+   :|declare-datatype|
+
+   :declare-datatypes
+   :|declare-datatypes|
+
    :define-fun
    :|define-fun|
 
@@ -26,6 +35,12 @@
    :int
    :|Int|
 
+   :push
+   :|push|
+
+   :pop
+   :|pop|
+
    :let
    :|let|
 
@@ -33,6 +48,9 @@
    :|and|
    :|or|
    :|assert|
+
+   :distinct
+   :|distinct|
 
    :=>
    ))
