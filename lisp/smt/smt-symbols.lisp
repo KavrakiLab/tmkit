@@ -52,5 +52,11 @@
    :distinct
    :|distinct|
 
+   :true
+   :|true|
+
+   :false
+   :|false|
+
    :=>
    ))

@@ -12,6 +12,7 @@
   name
   sort
   symbol
+  func-decl
   ast
   )
 

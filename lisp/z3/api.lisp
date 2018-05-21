@@ -17,6 +17,22 @@
   (declare (ignore context))
   (error "Z3 Error: ~A" code))
 
+(defmacro with-filled-array ((array-variable count-variable)
+                             ((elt-variable sequence) &body elt-body)
+                             &body body)
+  (with-gensyms (seq-var i)
+    `(let* ((,seq-var ,sequence)
+            (,count-variable (length ,seq-var)))
+       (with-foreign-object (,array-variable :pointer ,count-variable)
+           (reduce (lambda (,i ,elt-variable)
+                     (setf (mem-aref ,array-variable :pointer ,i)
+                           (progn ,@elt-body))
+                     (1+ ,i))
+               ,seq-var
+               :initial-value 0)
+         ;; body
+         ,@body))))
+
 (defun make-solver (&key context)
   (let* ((context (or context (z3-mk-context (z3-mk-config))))
          (solver (z3-mk-solver context)))
@@ -38,6 +54,7 @@
 (defun smt-add-sort (context name sort)
   (let ((hash (z3-context-sorts context)))
     (assert (null (gethash name hash)))
+    ;;(z3-inc-ref context (z3-sort-to-ast context sort))
     (setf (gethash name hash) sort)))
 
 (defun smt-sort (context sort)
@@ -57,13 +74,14 @@
     (symbol (z3-mk-string-symbol context (string name)))
     (fixnum (z3-mk-int-symbol context name))))
 
-(defun smt-add-declaration (context &key name sort symbol ast)
+(defun smt-add-declaration (context &key name sort symbol ast func-decl)
   (let* ((table (z3-context-symbols context)))
     (assert (null (gethash name table)))
     (setf (gethash name table)
           (make-smt-symbol :name name
                            :sort sort
                            :ast ast
+                           :func-decl func-decl
                            :symbol symbol))))
 
 (defun smt-declare-const (context name sort)
@@ -82,20 +100,20 @@
   "Function declaration"
   (let* ((key (smt-normalize-id name))
          (symbol (smt-symbol context name))
-         (sort (smt-sort context sort))
-         (n (length params)))
-    (with-foreign-object (domain :pointer n)
-      (loop for p in params
-         for s = (smt-sort context p)
-         do (setf (mem-aref domain :pointer)
-                  (z3-sort-pointer s)))
-      (let ((fdec (z3-mk-func-decl context symbol
-                                   n domain sort)))
+         (sort (smt-sort context sort)))
+    (with-filled-array (domain n)
+        ((p params)
+         (z3-sort-pointer (smt-sort context p)))
+        params
+      (let* ((fdec (z3-mk-func-decl context symbol
+                                    n domain sort))
+             (ast (z3-func-decl-to-ast context fdec)))
         (smt-add-declaration context
                              :name key
                              :sort sort
                              :symbol symbol
-                             :ast (z3-func-decl-to-ast context fdec))))))
+                             :func-decl fdec
+                             :ast ast)))))
 
 
 (defun smt-declare-enumeration (context sortname symbols)
@@ -103,22 +121,11 @@
   ;(format t "~&symbols: ~A" symbols)
   ;(print symbols)
   (let* ((n (length symbols))
-         (smt-symbols (loop for s in symbols
-                         collect (smt-symbol context s)))
          (consts (foreign-alloc :pointer :count n))
          (testers (foreign-alloc :pointer :count n)))
-    (with-foreign-objects  ((names :pointer n)
-                           ; (consts :pointer n)
-                           ; (testers :pointer n)
-                            )
-      ;; fill names array
-      (loop for i from 0
-         for s in smt-symbols
-         do
-           ;(print (z3-get-symbol-string context s))
-           (setf (mem-aref names :pointer i)
-                  (z3-symbol-pointer s)))
-
+    (with-filled-array (names n)
+        ((s symbols)
+         (z3-symbol-pointer (smt-symbol context s)))
       ;; create sort
       (let ((sort (z3-mk-enumeration-sort context
                                           (smt-symbol context sortname)
@@ -126,8 +133,6 @@
                                           names
                                           consts
                                           testers)))
-        ;(print (z3-sort-to-string context sort))
-
         ;; collect consts
         (loop for i from 0 below n
            for obj = (%make-z3-func-decl (mem-aref consts :pointer i))
@@ -205,22 +210,30 @@
     (hash-table-keys hash)))
 
 (defmacro with-ast-array ((var args context) &body body)
-  (with-gensyms (i e)
-    `(with-foreign-object (,var :pointer (length ,args))
-       (loop
-          for ,i from 0
-          for ,e in ,args
-          do (setf (mem-aref ,var :pointer ,i)
-                   (z3-ast-pointer (smt->ast ,context ,e))))
+  (with-gensyms (n a)
+    `(with-filled-array (,var ,n)
+         ((,a ,args)
+          (z3-ast-pointer (smt->ast ,context ,a)))
        ,@body)))
 
-(defmacro with-asts (lambda-list args context
-                     &body body)
-  (with-gensyms (e)
-    `(destructuring-bind ,lambda-list
-         (loop for ,e in ,args
-            collect (smt->ast ,context ,e))
-       ,@body)))
+
+  ;; (with-gensyms (i e)
+  ;;   `(with-foreign-object (,var :pointer (length ,args))
+  ;;      (reduce (lambda (,i ,e)
+  ;;                (setf (mem-aref ,var :pointer ,i)
+  ;;                      (z3-ast-pointer (smt->ast ,context ,e)))
+  ;;                (1+ ,i))
+  ;;              ,args
+  ;;              :initial-value 0)
+  ;;      ,@body)))
+
+;; (defmacro with-asts (lambda-list args context
+;;                      &body body)
+;;   (with-gensyms (e)
+;;     `(destructuring-bind ,lambda-list
+;;          (loop for ,e in ,args
+;;             collect (smt->ast ,context ,e))
+;;        ,@body)))
 
 
 (defun smt-unop (context function args)
@@ -271,11 +284,20 @@
              (smt->ast (second args) context)
              (smt->ast (third args) context)))
 
+(defun smt-app (context op args)
+  (let* ((fdec-ent (smt-lookup context op))
+         (func-decl  (smt-symbol-func-decl fdec-ent))
+         (n (length args)))
+    (assert func-decl)
+    ;(error "foo: ~A ~A" op args)
+    (with-ast-array (array args context)
+      (z3-mk-app context func-decl n array))))
+
 (defmacro def-smt-op (&rest cases)
   `(defun smt-op (context e)
      (let ((op (car e))
            (args (cdr e)))
-       (ecase op
+       (case op
          ,@(loop for (kw type function) in cases
               for s = (string kw)
               for kws = (list (intern s :keyword)
@@ -287,7 +309,9 @@
                     (:unary `(smt-unop context ,function args))
                     (:binary `(smt-binop context ,function args))
                     (:nary `(smt-nary-op context ,function args))
-                    (otherwise `(,type context args)))))))))
+                    (otherwise `(,type context args)))))
+         (otherwise
+          (smt-app context op args))))))
 
 (def-smt-op
     (= :binary #'z3-mk-eq)
@@ -322,9 +346,9 @@
      (z3-mk-int context e (z3-mk-int-sort context)))
     (symbol
      (case e
-       ((t :true)
+       ((t :true true |true|)
         (z3-mk-true context))
-       ((nil :false)
+       ((nil :false false |false|)
         (z3-mk-false context))
        (otherwise
         (let ((v (smt-lookup context e)))

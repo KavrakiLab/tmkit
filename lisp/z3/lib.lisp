@@ -97,10 +97,14 @@
   (context z3-context-type)
   (sort z3-sort-type))
 
+(defcfun "Z3_sort_to_ast" z3-ast-type
+  (context z3-context-type)
+  (sort z3-sort-type))
+
 ;;; AST - Boolean
 (defcfun "Z3_inc_ref" :void
   (context z3-context-type)
-  (sort z3-ast-type))
+  (ast z3-ast-type))
 
 
 (defmacro def-ast-unop (name)
@@ -186,6 +190,11 @@
   (domain :pointer) ;; array of sorts
   (range z3-sort-type))
 
+(defcfun  "Z3_mk_app" z3-ast-type
+     (context z3-context-type)
+     (decl z3-func-decl-type)
+     (n :unsigned-int)
+     (args :pointer))
 
 (defcfun "Z3_get_decl_name" z3-symbol-type
   (context z3-context-type)
@@ -207,6 +216,7 @@
 (defcfun "Z3_sort_to_string" :string
   (context z3-context-type)
   (obj z3-sort-type))
+
 
 (defcfun "Z3_func_decl_to_string" :string
   (context z3-context-type)

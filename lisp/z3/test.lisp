@@ -131,6 +131,15 @@
      ;(get-value (x y))
      )))
 
+(defun rise4fun-predicate ()
+  (z3::smt-prog
+   `((declare-const a Int)
+     (declare-fun f (Int Bool) Int)
+     (assert (> a 10))
+     (assert (< (f a true) 100))
+     (check-sat)
+     )))
+
 ;; Misc
 (defun misc ()
   (z3::smt-prog
