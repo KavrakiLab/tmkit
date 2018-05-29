@@ -9,7 +9,7 @@
 (in-package :z3/test)
 
 (def-suite all-tests
-    :description "The master suite of all quasiRPG tests.")
+    :description "Z3 test suite")
 
 (in-suite all-tests)
 
@@ -98,8 +98,9 @@
 
 
 ;;; Rise4Fun
+;;; https://rise4fun.com/z3/tutorial
 
-(test rise4run-enum
+(test rise4fun-enum
   (is (eq (z3::smt-prog
            '((declare-enum S a b c)
              (declare-const x S)
@@ -140,13 +141,85 @@
      (check-sat)
      )))
 
-;; Misc
-(defun misc ()
+
+(test rise4fun-predicate
+  (is (eq (rise4fun-predicate)
+          :sat)))
+
+
+(defun rise4fun-define-fun ()
   (z3::smt-prog
-   '((declare-const a bool)
-     (declare-const b bool)
-     (declare-const c bool)
-     (assert a)
-     (assert (distinct a b))
-     (check-sat)
-     (get-value (a b)))))
+   '((declare-const p Bool)
+     (declare-const q Bool)
+     (declare-const r Bool)
+     (define-fun conjecture () Bool
+      (=> (and (=> p q) (=> q r))
+       (=> p r)))
+     (assert (not conjecture))
+     (check-sat))))
+
+(defun rise4fun-define-fun-1 ()
+  (z3::smt-prog
+   '((declare-const p Bool)
+     (declare-const q Bool)
+     (declare-const r Bool)
+     (define-fun conjecture () Bool
+      (=> (and (=> p q) (=> q r))
+       (=> p r)))
+     (assert conjecture)
+     (check-sat))))
+
+(test rise4fun-define-fun
+  (is (eq (rise4fun-define-fun)
+          :unsat))
+  (is (eq (rise4fun-define-fun-1)
+          :sat)))
+
+
+(defun rise4fun-demorgan ()
+  (z3::smt-prog
+   '((declare-const x Bool)
+     (declare-const y Bool)
+     (define-fun demorgan ((a Bool) (b Bool)) Bool
+      (= (and a b) (not (or (not a) (not b)))))
+     (assert (not (demorgan x y)))
+     (check-sat))))
+
+(defun rise4fun-demorgan-1 ()
+  (z3::smt-prog
+   '((declare-const x Bool)
+     (declare-const y Bool)
+     (define-fun demorgan ((a Bool) (b Bool)) Bool
+      (= (and a b) (not (or (not a) (not b)))))
+     (assert (demorgan x y))
+     (check-sat))))
+
+(test rise4fun-demorgan
+  (is (eq (rise4fun-demorgan)
+          :unsat))
+  (is (eq (rise4fun-demorgan-1)
+          :sat)))
+
+;; (test rise4fun-define-fun
+;;   (is (eq (z3::smt-prog
+;;            '((declare-const p Bool)
+;;              (declare-const q Bool)
+;;              (declare-const r Bool)
+;;              (define-fun conjecture () Bool
+;;               (=> (and (=> p q) (=> q r))
+;;                (=> p r)))
+;;              (assert (not conjecture))
+;;              (check-sat)))
+;;           :unsat)
+
+
+;; Misc
+;; (defun misc ()
+;;   (z3::smt-prog
+;;    '((declare-const a bool)
+;;      (declare-const b bool)
+;;      (declare-const c bool)
+;;      (assert a)
+;;      (assert (distinct a b))
+;;      (check-sat)
+;;      (get-value (a b)))))

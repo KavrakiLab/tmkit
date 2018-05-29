@@ -96,20 +96,18 @@
     (symbol (z3-mk-string-symbol context (string name)))
     (fixnum (z3-mk-int-symbol context name))))
 
-(defun smt-add-declaration (context &key name sort symbol ast func-decl)
-  (declare (type string name)
-           (type (or null z3-symbol) symbol))
-  ;;(format t "~&Declare: ~A (~A)" name (type-of name))
-  (let* ((table (z3-context-symbols context)))
+(defun smt-add-declaration (context &key name sort symbol ast func-decl definition)
+  (let* ((table (z3-context-symbols context))
+         (name (smt-normalize-id name)))
     (when (gethash name table)
       (smt-error "Symbol `~A' already declared" name))
-    ;(assert (null (gethash name table)))
     (setf (gethash name table)
           (make-smt-symbol :name name
-                           :sort sort
+                           :sort (smt-sort context sort)
                            :ast ast
                            :func-decl func-decl
-                           :symbol symbol))))
+                           :symbol (or symbol (smt-symbol context name))
+                           :definition definition))))
 
 
 (defun smt-add-func-decl (context func-decl &key sort)
@@ -154,6 +152,20 @@
                              :func-decl fdec
                              :ast ast)))))
 
+(defun smt-define-fun (context name args sort body)
+  (let ((names) (sorts))
+    ;; collect arguments
+    (dolist (x args)
+      (destructuring-bind (name sort) x
+        (push name names)
+        (push sort sorts)))
+    ;; add
+    (smt-add-declaration context
+                         :name name
+                         :sort sort
+                         :definition (make-smt-definition :body body
+                                                          :param-names  names
+                                                          :param-sorts sorts))))
 
 (defun smt-declare-enumeration (context sortname symbols)
   ;(format t "~&name: ~A" sortname)
@@ -186,8 +198,12 @@
 
 (defun smt-lookup (context name)
   (declare (type z3-context context))
-  (gethash (smt-normalize-id name)
-           (z3-context-symbols context)))
+  (let ((result (gethash (smt-normalize-id name)
+                         (z3-context-symbols context))))
+    (unless result
+      (smt-error "Symbol `~A' is unbound" name))
+    result))
+
 
 ;; (defun smt-intern (key &optional (context *context*))
 ;;   (let ((table (z3-context-symbols context))
@@ -304,14 +320,37 @@
              (smt->ast (second args) context)
              (smt->ast (third args) context)))
 
+(defun smt-app-macro (context op definition args)
+  (let ((body (smt-definition-body definition))
+        (dummy-args (smt-definition-param-names definition)))
+    (unless (= (length args) (length dummy-args))
+      (smt-error "Mismatched argument counts for `~A'" op))
+    (smt->ast context
+              (if args
+                  (sublis (map 'list #'cons dummy-args args)
+                          body :test #'equal)
+                  body))))
+
 (defun smt-app (context op args)
-  (let* ((fdec-ent (smt-lookup context op))
-         (func-decl  (smt-symbol-func-decl fdec-ent))
-         (n (length args)))
-    (assert func-decl)
-    ;(error "foo: ~A ~A" op args)
-    (with-ast-array (array args context)
-      (z3-mk-app context func-decl n array))))
+  (let* ((ent (smt-lookup context op))
+         (func-decl (smt-symbol-func-decl ent))
+         (definition (smt-symbol-definition ent))
+         (ast (smt-symbol-ast ent)))
+    (cond
+      ;; Uninterpreted function
+      (func-decl
+       (assert (null definition))
+       (with-ast-array (array args context)
+         (z3-mk-app context func-decl (length args) array)))
+      ;; Constant
+      ((and ast (null args))
+       (assert (null definition))
+       ast)
+      ;; Defined Function
+      (definition
+       (smt-app-macro context op definition args))
+      ;; Error
+      (t (smt-error "Symbol `~A' is not a usable function" op)))))
 
 (defmacro def-smt-op (&rest cases)
   `(defun smt-op (context e)
@@ -364,22 +403,18 @@
 
 (defun smt-atom (context e)
   (declare (type z3-context context))
-  (flet ((symbol (e)
-           (let ((v (smt-lookup context e)))
-             (unless v (error "Unbound: ~A" e))
-             (smt-symbol-ast v))))
-    (etypecase e
-      (fixnum
-       (z3-mk-int context e (z3-mk-int-sort context)))
-      (string (symbol e))
-      (symbol
-       (case e
-         ((t :true true |true|)
-          (z3-mk-true context))
-         ((nil :false false |false|)
-          (z3-mk-false context))
-         (otherwise
-          (symbol e)))))))
+  (etypecase e
+    (fixnum
+     (z3-mk-int context e (z3-mk-int-sort context)))
+    (string (smt-app context e nil))
+    (symbol
+     (case e
+       ((t :true true |true|)
+        (z3-mk-true context))
+       ((nil :false false |false|)
+        (z3-mk-false context))
+       (otherwise
+        (smt-app context e nil))))))
 
 (defun smt->ast (context e)
   (declare (type z3-context context))
@@ -415,6 +450,8 @@
        (smt-declare-const (context) name type))
       (((declare-enum |declare-enum| :declare-enum) sortname &rest symbols)
        (smt-declare-enumeration (context) sortname symbols))
+      (((define-fun |define-fun| :define-fun) name args type body)
+       (smt-define-fun (context) name args type body))
       ;; Asssertions
       (((assert |assert| :assert) exp)
        (smt-assert solver exp))

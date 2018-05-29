@@ -8,17 +8,21 @@
     z3-config z3-config-type
   :destructor ("Z3_del_config" z3-del-config))
 
+
+(defstruct smt-definition
+  body
+  param-names
+  param-sorts)
+
 (defstruct smt-symbol
   name
   sort
   symbol
   func-decl
   ast
+  definition
   )
 
-;; (defstruct smt-sortdec
-;;   name
-;;   sort)
 
 (amino-ffi::def-foreign-container
     z3-context z3-context-type
