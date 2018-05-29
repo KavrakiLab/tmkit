@@ -42,6 +42,11 @@
     (setf (z3-solver-context solver) context)
     solver))
 
+(defmacro with-solver ((solver) &body body)
+  `(let ((,solver (make-solver)))
+     ,@body))
+
+
 (defvar *context*)
 (defvar *solver*)
 
@@ -321,7 +326,9 @@
     (or :nary #'z3-mk-or)
     (distinct :nary #'z3-mk-distinct)
     (implies :binary #'z3-mk-implies)
+    (=> :binary #'z3-mk-implies)
     (iff :binary #'z3-mk-iff)
+    (<=> :binary #'z3-mk-iff)
     (xor :binary #'z3-mk-xor)
     (ite smt-ite)
 
@@ -339,21 +346,25 @@
 
     )
 
+
 (defun smt-atom (context e)
   (declare (type z3-context context))
-  (etypecase e
-    (fixnum
-     (z3-mk-int context e (z3-mk-int-sort context)))
-    (symbol
-     (case e
-       ((t :true true |true|)
-        (z3-mk-true context))
-       ((nil :false false |false|)
-        (z3-mk-false context))
-       (otherwise
-        (let ((v (smt-lookup context e)))
-          (unless v (error "Unbound: ~A" e))
-          (smt-symbol-ast v)))))))
+  (flet ((symbol (e)
+           (let ((v (smt-lookup context e)))
+             (unless v (error "Unbound: ~A" e))
+             (smt-symbol-ast v))))
+    (etypecase e
+      (fixnum
+       (z3-mk-int context e (z3-mk-int-sort context)))
+      (string (symbol e))
+      (symbol
+       (case e
+         ((t :true true |true|)
+          (z3-mk-true context))
+         ((nil :false false |false|)
+          (z3-mk-false context))
+         (otherwise
+          (symbol e)))))))
 
 (defun smt->ast (context e)
   (declare (type z3-context context))

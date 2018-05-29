@@ -12,6 +12,7 @@
 ;;; (transition EXPRESSION)
 ;;; (now FLUENT)
 ;;; (next FLUENT)
+;;; (output FLUENT)
 
 (defun fluent-now (fluent)
   (list 'now fluent))
@@ -34,6 +35,9 @@
 
   ;; map from fluent to types
   (fluent-map (make-hash-table :test #'equal))
+
+  ;; list of fluents to output
+  outputs
 
   ;; list of clauses in transition function (implicit and)
   transition-clauses
@@ -82,7 +86,11 @@
 
     ((transition clause)
      ;; TODO: check exp
-     (push clause (constrained-domain-transition-clauses cpd))))
+     (push clause (constrained-domain-transition-clauses cpd)))
+
+    ((output fluent)
+     (check-cpdl-fluent cpd fluent t)
+     (push fluent (constrained-domain-outputs cpd))))
   ;; Result
   cpd)
 

@@ -65,23 +65,40 @@ I: The step to unroll at"
     ;; check
     (add `(check-sat))))
 
+(defun cpd-actions (alist)
+  (let* ((selected (loop for (a . b) in alist
+                      when (smt-true-p b)
+                      collect a))
+         (sorted (sort selected #'< :key #'car)))
+    (map 'list #'cdr sorted)))
+
+
+(defun cpd-plan-result (domain solver steps)
+  (let* ((symbols (with-collected (add)
+                    (dotimes (i steps)
+                      (map nil
+                           (lambda (f)
+                             (add (cpd-mangle-fluent f i)))
+                           (constrained-domain-outputs domain)))))
+         (values (z3::smt-values solver symbols)))
+    (loop for (a . b) in values
+       collect (cons (cpd-unmangle a) b))))
+
 (defun cpd-plan (domain &optional options)
   (let* ((options (or options (cpdl-plan-options)))
          (max-steps (cdr (assoc :max-steps options))))
     (labels ((rec (steps)
                (format *error-output* "~&Unrolling for step ~D...~%" steps)
-               (cond
-                 ((< steps max-steps)
-                  (rec (1+ steps)))
-                 (t nil))))
-               ;; (multiple-value-bind (assignments is-sat)
-               ;;     (multiple-value-bind (stmts vars)
-               ;;         (smt-plan-encode operators facts steps)
-               ;;       (smt-run stmts vars))
-               ;;   (cond
-               ;;     (is-sat
-               ;;      (smt-parse-assignments assignments))
-               ;;     ((< steps max-steps)
-               ;;      (rec (1+ steps)))
-               ;;     (t nil)))))
+               (z3::with-solver (solver)
+                 (multiple-value-bind (is-sat solver)
+                     (z3::smt-prog (cpd-smt domain steps)
+                                   :solver solver)
+                   (cond
+                     ((eq is-sat :sat)
+                      (values
+                       (cpd-plan-result domain solver steps)
+                       t))
+                     ((< steps max-steps)
+                      (rec (1+ steps)))
+                     (t (values nil nil)))))))
       (rec 1))))

@@ -11,6 +11,7 @@
                (declare-fun . |declare-fun|)
                (declare-const . |declare-const|)
                (check-sat . |check-sat|)
+               (get-value . |get-value|)
                (bool   . |Bool|)
                (and    . |and|)))))
   (defun smt-symbol-substitute (s)
@@ -19,6 +20,19 @@
       ((eq keyword-package (symbol-package s))
        (rope '|:| s))
       (t (gethash s hash s)))))
+
+
+(defun smt-true-p (thing)
+  (or (eq thing :true)
+      (eq thing 'true)
+      (eq thing '|true|)
+      (eq thing t)))
+
+(defun smt-false-p (thing)
+  (or (eq thing :false)
+      (eq thing 'false)
+      (eq thing '|false|)
+      (eq thing nil)))
 
 (defun smt-rope (stmt)
   "Return a rope representing the SMTLib statement STMT."

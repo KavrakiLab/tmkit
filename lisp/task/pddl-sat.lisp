@@ -88,7 +88,9 @@
 
      ;; Action variables
      (dolist (a (ground-domain-operators ground))
-       (add `(declare-fluent ,(pddl-sat-op a) bool)))
+       (let ((a (pddl-sat-op a)))
+         (add `(declare-fluent ,a bool))
+         (add `(output ,a))))
 
      ;; Start
      (pddl-sat-start ground #'add)
@@ -106,4 +108,8 @@
 
 (defun pddl-sat (operators facts &optional options)
   (let ((cpd (pddl-sat-domain operators facts)))
-    (cpd-plan cpd options)))
+    (multiple-value-bind (results sat)
+        (cpd-plan cpd options)
+      (values (when sat
+                (cpd-actions results))
+              sat))))
