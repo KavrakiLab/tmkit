@@ -101,6 +101,10 @@
   (context z3-context-type)
   (sort z3-sort-type))
 
+(defcfun "Z3_get_sort" z3-sort-type
+  (context z3-context-type)
+  (ast z3-ast-type))
+
 ;;; AST - Boolean
 (defcfun "Z3_inc_ref" :void
   (context z3-context-type)

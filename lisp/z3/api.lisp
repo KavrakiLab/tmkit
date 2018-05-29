@@ -17,6 +17,22 @@
   (declare (ignore context))
   (error "Z3 Error: ~A" code))
 
+
+(define-condition smt-error (error)
+  ((message :initarg :message :reader message)
+   (expression :initarg :expression :reader expression)))
+
+(defmethod print-object ((e smt-error) stream)
+  (print-unreadable-object (e stream :type t :identity t)
+    (when (slot-boundp e 'message)
+      (princ (slot-value e 'message )  stream))))
+
+(defun smt-error (fmt &rest args)
+  (error 'smt-error
+         ;:expression expression
+         :message (apply #'format nil fmt args)))
+
+
 (defmacro with-filled-array ((array-variable count-variable)
                              ((elt-variable sequence) &body elt-body)
                              &body body)
@@ -58,7 +74,8 @@
 
 (defun smt-add-sort (context name sort)
   (let ((hash (z3-context-sorts context)))
-    (assert (null (gethash name hash)))
+    (when (gethash name hash)
+      (smt-error "Sort `~A' already declared" name))
     ;;(z3-inc-ref context (z3-sort-to-ast context sort))
     (setf (gethash name hash) sort)))
 
@@ -80,14 +97,31 @@
     (fixnum (z3-mk-int-symbol context name))))
 
 (defun smt-add-declaration (context &key name sort symbol ast func-decl)
+  (declare (type string name)
+           (type (or null z3-symbol) symbol))
+  ;;(format t "~&Declare: ~A (~A)" name (type-of name))
   (let* ((table (z3-context-symbols context)))
-    (assert (null (gethash name table)))
+    (when (gethash name table)
+      (smt-error "Symbol `~A' already declared" name))
+    ;(assert (null (gethash name table)))
     (setf (gethash name table)
           (make-smt-symbol :name name
                            :sort sort
                            :ast ast
                            :func-decl func-decl
                            :symbol symbol))))
+
+
+(defun smt-add-func-decl (context func-decl &key sort)
+  (let* ((namesym  (z3-get-decl-name context func-decl))
+         (namestring  (z3-get-symbol-string context namesym))
+         (ast (z3-func-decl-to-ast context func-decl))
+         (sort (or sort (z3-get-sort context ast))))
+    (smt-add-declaration context
+                         :name namestring
+                         :sort sort
+                         :symbol namesym
+                         :ast ast)))
 
 (defun smt-declare-const (context name sort)
   "Constant declaration"
@@ -139,33 +173,14 @@
                                           consts
                                           testers)))
         ;; collect consts
-        (loop for i from 0 below n
-           for obj = (%make-z3-func-decl (mem-aref consts :pointer i))
-           for namesym = (z3-get-decl-name context obj)
-           do
-             ;(print (z3-func-decl-to-string context obj))
-             ;(print (z3-get-symbol-string context namesym))
-             ;(z3-inc-ref context (z3-func-decl-to-ast context obj))
-             (smt-add-declaration context
-                                  :name (z3-func-decl-to-string context obj)
-                                  :sort sort
-                                  :symbol namesym
-                                  :ast (z3-func-decl-to-ast context obj)
-                                  ))
-
-        (loop for i from 0 below n
-           for obj = (%make-z3-func-decl (mem-aref testers :pointer i))
-           for namesym = (z3-get-decl-name context obj)
-           do
-             ;(print (z3-func-decl-to-string context obj))
-             ;(print (z3-get-symbol-string context namesym))
-             ;(z3-inc-ref context (z3-func-decl-to-ast context obj))
-             (smt-add-declaration context
-                                  :name (z3-func-decl-to-string context obj)
-                                  :sort sort
-                                  :symbol namesym
-                                  :ast (z3-func-decl-to-ast context obj)
-                                  ))
+        (dotimes (i n)
+          (smt-add-func-decl context
+                             (%make-z3-func-decl (mem-aref consts :pointer i))
+                             :sort sort))
+        (dotimes (i n)
+          (smt-add-func-decl context
+                             (%make-z3-func-decl (mem-aref testers :pointer i))
+                             :sort (smt-sort context 'bool)))
 
       (smt-add-sort context sortname sort)))))
 
@@ -190,8 +205,8 @@
 ;;                   (string (z3-mk-string-symbol context key))
 ;;                   (fixnum (z3-mk-int-symbol context key))))))))
 
-(defun smt-error (e)
-  (error "Malformed SMT Expression: ~A" e))
+;; (defun smt-error (e)
+;;   (error "Malformed SMT Expression: ~A" e))
 
 (defun smt-exp-variables (exp)
   (let ((hash (make-hash-table :test #'equal)))
