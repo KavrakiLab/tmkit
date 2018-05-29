@@ -22,6 +22,12 @@
 
                (:file "util" :depends-on ("package"))
                (:file "config" :depends-on ("package"))
+
+               ;; cpdl
+               (:file "task/cpdl" :depends-on ("util" "expression"))
+               (:file "task/cpdl-plan" :depends-on ("task/cpdl"))
+               (:file "task/pddl-sat" :depends-on ("task/cpdl-plan"))
+
                (:file "smtlib" :depends-on ("util"))
                (:file "smtrun" :depends-on ("smtlib"))
                (:file "expression" :depends-on ("util"))

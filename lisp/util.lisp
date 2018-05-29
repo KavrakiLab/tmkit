@@ -227,3 +227,45 @@
   #+sbcl
   (sb-ext:quit :unix-status result)
   (error "Could not quit"))
+
+;;;
+
+(defmacro with-collected ((add-function) &body body)
+  (with-gensyms (things arg)
+    `(let ((,things))
+       (flet ((,add-function (,arg)
+                (push ,arg ,things)))
+         ,@body)
+       (nreverse ,things))))
+
+;;; Maps ;;;
+(defun map-hash-result (result-type function hash)
+  (if result-type
+      (ecase result-type
+        (list
+         (loop for k being the hash-keys in hash using (hash-value v)
+            collect (funcall function k v))))
+      (maphash function hash)))
+
+(defun map-map (result-type function map)
+  (etypecase map
+    (tree-map (map-tree-map :inorder result-type function map))
+    (list (map result-type
+               (lambda (v) (funcall function (car v) (cdr v)))
+               map))
+    (hash-table
+     (map-hash-result result-type function map))))
+
+
+
+(defmacro do-map ((key value map) &body body)
+  (with-gensyms (fun)
+    `(flet ((,fun (,key ,value) ,@body))
+       (map-map nil #',fun ,map))))
+
+       ;; (let ((,map-sym ,map))
+       ;;   (etypecase ,map-sym
+       ;;     (list (dolist (,v ,map-sym)
+       ;;             (,fun (car ,v) (cdr ,v))))
+       ;;     (hash-table (maphash #',fun ,map-sym))
+       ;;     (tree-map (map-tree-map :in-order nil #',fun ,map-sym)))))))

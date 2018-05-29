@@ -23,7 +23,7 @@ Converts arrays to lists."
     (atom (funcall function exp))
     (list
      (destructuring-case exp
-       (((and or not = "=") &rest rest)
+       (((and or not = "=" => <=>) &rest rest)
         (cons (car exp)
               (loop for exp in rest collect (apply-rewrite-exp function exp))))
        ((t &rest rest) (declare (ignore rest))
@@ -60,3 +60,29 @@ Converts arrays to lists."
 
 (defun exp-variables-list (exp)
   (tree-set-list (exp-variables exp)))
+
+
+;; Simplifying constructors
+
+(defun exp-and* (args)
+  (cond
+    ((null args) 'true)
+    ((null (cdr args)) (car args))
+    ((find 'false args)
+     'false)
+    (t
+     (cons 'and args))))
+
+(defun exp-and (&rest args)
+  (exp-and* args))
+
+(defun exp-or* (args)
+  (cond
+    ((null args) 'false)
+    ((null (cdr args)) (car args))
+    ((find 'true args)
+     'true)
+    (t (cons 'or args))))
+
+(defun exp-or (&rest args)
+  (exp-or* args))
