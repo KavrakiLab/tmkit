@@ -1,36 +1,60 @@
 (in-package :tmsmt)
 
-(defun cpd-mangle-fluent (fluent i)
+(defun cpd-mangle-fluent (cpd fluent i)
   "Name-mangle an expression into an unrolled variable at step i.
 EXP: an s-expression
 I: The step to unroll at"
-  (format nil "~{~A~^_~}_~D" fluent i))
+  (let ((mangle-cache (constrained-domain-mangle-cache cpd))
+        (key (cons i fluent)))
+    (declare (dynamic-extent key))
+    (or (gethash key mangle-cache)
+        (let ((m (format nil "~{~A~^_~}_~D" fluent i))
+              (key (copy-list key)))
+          (setf (gethash key mangle-cache) m
+                (gethash m (constrained-domain-unmangle-cache cpd)) key)
+          m))))
 
-(defun cpd-mangle-exp (exp i)
-  (apply-rewrite-exp (lambda (exp) (cpd-mangle exp i))
+(defun cpd-mangle-exp (cpd exp i)
+  (apply-rewrite-exp (lambda (exp) (cpd-mangle-fluent cpd exp i))
                      exp))
 
-(defun cpd-mangle-transition (exp i)
+(defun cpd-mangle-transition (cpd exp i)
   (flet ((mangle (thing)
            (destructuring-ecase thing
              ((now arg)
-              (cpd-mangle-exp arg i))
+              (cpd-mangle-exp cpd arg i))
              ((next arg)
-              (cpd-mangle-exp arg (1+ i))))))
+              (cpd-mangle-exp cpd arg (1+ i))))))
     (apply-rewrite-exp #'mangle exp)))
 
-(defun cpd-unmangle (mangled)
+(defun cpd-unmangle (cpd mangled)
   "Un-mangle a mangled name back to the s-expression."
-  (let ((list (ppcre:split "_" mangled)))
-    (cons (parse-integer (lastcar list))
-          (loop for x on list
-             for a = (car x)
-             when (cdr x)
-             collect
-             a))))
+  (gethash mangled (constrained-domain-unmangle-cache cpd)))
+  ;; (let ((list (ppcre:split "_" mangled)))
+  ;;   (cons (parse-integer (lastcar list))
+  ;;         (loop for x on list
+  ;;            for a = (car x)
+  ;;            when (cdr x)
+  ;;            collect
+  ;;            a))))
 
 (defun cpd-plan-options (&key (max-steps 10))
   `((:max-steps . ,max-steps)))
+
+(defun cpd-define-transition (domain)
+  (let* ((f (cons 'and (constrained-domain-transition-clauses domain)))
+         (nows (map-cpd-fluents 'list (lambda (f type)
+                                        `(,(fluent-now f)  ,type))
+                                domain))
+         (nexts (map-cpd-fluents 'list (lambda (f type)
+                                         `(,(fluent-next f) ,type))
+                                 domain))
+         (args (append nows nexts)))
+    (values
+     `(define-fun transition ,args bool
+                  ,f)
+     args)))
+
 
 (defun cpd-smt (domain steps)
   (with-collected (add)
@@ -39,14 +63,14 @@ I: The step to unroll at"
       (map-cpd-fluents nil
                        (lambda (name type)
                          (add
-                          `(declare-const ,(cpd-mangle name i) ,type)))
+                          `(declare-const ,(cpd-mangle-fluent domain name i) ,type)))
                        domain))
 
 
     ;; start
     (map-cpd-start nil
                    (lambda (name value)
-                     (let ((name (cpd-mangle name 0)))
+                     (let ((name (cpd-mangle-fluent domain name 0)))
                        (case value
                          (true (add `(assert ,name)))
                          (false (add `(assert (not ,name))))
@@ -56,12 +80,22 @@ I: The step to unroll at"
     ;; goal
     (map-cpd-goals nil
                    (lambda (c)
-                     (add `(assert ,(cpd-mangle-exp c steps))))
+                     (add `(assert ,(cpd-mangle-exp domain c steps))))
                    domain)
+
     ;; transitions
-    (let ((f (cons 'and (constrained-domain-transition-clauses domain))))
+    (multiple-value-bind (fun args)
+        (cpd-define-transition domain)
+      (add fun)
       (dotimes (i steps)
-        (add `(assert ,(cpd-mangle-transition f i)))))
+        (add `(assert (transition ,@(map 'list (lambda (a)
+                                                 (cpd-mangle-transition domain (car a) i))
+                                         args))))))
+
+    ;; (let ((f (cons 'and (constrained-domain-transition-clauses domain))))
+    ;;   (dotimes (i steps)
+    ;;     (add `(assert ,(cpd-mangle-transition domain f i)))))
+
     ;; check
     (add `(check-sat))))
 
@@ -78,14 +112,14 @@ I: The step to unroll at"
                     (dotimes (i steps)
                       (map nil
                            (lambda (f)
-                             (add (cpd-mangle-fluent f i)))
+                             (add (cpd-mangle-fluent domain f i)))
                            (constrained-domain-outputs domain)))))
          (values (z3::smt-values solver symbols)))
     (loop for (a . b) in values
-       collect (cons (cpd-unmangle a) b))))
+       collect (cons (cpd-unmangle domain a) b))))
 
 (defun cpd-plan (domain &optional options)
-  (let* ((options (or options (cpdl-plan-options)))
+  (let* ((options (or options (cpd-plan-options)))
          (max-steps (cdr (assoc :max-steps options))))
     (labels ((rec (steps)
                (format *error-output* "~&Unrolling for step ~D...~%" steps)

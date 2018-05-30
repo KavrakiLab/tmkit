@@ -153,13 +153,14 @@
                              :ast ast)))))
 
 (defun smt-define-fun (context name args sort body)
-  (let ((names) (sorts))
-    ;; collect arguments
-    (dolist (x args)
-      (destructuring-bind (name sort) x
-        (push name names)
-        (push sort sorts)))
-    ;; add
+  (let ((names (loop for x in args
+                  collect (destructuring-bind (name sort) x
+                            (declare (ignore sort))
+                            name)))
+        (sorts (loop for x in args
+                  collect (destructuring-bind (name sort) x
+                            (declare (ignore name))
+                            sort))))
     (smt-add-declaration context
                          :name name
                          :sort sort
@@ -323,11 +324,13 @@
 (defun smt-app-macro (context op definition args)
   (let ((body (smt-definition-body definition))
         (dummy-args (smt-definition-param-names definition)))
+    ;(print args)
+    ;(print dummy-args)
     (unless (= (length args) (length dummy-args))
       (smt-error "Mismatched argument counts for `~A'" op))
     (smt->ast context
               (if args
-                  (sublis (map 'list #'cons dummy-args args)
+                 (sublis (map 'list #'cons dummy-args args)
                           body :test #'equal)
                   body))))
 
@@ -507,16 +510,12 @@
 (defun smt-prog (stmts &key
                          solver)
   (let* ((solver (or solver (make-solver))))
-    (labels ((rec (stmts)
-               ;;(print (car stmts))
-               (let ((x (smt-eval solver (car stmts))))
-                 (if (cdr stmts)
-                     (rec (cdr stmts))
-                     x))))
-      (values
-       (when stmts
-         (rec stmts))
-       solver))))
+    (values (reduce (lambda (x stmt)
+                      (declare (ignore x))
+                      (smt-eval solver stmt))
+                    stmts
+                    :initial-value nil)
+            solver)))
 
 (defun check-sat (exp &key solver)
   (let* ((vars (smt-exp-variables exp))

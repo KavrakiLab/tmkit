@@ -46,7 +46,37 @@
   (start-map (make-hash-table :test #'equal))
 
   ;; list of clauses in goal set (implicit and)
-  goal-clauses)
+  goal-clauses
+
+  ;; Caches
+  (mangle-cache (make-hash-table :test #'equal))
+  (unmangle-cache (make-hash-table :test #'equal))
+  (now-cache (make-hash-table :test #'equal))
+  (next-cache (make-hash-table :test #'equal)))
+
+;; (defun cpd-fluent-now (cpd fluent)
+;;   (let ((h (constrained-domain-now-cache cpd)))
+;;     (or (gethash fluent h)
+;;         (setf (gethash fluent h)
+;;               (fluent-now fluent)))))
+
+;; (defun cpd-fluent-next (cpd fluent)
+;;   (let ((h (constrained-domain-now-cache cpd)))
+;;     (or (gethash fluent h)
+;;         (setf (gethash fluent h)
+;;               (fluent-next fluent)))))
+
+;; (defun cpd-exp-now (domain exp)
+;;   (flet ((fun (fluent)
+;;            (cpd-fluent-now domain fluent)))
+;;     (declare (dynamic-extent #'fun))
+;;     (apply-rewrite-exp #'fun exp)))
+
+;; (defun cpd-exp-next (domain exp)
+;;   (flet ((fun (fluent)
+;;            (cpd-fluent-next domain fluent)))
+;;     (declare (dynamic-extent #'fun))
+;;     (apply-rewrite-exp #'fun exp)))
 
 (defun check-cpdl-fluent (cpd fluent &optional (exists t))
   (let ((actually-exists
@@ -94,9 +124,8 @@
   ;; Result
   cpd)
 
-(defun parse-cpdl (stmts)
-  (fold #'eval-cpdl (make-constrained-domain) stmts))
-
+(defun parse-cpdl (stmts &optional (domain (make-constrained-domain)))
+  (fold #'eval-cpdl domain stmts))
 
 
 (defun map-cpd-fluents (result-type function cpd)
