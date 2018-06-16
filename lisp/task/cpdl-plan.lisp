@@ -1,12 +1,15 @@
 (in-package :tmsmt)
 
+(declaim (ftype (function (constrained-domain symbol fixnum) string)))
 (defun cpd-mangle-fluent (cpd fluent i)
   "Name-mangle an expression into an unrolled variable at step i.
 EXP: an s-expression
 I: The step to unroll at"
-  (let ((mangle-cache (constrained-domain-mangle-cache cpd))
-        (key (cons i fluent)))
-    (declare (dynamic-extent key))
+  (let* ((fluent (ensure-list fluent))
+         (mangle-cache (constrained-domain-mangle-cache cpd))
+         (key (cons i fluent)))
+    (declare (dynamic-extent key)
+             (type list fluent))
     (or (gethash key mangle-cache)
         (let ((m (format nil "~{~A~^_~}_~D" fluent i))
               (key (copy-list key)))
@@ -14,13 +17,18 @@ I: The step to unroll at"
                 (gethash m (constrained-domain-unmangle-cache cpd)) key)
           m))))
 
+(declaim (ftype (function (constrained-domain list fixnum) string)))
 (defun cpd-mangle-exp (cpd exp i)
   (apply-rewrite-exp (lambda (exp) (cpd-mangle-fluent cpd exp i))
                      exp))
 
+;; (defun cpd-mangle-exp (exp i)
+;;   (apply-rewrite-exp (lambda (exp) (cpd-mangle-fluent cpd exp i))
+;;                      exp))
+
 (defun cpd-mangle-transition (cpd exp i)
   (flet ((mangle (thing)
-           (destructuring-ecase thing
+           (destructuring-ecase (ensure-list thing)
              ((now arg)
               (cpd-mangle-exp cpd arg i))
              ((next arg)
@@ -80,6 +88,7 @@ I: The step to unroll at"
     ;; goal
     (map-cpd-goals nil
                    (lambda (c)
+                     (check-type c list)
                      (add `(assert ,(cpd-mangle-exp domain c steps))))
                    domain)
 
@@ -112,7 +121,7 @@ I: The step to unroll at"
                     (dotimes (i steps)
                       (map nil
                            (lambda (f)
-                             (add (cpd-mangle-fluent domain f i)))
+                             (add (cpd-mangle-exp domain f i)))
                            (constrained-domain-outputs domain)))))
          (values (z3::smt-values solver symbols)))
     (loop for (a . b) in values

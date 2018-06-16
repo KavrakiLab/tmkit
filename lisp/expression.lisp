@@ -17,6 +17,19 @@ Converts arrays to lists."
                (t exp))))
     (rec exp)))
 
+(defun check-exp (function exp)
+  (declare (type function function))
+  (etypecase exp
+    (atom (funcall function exp))
+    (list
+     (destructuring-case exp
+       (((and or not = "=" => <=>) &rest args)
+        (dolist (a args)
+          (check-exp function a)))
+       ((t &rest rest) (declare (ignore rest))
+        (funcall function exp))))))
+
+
 (defun apply-rewrite-exp (function exp)
   (declare (type function function))
   (etypecase exp
