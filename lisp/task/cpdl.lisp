@@ -33,6 +33,9 @@
 (defstruct constrained-domain
   "Planning domain for constraint-based planning."
 
+  ;; ;; map from names to canonical name
+  (canon (make-hash-table :test #'equal))
+
   ;; map from fluent to types
   (fluent-map (make-hash-table :test #'equal))
 
@@ -51,20 +54,38 @@
   ;; Caches
   (mangle-cache (make-hash-table :test #'equal))
   (unmangle-cache (make-hash-table :test #'equal))
-  (now-cache (make-hash-table :test #'equal))
-  (next-cache (make-hash-table :test #'equal)))
+  (now-cache (make-hash-table :test #'eq))
+  (next-cache (make-hash-table :test #'eq)))
 
-;; (defun cpd-fluent-now (cpd fluent)
-;;   (let ((h (constrained-domain-now-cache cpd)))
-;;     (or (gethash fluent h)
-;;         (setf (gethash fluent h)
-;;               (fluent-now fluent)))))
 
-;; (defun cpd-fluent-next (cpd fluent)
-;;   (let ((h (constrained-domain-now-cache cpd)))
-;;     (or (gethash fluent h)
-;;         (setf (gethash fluent h)
-;;               (fluent-next fluent)))))
+
+(defun cpd-canonize-fluent (cpd fluent
+                            ;; &key
+                                 ;;   (if-exists :supersede)
+                                 ;;   (if-does-not-exist :create)
+                                 )
+  (let ((h (constrained-domain-canon cpd)))
+    (multiple-value-bind (v exists) (gethash fluent h)
+      (if exists v
+          (if (atom fluent)
+              (let ((list (list fluent)))
+                (setf (gethash fluent h) list
+                      (gethash list h) list))
+              (setf (gethash fluent h) fluent))))))
+
+(defun cpd-fluent-now (cpd fluent)
+  (let ((h (constrained-domain-now-cache cpd))
+        (fluent (cpd-canonize-fluent cpd fluent)))
+    (or (gethash fluent h)
+        (setf (gethash fluent h)
+              (fluent-now fluent)))))
+
+(defun cpd-fluent-next (cpd fluent)
+  (let ((h (constrained-domain-next-cache cpd))
+        (fluent (cpd-canonize-fluent cpd fluent)))
+    (or (gethash fluent h)
+        (setf (gethash fluent h)
+              (fluent-next fluent)))))
 
 ;; (defun cpd-exp-now (domain exp)
 ;;   (flet ((fun (fluent)
@@ -78,6 +99,28 @@
 ;;     (declare (dynamic-extent #'fun))
 ;;     (apply-rewrite-exp #'fun exp)))
 
+
+(defun cpd-canonize-exp (cpd exp)
+  ;; TODO: check
+  (labels ((canonize (exp)
+             (cpd-canonize-fluent cpd exp))
+           (destructure (exp)
+             (etypecase exp
+               (atom (canonize exp))
+               (cons
+                (destructuring-case exp
+                  ((now exp)
+                   (cpd-fluent-now cpd exp))
+                  ((next exp)
+                   (cpd-fluent-next cpd exp))
+                  ((t &rest args)
+                   (declare (ignore args))
+                   (canonize exp)))))))
+    (apply-rewrite-exp #'destructure exp)))
+
+
+
+
 (defun check-cpdl-fluent (cpd fluent &optional (exists t))
   (let ((actually-exists
          (hash-table-contains fluent (constrained-domain-fluent-map cpd))))
@@ -87,19 +130,27 @@
         (when actually-exists
           (cpdl-error "Fluent already declared: ~A" fluent)))))
 
+
+
+
+(defun cpdl-declare-fluent (cpd name type)
+  (let ((name (cpd-canonize-fluent cpd name)))
+    (check-cpdl-fluent cpd name nil)
+    (setf (gethash name (constrained-domain-fluent-map cpd))
+          type)))
+
 (defun eval-cpdl (cpd stmt)
   (destructuring-ecase stmt
     ((declare-fluent name  &optional (type 'bool))
-     (check-cpdl-fluent cpd name nil)
-     (setf (gethash name (constrained-domain-fluent-map cpd))
-           type))
+     (cpdl-declare-fluent cpd name type))
     ((start thing)
      (flet ((add-start (fluent value)
-              (check-cpdl-fluent cpd fluent t)
-              (let ((hash (constrained-domain-start-map cpd)))
-                (when (hash-table-contains fluent hash)
-                  (cpdl-error "Start value already declared: ~A" fluent))
-                (setf (gethash fluent hash) value))))
+              (let ((fluent (ensure-list fluent)))
+                (check-cpdl-fluent cpd fluent t)
+                (let ((hash (constrained-domain-start-map cpd)))
+                  (when (hash-table-contains fluent hash)
+                    (cpdl-error "Start value already declared: ~A" fluent))
+                  (setf (gethash fluent hash) value)))))
        (if (consp thing)
            (destructuring-case thing
              ((not fluent)
@@ -112,15 +163,18 @@
            (add-start thing 'true))))
     ((goal clause)
      ;; TODO: check exp
-     (push clause (constrained-domain-goal-clauses cpd)))
+     (push (cpd-canonize-exp cpd clause)
+           (constrained-domain-goal-clauses cpd)))
 
     ((transition clause)
      ;; TODO: check exp
-     (push clause (constrained-domain-transition-clauses cpd)))
+     (push (cpd-canonize-exp cpd clause)
+           (constrained-domain-transition-clauses cpd)))
 
     ((output fluent)
-     (check-cpdl-fluent cpd fluent t)
-     (push fluent (constrained-domain-outputs cpd))))
+     (let ((fluent (ensure-list fluent)))
+       (check-cpdl-fluent cpd fluent t)
+       (push fluent (constrained-domain-outputs cpd)))))
   ;; Result
   cpd)
 

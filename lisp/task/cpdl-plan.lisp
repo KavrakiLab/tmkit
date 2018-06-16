@@ -1,11 +1,12 @@
 (in-package :tmsmt)
 
-(declaim (ftype (function (constrained-domain symbol fixnum) string)))
+(declaim (ftype (function (constrained-domain list fixnum) string)
+                cpd-mangle-fluent))
 (defun cpd-mangle-fluent (cpd fluent i)
   "Name-mangle an expression into an unrolled variable at step i.
 EXP: an s-expression
 I: The step to unroll at"
-  (let* ((fluent (ensure-list fluent))
+  (let* ((fluent fluent)
          (mangle-cache (constrained-domain-mangle-cache cpd))
          (key (cons i fluent)))
     (declare (dynamic-extent key)
@@ -17,7 +18,8 @@ I: The step to unroll at"
                 (gethash m (constrained-domain-unmangle-cache cpd)) key)
           m))))
 
-(declaim (ftype (function (constrained-domain list fixnum) string)))
+(declaim (ftype (function (constrained-domain list fixnum) string)
+                cpd-mangle-exp))
 (defun cpd-mangle-exp (cpd exp i)
   (apply-rewrite-exp (lambda (exp) (cpd-mangle-fluent cpd exp i))
                      exp))
@@ -28,7 +30,7 @@ I: The step to unroll at"
 
 (defun cpd-mangle-transition (cpd exp i)
   (flet ((mangle (thing)
-           (destructuring-ecase (ensure-list thing)
+           (destructuring-ecase thing
              ((now arg)
               (cpd-mangle-exp cpd arg i))
              ((next arg)
@@ -73,8 +75,6 @@ I: The step to unroll at"
                          (add
                           `(declare-const ,(cpd-mangle-fluent domain name i) ,type)))
                        domain))
-
-
     ;; start
     (map-cpd-start nil
                    (lambda (name value)
@@ -101,9 +101,6 @@ I: The step to unroll at"
                                                  (cpd-mangle-transition domain (car a) i))
                                          args))))))
 
-    ;; (let ((f (cons 'and (constrained-domain-transition-clauses domain))))
-    ;;   (dotimes (i steps)
-    ;;     (add `(assert ,(cpd-mangle-transition domain f i)))))
 
     ;; check
     (add `(check-sat))))
