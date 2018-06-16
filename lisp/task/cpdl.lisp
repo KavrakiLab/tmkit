@@ -30,14 +30,21 @@
 (defun cpdl-error (fmt &rest args)
   (apply #'error fmt args))
 
+
+(defstruct fluent-descriptor
+  name
+  type
+  now
+  next)
+
 (defstruct constrained-domain
   "Planning domain for constraint-based planning."
 
-  ;; ;; map from names to canonical name
+  ;; map from names to canonical name
   (canon (make-hash-table :test #'equal))
 
-  ;; map from fluent to types
-  (fluent-map (make-hash-table :test #'equal))
+  ;; ;; map from fluent to types
+  (fluent-map (make-hash-table :test #'eq))
 
   ;; list of fluents to output
   outputs
@@ -53,10 +60,9 @@
 
   ;; Caches
   (mangle-cache (make-hash-table :test #'equal))
-  (unmangle-cache (make-hash-table :test #'equal))
-  (now-cache (make-hash-table :test #'eq))
-  (next-cache (make-hash-table :test #'eq)))
+  (unmangle-cache (make-hash-table :test #'equal)))
 
+;(defun cpd-fluent-name (cpd fluent)
 
 
 (defun cpd-canonize-fluent (cpd fluent
@@ -73,19 +79,21 @@
                       (gethash list h) list))
               (setf (gethash fluent h) fluent))))))
 
+
+(defun cpd-fluent-descriptor (cpd fluent)
+  (if-let ((d (gethash (cpd-canonize-fluent cpd fluent)
+                       (constrained-domain-fluent-map cpd))))
+    d
+    (cpdl-error "Fluent not declared: ~A" fluent)))
+
 (defun cpd-fluent-now (cpd fluent)
-  (let ((h (constrained-domain-now-cache cpd))
-        (fluent (cpd-canonize-fluent cpd fluent)))
-    (or (gethash fluent h)
-        (setf (gethash fluent h)
-              (fluent-now fluent)))))
+  (fluent-descriptor-now (cpd-fluent-descriptor cpd fluent)))
 
 (defun cpd-fluent-next (cpd fluent)
-  (let ((h (constrained-domain-next-cache cpd))
-        (fluent (cpd-canonize-fluent cpd fluent)))
-    (or (gethash fluent h)
-        (setf (gethash fluent h)
-              (fluent-next fluent)))))
+  (fluent-descriptor-next (cpd-fluent-descriptor cpd fluent)))
+
+(defun cpd-fluent-type (cpd fluent)
+  (fluent-descriptor-type (cpd-fluent-descriptor cpd fluent)))
 
 ;; (defun cpd-exp-now (domain exp)
 ;;   (flet ((fun (fluent)
@@ -119,11 +127,10 @@
     (apply-rewrite-exp #'destructure exp)))
 
 
-
-
 (defun check-cpdl-fluent (cpd fluent &optional (exists t))
-  (let ((actually-exists
-         (hash-table-contains fluent (constrained-domain-fluent-map cpd))))
+  (let* ((fluent (cpd-canonize-fluent cpd fluent))
+         (actually-exists
+          (hash-table-contains fluent (constrained-domain-fluent-map cpd))))
     (if exists
         (unless actually-exists
           (cpdl-error "Fluent not declared: ~A" fluent))
@@ -131,13 +138,16 @@
           (cpdl-error "Fluent already declared: ~A" fluent)))))
 
 
-
-
 (defun cpdl-declare-fluent (cpd name type)
-  (let ((name (cpd-canonize-fluent cpd name)))
-    (check-cpdl-fluent cpd name nil)
-    (setf (gethash name (constrained-domain-fluent-map cpd))
-          type)))
+  (let ((name (cpd-canonize-fluent cpd name))
+        (h (constrained-domain-fluent-map cpd)))
+      (if (hash-table-contains name h)
+          (cpdl-error "Fluent already declared: ~A" name)
+          (setf (gethash name (constrained-domain-fluent-map cpd))
+                (make-fluent-descriptor :name name
+                                        :type type
+                                        :now (fluent-now name)
+                                        :next (fluent-next name))))))
 
 (defun eval-cpdl (cpd stmt)
   (destructuring-ecase stmt
@@ -172,7 +182,7 @@
            (constrained-domain-transition-clauses cpd)))
 
     ((output fluent)
-     (let ((fluent (ensure-list fluent)))
+     (let ((fluent (cpd-canonize-fluent cpd fluent)))
        (check-cpdl-fluent cpd fluent t)
        (push fluent (constrained-domain-outputs cpd)))))
   ;; Result
@@ -186,6 +196,13 @@
   (map-hash-result result-type
                    function
                    (constrained-domain-fluent-map cpd)))
+
+(defun map-cpd-fluent-types (result-type function cpd)
+  (map-cpd-fluents result-type
+                   (lambda (name descriptor)
+                     (funcall function name (fluent-descriptor-type descriptor)))
+                   cpd))
+
 
 (defun map-cpd-transitions (result-type function cpd)
   (map result-type
@@ -206,10 +223,10 @@
 (defun cpd-stmts (cpd)
   (nconc
    ;; fluents
-   (map-cpd-fluents 'list
-                    (lambda (name type)
-                      `(declare-fluent ,name ,type))
-                    cpd)
+   (map-cpd-fluent-types 'list
+                         (lambda (name type)
+                           `(declare-fluent ,name ,type))
+                         cpd)
    ;; transition
    (map-cpd-transitions 'list
                         (lambda (c)

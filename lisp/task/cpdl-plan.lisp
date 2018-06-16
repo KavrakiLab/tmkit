@@ -46,19 +46,19 @@ I: The step to unroll at"
   ;;            for a = (car x)
   ;;            when (cdr x)
   ;;            collect
-  ;;            a))))
+;;            a))))
 
 (defun cpd-plan-options (&key (max-steps 10))
   `((:max-steps . ,max-steps)))
 
 (defun cpd-define-transition (domain)
   (let* ((f (cons 'and (constrained-domain-transition-clauses domain)))
-         (nows (map-cpd-fluents 'list (lambda (f type)
-                                        `(,(fluent-now f)  ,type))
-                                domain))
-         (nexts (map-cpd-fluents 'list (lambda (f type)
-                                         `(,(fluent-next f) ,type))
-                                 domain))
+         (nows (map-cpd-fluent-types 'list (lambda (f type)
+                                             `(,(fluent-now f)  ,type))
+                                     domain))
+         (nexts (map-cpd-fluent-types 'list (lambda (f type)
+                                              `(,(fluent-next f) ,type))
+                                      domain))
          (args (append nows nexts)))
     (values
      `(define-fun transition ,args bool
@@ -70,11 +70,11 @@ I: The step to unroll at"
   (with-collected (add)
     ;; fluents
     (dotimes (i (1+ steps))
-      (map-cpd-fluents nil
-                       (lambda (name type)
-                         (add
-                          `(declare-const ,(cpd-mangle-fluent domain name i) ,type)))
-                       domain))
+      (map-cpd-fluent-types nil
+                            (lambda (name type)
+                              (add
+                               `(declare-const ,(cpd-mangle-fluent domain name i) ,type)))
+                            domain))
     ;; start
     (map-cpd-start nil
                    (lambda (name value)
