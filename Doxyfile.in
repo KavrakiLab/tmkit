@@ -764,6 +764,7 @@ INPUT                  = @top_srcdir@/include \
                          @top_srcdir@/doc/md/hacking.md \
                          @top_srcdir@/doc/md/semantics.md \
                          @top_builddir@/doc/md/authors.md \
+                         @top_srcdir@/doc/md/cpdl.md \
                          @top_builddir@/py-api.md \
                          @top_builddir@/lisp-api.md \
                          @top_builddir@/doc/md/copying.md
