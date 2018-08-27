@@ -167,7 +167,8 @@ TRACE: Output stream to write generate SMTLib statements (for debugging)."
 
 
 
-(defun cpd-plan (domain &optional options)
+(defun cpd-plan-simple (domain &optional options)
+  "Driver function for a non-incremental planner."
   (let* ((options (or options (cpd-plan-options)))
          (max-steps (cpd-plan-option options :max-steps))
          (trace (cpd-plan-option options :trace)))
@@ -193,23 +194,92 @@ TRACE: Output stream to write generate SMTLib statements (for debugging)."
 
 
 
-;; (defstruct cpd-planner
-;;   domain
-;;   solver
-;;   transition-args)
+(defstruct cpd-planner
+  domain
+  solver
+  transition-args
+  options
+  eval-function
+  k)
 
-;; (defun cpd-smt-init (function domain &options options)
-;;   (declare (ignore options))
-;;   ;; State Space
-;;   ;; Start
-;;   ;; Transition Function
+(defun cpd-planner-eval (planner stmt)
+  (funcall (cpd-planner-eval-function planner) stmt))
 
-;;   )
+(defun cpd-planner-max-steps (planner)
+  (cpd-plan-option (cpd-planner-options planner) :max-steps))
+
+(defun cpd-plan-init (domain solver &optional options)
+  "Initialize the planner."
+  (flet ((add (stmt)
+           (z3::smt-eval solver stmt)))
+
+    ;; Step 0 Fluents
+    (cpd-smt-encode-fluents #'add domain 0)
+
+    ;; Start
+    (cpd-smt-encode-start #'add domain)
+
+    ;; Transition Function
+    (multiple-value-bind (fun args)
+        (cpd-define-transition domain)
+      (add fun)
+
+      ;; Push and Assert Goal
+      (funcall #'add '(push 1))
+      (cpd-smt-encode-goal #'add domain 0)
+
+      ;; Result
+      (make-cpd-planner :domain domain
+                        :solver solver
+                        :transition-args args
+                        :options options
+                        :eval-function #'add
+                        :k 0))))
+
+(defun cpd-plan-next (planner)
+  (let ((k (cpd-planner-k planner))
+        (max-steps (cpd-planner-max-steps planner)))
+    ;; Check Sat
+    (let ((is-sat (cpd-planner-eval planner '(check-sat))))
+      (cond
+        ((eq is-sat :sat)
+         ;; SAT, get result
+         (values (cpd-plan-result (cpd-planner-domain planner)
+                                  (cpd-planner-solver planner)
+                                  k)
+                 t
+                 planner))
+        ((< k max-steps)
+         ;; UNSAT: Step
+         (incf (cpd-planner-k planner))
+         (cpd-plan-step planner))
+        ;; Over max steps, fail
+        (t (values nil nil planner))))))
 
 
-;; (defun cpd-smt-step (function domain k &options options)
-;;   ;; Declare Flents
-;;   ;; Push
-;;   ;; Assert Goal
-;;   ;;
-;;   )
+(defun cpd-plan-step (planner)
+  (let ((k (cpd-planner-k planner))
+        (add (cpd-planner-eval-function planner))
+        (domain (cpd-planner-domain planner))
+        (args (cpd-planner-transition-args planner)))
+    (format *error-output* "~&Unrolling at step ~D...~%" k)
+
+    ;; Pop, declare fluents and assert transition
+    (funcall add '(pop 1))
+    (cpd-smt-encode-fluents add domain k)
+    (cpd-smt-encode-transition add domain args (1- k))
+
+    ;; Push and assert goal
+    (funcall add '(push 1))
+    (cpd-smt-encode-goal add domain k)
+
+    ;; Recurse
+    (cpd-plan-next planner)))
+
+
+(defun cpd-plan (domain &optional options)
+  (let* ((options (or options (cpd-plan-options)))
+         (trace (cpd-plan-option options :trace)))
+    (z3::with-solver (solver :trace trace)
+      (let ((planner (cpd-plan-init domain solver options)))
+        (cpd-plan-next planner)))))
