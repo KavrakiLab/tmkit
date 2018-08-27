@@ -49,22 +49,29 @@
          ;; body
          ,@body))))
 
-(defun make-solver (&key context)
+
+(defun make-solver (&key context trace)
   (let* ((context (or context (z3-mk-context (z3-mk-config))))
          (solver (z3-mk-solver context)))
     ;; Seems that we get an initial refcount of 0?
     (z3-solver-inc-ref context solver)
     (z3-set-error-handler context (callback error-callback))
-    (setf (z3-solver-context solver) context)
+    (setf (z3-solver-context solver) context
+          (z3-solver-trace solver) trace)
     solver))
 
-(defmacro with-solver ((solver) &body body)
-  `(let ((,solver (make-solver)))
+
+(defmacro with-solver ((solver &key trace) &body body)
+  `(let ((,solver (make-solver :trace ,trace)))
      ,@body))
 
 
 (defvar *context*)
 (defvar *solver*)
+
+(defun smt-trace (solver thing)
+  (when-let (trace (z3-solver-trace solver))
+    (format trace "~&~A" thing)))
 
 (defun smt-normalize-id (key)
   (etypecase key
@@ -441,6 +448,7 @@
 
 (defun smt-eval (solver stmt)
   (declare (type z3-solver solver))
+  (smt-trace solver stmt)
   (flet ((context ()
            (z3-solver-context solver)))
     (destructuring-ecase stmt

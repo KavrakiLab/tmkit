@@ -32,7 +32,7 @@
 
 (amino-ffi::def-foreign-container
     z3-solver z3-solver-type
-  :slots (context))
+  :slots (context trace))
 
 (amino-ffi::def-foreign-container
     z3-func-decl z3-func-decl-type)

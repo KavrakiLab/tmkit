@@ -56,8 +56,19 @@ I: The step to unroll at"
   ;;            collect
 ;;            a))))
 
-(defun cpd-plan-options (&key (max-steps 10))
-  `((:max-steps . ,max-steps)))
+(defun cpd-plan-options (&key
+                           (max-steps 10)
+                           (trace nil) )
+  "Construct options for constraint-based planner.
+
+MAX-STEPS: maximum number of steps to plan over, i.e., the bound or horizon.
+TRACE: Output stream to write generate SMTLib statements (for debugging)."
+  `((:max-steps . ,max-steps)
+    (:trace . ,trace)))
+
+(defun cpd-plan-option (options thing)
+  "Get a planner option."
+  (cdr (assoc thing options)))
 
 (defun cpd-define-transition (domain)
   (let* ((f (cons 'and (constrained-domain-transition-clauses domain)))
@@ -150,7 +161,7 @@ I: The step to unroll at"
                            (lambda (f)
                              (add (cpd-mangle-exp domain f i)))
                            (constrained-domain-outputs domain)))))
-         (values (z3::smt-values solver symbols)))
+         (values (z3::smt-eval solver `(get-value ,symbols))))
     (loop for (a . b) in values
        collect (cons (cpd-unmangle domain a) b))))
 
@@ -158,10 +169,11 @@ I: The step to unroll at"
 
 (defun cpd-plan (domain &optional options)
   (let* ((options (or options (cpd-plan-options)))
-         (max-steps (cdr (assoc :max-steps options))))
+         (max-steps (cpd-plan-option options :max-steps))
+         (trace (cpd-plan-option options :trace)))
     (labels ((rec (steps)
                (format *error-output* "~&Unrolling for step ~D...~%" steps)
-               (z3::with-solver (solver)
+               (z3::with-solver (solver :trace trace)
                  (multiple-value-bind (is-sat solver)
                      (z3::smt-prog (cpd-smt-simple domain steps)
                                    :solver solver)
