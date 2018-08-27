@@ -1,5 +1,7 @@
 (in-package :tmsmt)
 
+(defparameter +cpd-transition-name+ 'transition)
+
 (declaim (ftype (function (constrained-domain list fixnum) string)
                 cpd-mangle-fluent))
 (defun cpd-mangle-fluent (cpd fluent i)
@@ -39,7 +41,13 @@ I: The step to unroll at"
 
 (defun cpd-unmangle (cpd mangled)
   "Un-mangle a mangled name back to the s-expression."
-  (gethash mangled (constrained-domain-unmangle-cache cpd)))
+  (multiple-value-bind (sexp found)
+      (gethash mangled (constrained-domain-unmangle-cache cpd))
+    ;; We should never try to unmangle something we have not
+    ;; previously mangled.
+    (assert found)
+    sexp))
+
   ;; (let ((list (ppcre:split "_" mangled)))
   ;;   (cons (parse-integer (lastcar list))
   ;;         (loop for x on list
@@ -61,46 +69,68 @@ I: The step to unroll at"
                                       domain))
          (args (append nows nexts)))
     (values
-     `(define-fun transition ,args bool
+     `(define-fun ,+cpd-transition-name+ ,args bool
                   ,f)
      args)))
 
 
-(defun cpd-smt (domain steps)
+
+;;; Encoding functions
+(defun cpd-smt-encode-fluents (function domain step)
+  "Encode the new fluents for STEP."
+  (map-cpd-fluent-types nil
+                        (lambda (name type)
+                          (funcall function
+                                   `(declare-const ,(cpd-mangle-fluent domain name step)
+                                                   ,type)))
+                        domain))
+
+(defun cpd-smt-encode-start (function domain)
+  "Encode the start state"
+  (map-cpd-start nil
+                 (lambda (name value)
+                   (let ((name (cpd-mangle-fluent domain name 0)))
+                     (funcall function
+                              (case value
+                                (true `(assert ,name))
+                                (false `(assert (not ,name)))
+                                (otherwise `(assert (= ,name ,value)))))))
+                 domain))
+
+(defun cpd-smt-encode-goal (function domain step)
+  "Encode the goal state at STEP"
+  (map-cpd-goals nil
+                 (lambda (c)
+                   (check-type c list)
+                   (funcall function `(assert ,(cpd-mangle-exp domain c step))))
+                 domain))
+
+(defun cpd-smt-encode-transition (function domain args step)
+  "Encode the call to transition function at STEP"
+  (funcall function
+           `(assert (transition ,@(map 'list (lambda (a)
+                                               (cpd-mangle-transition domain (car a) step))
+                                       args)))))
+
+(defun cpd-smt-simple (domain steps)
+  "Return the SMT encoding of the domain for STEPS count."
   (with-collected (add)
     ;; fluents
     (dotimes (i (1+ steps))
-      (map-cpd-fluent-types nil
-                            (lambda (name type)
-                              (add
-                               `(declare-const ,(cpd-mangle-fluent domain name i) ,type)))
-                            domain))
+      (cpd-smt-encode-fluents #'add domain i))
+
     ;; start
-    (map-cpd-start nil
-                   (lambda (name value)
-                     (let ((name (cpd-mangle-fluent domain name 0)))
-                       (case value
-                         (true (add `(assert ,name)))
-                         (false (add `(assert (not ,name))))
-                         (otherwise (add `(assert (= ,name ,value)))))))
-                   domain)
+    (cpd-smt-encode-start #'add domain)
 
     ;; goal
-    (map-cpd-goals nil
-                   (lambda (c)
-                     (check-type c list)
-                     (add `(assert ,(cpd-mangle-exp domain c steps))))
-                   domain)
+    (cpd-smt-encode-goal #'add domain steps)
 
     ;; transitions
     (multiple-value-bind (fun args)
         (cpd-define-transition domain)
       (add fun)
       (dotimes (i steps)
-        (add `(assert (transition ,@(map 'list (lambda (a)
-                                                 (cpd-mangle-transition domain (car a) i))
-                                         args))))))
-
+        (cpd-smt-encode-transition #'add domain args i)))
 
     ;; check
     (add `(check-sat))))
@@ -124,6 +154,8 @@ I: The step to unroll at"
     (loop for (a . b) in values
        collect (cons (cpd-unmangle domain a) b))))
 
+
+
 (defun cpd-plan (domain &optional options)
   (let* ((options (or options (cpd-plan-options)))
          (max-steps (cdr (assoc :max-steps options))))
@@ -131,7 +163,7 @@ I: The step to unroll at"
                (format *error-output* "~&Unrolling for step ~D...~%" steps)
                (z3::with-solver (solver)
                  (multiple-value-bind (is-sat solver)
-                     (z3::smt-prog (cpd-smt domain steps)
+                     (z3::smt-prog (cpd-smt-simple domain steps)
                                    :solver solver)
                    (cond
                      ((eq is-sat :sat)
@@ -142,3 +174,30 @@ I: The step to unroll at"
                       (rec (1+ steps)))
                      (t (values nil nil)))))))
       (rec 1))))
+
+
+
+
+
+
+
+;; (defstruct cpd-planner
+;;   domain
+;;   solver
+;;   transition-args)
+
+;; (defun cpd-smt-init (function domain &options options)
+;;   (declare (ignore options))
+;;   ;; State Space
+;;   ;; Start
+;;   ;; Transition Function
+
+;;   )
+
+
+;; (defun cpd-smt-step (function domain k &options options)
+;;   ;; Declare Flents
+;;   ;; Push
+;;   ;; Assert Goal
+;;   ;;
+;;   )

@@ -43,7 +43,7 @@
   ;; map from names to canonical name
   (canon (make-hash-table :test #'equal))
 
-  ;; ;; map from fluent to types
+  ;; map from fluent to types
   (fluent-map (make-hash-table :test #'eq))
 
   ;; list of fluents to output
@@ -59,7 +59,11 @@
   goal-clauses
 
   ;; Caches
+
+  ;; sexp -> mangled
   (mangle-cache (make-hash-table :test #'equal))
+
+  ;; mangled -> sexp
   (unmangle-cache (make-hash-table :test #'equal)))
 
 ;(defun cpd-fluent-name (cpd fluent)
