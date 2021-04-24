@@ -67,7 +67,7 @@ Options:
   -g <scene-file>             Goal scene file
   -o <output-plan-file>       Output plan file
   -q <plan-file>              Initial configuration
-  -s <max-steps>              Maximum number of task steps
+  -z, --steps <max-steps>     Maximum number of task steps
   -m <motion-timeout>         Initial motion planning timeout
   -r <resolution>             Discretization resolution
   -T <times-file>             Append timing data to times-file
@@ -145,7 +145,7 @@ EOF
             shift;
             export TMSMT_RESOLUTION="$1"
             ;;
-        -s|--steps)
+        -z|--steps)
             shift;
             export TMSMT_MAX_STEPS="$1"
             ;;
